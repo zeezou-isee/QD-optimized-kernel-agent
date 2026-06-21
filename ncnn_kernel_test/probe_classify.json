@@ -1,0 +1,470 @@
+[
+  {
+    "op": "Acosh",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "And",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Asinh",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Atanh",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "AveragePool_2d_ceil",
+    "supported": false,
+    "numeric": false,
+    "op_types": [
+      "F.avg_pool2d"
+    ],
+    "residual": []
+  },
+  {
+    "op": "BitWiseOr",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "BitWiseXor",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "BitwiseAnd",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Cast",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Cosh",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "CumSum",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.cumsum"
+    ],
+    "residual": []
+  },
+  {
+    "op": "DepthToSpace",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "nn.PixelShuffle"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Det",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "residual": [
+      "aten::linalg_det"
+    ]
+  },
+  {
+    "op": "Det_2d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "residual": [
+      "aten::linalg_det"
+    ]
+  },
+  {
+    "op": "Det_3d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "residual": [
+      "aten::linalg_det"
+    ]
+  },
+  {
+    "op": "Einsum_reduce_dim",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.einsum"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Equal",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.eq"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Erf",
+    "supported": true,
+    "numeric": true,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Gather",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "GatherElements",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Greater",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.gt"
+    ],
+    "residual": []
+  },
+  {
+    "op": "GreaterEqual",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.ge"
+    ],
+    "residual": []
+  },
+  {
+    "op": "InstanceNormalization_1d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "nn.InstanceNorm1d"
+    ],
+    "residual": []
+  },
+  {
+    "op": "InstanceNormalization_3d",
+    "supported": true,
+    "numeric": true,
+    "op_types": [
+      "nn.InstanceNorm3d"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Less",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.lt"
+    ],
+    "residual": []
+  },
+  {
+    "op": "LessEqual",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.le"
+    ],
+    "residual": []
+  },
+  {
+    "op": "LogicalXor",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.logical_xor"
+    ],
+    "residual": []
+  },
+  {
+    "op": "LogicalXor3d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "LogicalXor_2d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "MaxPool_2d_dilations",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "F.max_pool2d"
+    ],
+    "residual": []
+  },
+  {
+    "op": "MaxPool_2d_same_lower",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression",
+      "aten::max_pool2d"
+    ],
+    "residual": [
+      "aten::max_pool2d"
+    ]
+  },
+  {
+    "op": "Mod",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Not",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.logical_not"
+    ],
+    "residual": []
+  },
+  {
+    "op": "OneHot",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "ROIAlign",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Range",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.arange"
+    ],
+    "residual": []
+  },
+  {
+    "op": "ScatterElements",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Sign",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Sinh",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Stft",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Attribute",
+      "torch.stft"
+    ],
+    "residual": []
+  },
+  {
+    "op": "TopK",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.topk"
+    ],
+    "residual": []
+  },
+  {
+    "op": "TopK_3d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.topk"
+    ],
+    "residual": []
+  },
+  {
+    "op": "TopK_dim0",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.topk"
+    ],
+    "residual": []
+  },
+  {
+    "op": "TopK_indices",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.topk"
+    ],
+    "residual": []
+  },
+  {
+    "op": "TopK_sorted",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "torch.topk"
+    ],
+    "residual": []
+  },
+  {
+    "op": "Trilu_lower",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Trilu_uppper",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Unique",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression",
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ],
+    "residual": [
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ]
+  },
+  {
+    "op": "Unique_sorted_with_axis",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression",
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ],
+    "residual": [
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ]
+  },
+  {
+    "op": "Unique_sorted_with_axis_3d",
+    "supported": false,
+    "numeric": null,
+    "op_types": [
+      "pnnx.Expression",
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ],
+    "residual": [
+      "aten::unique_dim",
+      "prim::TupleConstruct"
+    ]
+  },
+  {
+    "op": "Where",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Where_broadcast",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  },
+  {
+    "op": "Where_scalar",
+    "supported": false,
+    "numeric": null,
+    "op_types": [],
+    "residual": []
+  }
+]

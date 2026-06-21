@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*.swp
+
+# opgen runtime artifacts
+opgen/runs/
+
+# ncnn_kernel_test scratch / logs (kept results: *_results.json, REPORT.md, *.md)
+ncnn_kernel_test/_probe/
+ncnn_kernel_test/_imperative_work/
+ncnn_kernel_test/_net/
+ncnn_kernel_test/_work/
+ncnn_kernel_test/*.log
+ncnn_kernel_test/install.log
+ncnn_kernel_test/libncnn_build.log
+ncnn_kernel_test/pnnx_build.log

@@ -1,0 +1,70 @@
+[
+  {
+    "op": "Erf",
+    "kind": "already-in-ncnn (skip graph)",
+    "status": "success",
+    "kernel": "success",
+    "already_in_ncnn": true,
+    "baseline_op_types": [
+      "pnnx.Expression"
+    ],
+    "graph": "skipped (already supported by ncnn)",
+    "e2e": true,
+    "e2e_diff": 3.91155481338501e-07,
+    "prod_compile": true,
+    "prod_correctness": true,
+    "opt_stopped": "max_rounds (2) reached",
+    "opt_iters": 2
+  },
+  {
+    "op": "Greater",
+    "kind": "not-in-ncnn (simple)",
+    "status": "success",
+    "kernel": "success",
+    "already_in_ncnn": false,
+    "baseline_op_types": [
+      "torch.gt"
+    ],
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 0.0,
+    "prod_compile": true,
+    "prod_correctness": true,
+    "opt_stopped": "max_rounds (2) reached",
+    "opt_iters": 2
+  },
+  {
+    "op": "Mod",
+    "kind": "not-in-ncnn (Expression)",
+    "status": "fail",
+    "kernel": "success",
+    "already_in_ncnn": false,
+    "baseline_op_types": [
+      "pnnx.Expression"
+    ],
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null,
+    "prod_compile": null,
+    "prod_correctness": null,
+    "opt_stopped": null,
+    "opt_iters": 0
+  },
+  {
+    "op": "CumSum",
+    "kind": "not-in-ncnn (axis param)",
+    "status": "fail",
+    "kernel": "success",
+    "already_in_ncnn": false,
+    "baseline_op_types": [
+      "torch.cumsum"
+    ],
+    "graph": "success",
+    "e2e": false,
+    "e2e_diff": 10.351067543029785,
+    "prod_compile": null,
+    "prod_correctness": null,
+    "opt_stopped": null,
+    "opt_iters": 0
+  }
+]

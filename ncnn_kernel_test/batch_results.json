@@ -1,0 +1,102 @@
+[
+  {
+    "op": "Equal",
+    "kind": "二元比较",
+    "status": "success",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 0.0
+  },
+  {
+    "op": "And",
+    "kind": "二元逻辑",
+    "status": "fail",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null
+  },
+  {
+    "op": "Not",
+    "kind": "一元逻辑",
+    "status": "success",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 0.0
+  },
+  {
+    "op": "Sinh",
+    "kind": "一元数学(表达式)",
+    "status": "success",
+    "kernel": "success",
+    "kernel_diff": 1.9073486328125e-06,
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 9.5367431640625e-07
+  },
+  {
+    "op": "Where",
+    "kind": "三输入选择",
+    "status": "fail",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null
+  },
+  {
+    "op": "Cast",
+    "kind": "类型转换",
+    "status": "fail",
+    "kernel": "success",
+    "kernel_diff": 0.0017962455749511719,
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null
+  },
+  {
+    "op": "Mod",
+    "kind": "二元取模",
+    "status": "success",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 0.0
+  },
+  {
+    "op": "CumSum",
+    "kind": "带轴扫描",
+    "status": "fail",
+    "kernel": "success",
+    "kernel_diff": 9.5367431640625e-07,
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null
+  },
+  {
+    "op": "Trilu_lower",
+    "kind": "三角掩码",
+    "status": "fail",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "fail",
+    "e2e": null,
+    "e2e_diff": null
+  },
+  {
+    "op": "TopK",
+    "kind": "多输出(难)",
+    "status": "success",
+    "kernel": "success",
+    "kernel_diff": 0.0,
+    "graph": "success",
+    "e2e": true,
+    "e2e_diff": 0.0
+  }
+]
