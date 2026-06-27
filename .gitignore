@@ -10,6 +10,16 @@ venv/
 .DS_Store
 *.swp
 
+# Third-party framework source + build artifacts (ncnn, ~2GB, has its own git)
+frameworks/
+
+# agent runtime artifacts
+agents/runs/
+runs/
+
+# logs
+*.log
+
 # opgen runtime artifacts
 opgen/runs/
 

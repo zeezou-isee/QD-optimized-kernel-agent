@@ -1,0 +1,9 @@
+buffers { size_kb: 65536 }
+data_sources { config {
+  name: "linux.ftrace"
+  ftrace_config {
+    ftrace_events: "sched/sched_switch"
+    ftrace_events: "sched/sched_wakeup"
+  }
+}}
+duration_ms: 60000

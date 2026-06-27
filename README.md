@@ -49,7 +49,7 @@ All three sub-agents share one pattern: **agent loop (state machine) + functiona
 pipeline + 3 roles (analyzer / coder / debugger)**, where the loop repairs the
 *first failing stage* each round and feeds the role only that stage's diagnostic.
 
-### Verification backbone (`opgen/layer_oracle/`)
+### Verification backbone (`agents/layer_oracle/`)
 - **LayerOracle** — compile one candidate `.cpp` + `libncnn.a`, instantiate the
   class directly, run forward, allclose vs PyTorch. No ncnn-tree edits, no
   per-op C++ test. `arm` mode compiles the base `.cpp` in as well and runs the
@@ -58,7 +58,7 @@ pipeline + 3 roles (analyzer / coder / debugger)**, where the loop repairs the
   *whole converted model* via a generic `ncnn::Net` runner vs PyTorch (catches
   semantic errors structural checks miss, e.g. `gt -> max`).
 
-### The QD optimizer (`opgen/optimize/`)
+### The QD optimizer (`agents/optimize/`)
 Implements the design in the `算子优化-*.md` / `微观参数优化设计.md` documents as
 **Proposer / Evaluator / Policy**:
 
@@ -95,90 +95,92 @@ pool, **M3** = cross-op reuse + best-first comparison (all implemented & tested)
 ## Repository layout
 
 ```
-opgen/
-  config.py            paths / runtime config (finds ../ncnn)
-  llm_api.py           OpenRouter LLM wrapper (streaming; reasoning off by default)
-  kernel/              KernelAgent: ncnn kernel writer (base + arm)
-  graph/               GraphAgent: PyTorch->ncnn PNNX conversion writer
-  layer_oracle/        LayerOracle + NetOracle (compile/run/allclose verification)
-  orchestrator/        OperatorAgent (7-stage flow) + production_validation
-  optimize/            OptimizeAgent (QD optimizer)
-    schemas.py         ParameterizedTemplate / MeasureSample / BasinValue / OptimizeResult
-    evaluator/         cpu_runner, correctness_oracle, measure_harness, evaluator
-    inner/             hardware_specs, constraint_engine, coarse_grid, hill_climb, inner_search
-    policy/            roofline, bd, archive (MAP-Elites), experience_pool, map_elites, best_first
-    test_m1/2/3.py     76 unit tests (fake evaluator/proposer; no LLM/ncnn needed)
-  cli/                 run_kernel_agent / run_operator_agent / run_arm_batch / ...
-  tools/               file/shell helpers
-dataset/Mobilekernelbench/   183 PyTorch reference operators (12 categories)
-算子优化-*.md / 微观参数优化设计.md   the optimizer design documents
-opgen/docs/          background, ncnn graph/kernel notes, validation reports
+agents/                  the agent system (see agents/README.md)
+  config.py              paths / runtime config (finds frameworks/ncnn + datasets/MobileKernelBench)
+  llm_api.py             OpenRouter LLM wrapper (streaming; reasoning off by default)
+  kernel/                KernelAgent: ncnn kernel writer (base + arm)
+  graph/                 GraphAgent: PyTorch->ncnn PNNX conversion writer
+  layer_oracle/          LayerOracle + NetOracle (compile/run/allclose verification)
+  orchestrator/          OperatorAgent (7-stage flow) + production_validation
+  optimize/              OptimizeAgent (QD optimizer)
+    schemas.py           ParameterizedTemplate / MeasureSample / BasinValue / OptimizeResult
+    evaluator/           cpu_runner, correctness_oracle, measure_harness, evaluator
+    inner/               hardware_specs, constraint_engine, coarse_grid, hill_climb, inner_search
+    policy/              roofline, bd, archive (MAP-Elites), experience_pool, map_elites, best_first
+    proposer/            LLM proposer + prompts
+    test_m1/2/3.py       unit tests (fake evaluator/proposer; no LLM/ncnn needed)
+  cli/                   run_kernel_agent / run_graph_agent / run_operator_agent / run_arm_batch / ...
+  tools/                 file/shell helpers
+  docs/                  background, ncnn graph/kernel notes, validation reports
+eval/                    experiment/validation drivers for agents/ (batch tests, probes, install) + reports
+datasets/MobileKernelBench/   PyTorch reference operators (12 categories)
+frameworks/ncnn/         the ncnn checkout the agents inject into (build/ + tools/pnnx)
+utils/                   optimizer reify/param-contract module (design-stage)
+算子优化-完整Workflow.md / pipeline.md   design documents
 ```
 
 ---
 
 ## Setup
 
-The repo is **not self-contained at runtime** — it needs an `ncnn/` checkout next
-to it (the code walks up to find a directory containing `ncnn/`), a Python env, and
-an OpenRouter key.
+The ncnn checkout the agents inject into lives in this repo at `frameworks/ncnn/`
+(the code auto-locates `frameworks/ncnn`, falling back to a top-level `ncnn/`). You
+still need a Python env and an OpenRouter key.
 
-**1) Layout** (place this repo beside an ncnn checkout):
-```
-parent/
-├── ncnn/                      # git clone https://github.com/Tencent/ncnn.git
-└── QD-optimized-kernel-agent/ # this repo
-```
-
-**2) Python deps**
+**1) Python deps**
 ```bash
-cd QD-optimized-kernel-agent
 python3 -m venv .venv && source .venv/bin/activate
-pip install torch numpy openai pyyaml cmake ncnn
+pip install torch numpy openai pyyaml cmake ncnn tree_sitter tree_sitter_cpp
 ```
 
-**3) Build `libncnn.a`** (required for the kernel/optimize oracles):
+**2) Build `libncnn`** (required for the kernel/optimize oracles):
 ```bash
-cd ../ncnn
-cmake -S . -B build_lib -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF \
+cmake -S frameworks/ncnn -B frameworks/ncnn/build_lib \
+      -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF \
       -DNCNN_BUILD_TESTS=OFF -DNCNN_VULKAN=OFF -DCMAKE_BUILD_TYPE=Release
-cmake --build build_lib -j8
+cmake --build frameworks/ncnn/build_lib -j8
 ```
-> For the new-operator graph path (GraphAgent / OperatorAgent), also build **pnnx**
-> under `ncnn/tools/pnnx` (needs PyTorch). Kernel writing + optimization alone do not.
+> The oracles prefer `frameworks/ncnn/build_lib/`, falling back to an existing
+> `frameworks/ncnn/build/`. For the new-operator graph path (GraphAgent /
+> OperatorAgent), also build **pnnx** under `frameworks/ncnn/tools/pnnx` (needs
+> PyTorch). Kernel writing + optimization alone do not.
 
-**4) Configure**
+**3) Configure**
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...        # your key
-export PATH="$PWD/../QD-optimized-kernel-agent/.venv/bin:$PATH"   # cmake on PATH
 ```
 
 ---
 
 ## Usage
 
-```bash
-cd QD-optimized-kernel-agent
+Run from the repository root (each script puts the repo root + `agents/` on `sys.path`):
 
+```bash
 # --- write + verify a kernel (allclose vs PyTorch) ---
-python opgen/cli/run_kernel_agent.py --task Exp --backend base --model-name z-ai/glm-5.2
-python opgen/cli/run_kernel_agent.py --task Exp --backend arm  --model-name z-ai/glm-5.2   # needs base first
+python agents/cli/run_kernel_agent.py --task Exp --backend base --model-name z-ai/glm-5.2
+python agents/cli/run_kernel_agent.py --task Exp --backend arm  --model-name z-ai/glm-5.2   # needs base first
 
 # --- optimize a kernel (two-layer QD; on-machine measure) ---
-python opgen/optimize/run_optimize.py --task Exp --backend arm --policy map_elites \
+python agents/optimize/run_optimize.py --task Exp --backend arm --policy map_elites \
        --map-budget 20 --baseline-compare
 
 # --- end-to-end "add a new ncnn operator" (kernel + graph + verify [+ optimize]) ---
-python opgen/cli/run_operator_agent.py --task Greater --backends base,arm \
+python agents/cli/run_operator_agent.py --task Greater --backends base,arm \
        --optimize --optimize-policy map_elites
 
 # --- batch over the dataset (records compile / correctness / perf per op) ---
-python opgen/cli/run_arm_batch.py --category Unary,Activation,Logic
-#   -> opgen/runs/_arm_batch/{results.json, report.md}
+python agents/cli/run_arm_batch.py --category Unary,Activation,Logic
+#   -> agents/runs/_arm_batch/{results.json, report.md}
+
+# --- experiment / validation drivers (drive the agents over the dataset) ---
+python eval/batch_probe.py        # no LLM: which "unsupported" ops are already supported
+python eval/batch_test.py         # OperatorAgent end-to-end over 10 ops -> eval/BATCH_REPORT.md
 
 # --- unit tests (no LLM / ncnn needed) ---
-python opgen/optimize/test_m1.py && python opgen/optimize/test_m2.py && python opgen/optimize/test_m3.py
+python agents/optimize/test_m1.py && python agents/optimize/test_m2.py && python agents/optimize/test_m3.py
 ```
+
 
 Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 `--experience-pool <json>` (cross-op warm-start + persist), `--baseline-compare`
@@ -202,14 +204,12 @@ Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 
 ## Design documents
 
-- `算子优化-问题建模与体系设计.md` — problem framing: structured-space expensive
-  black-box optimization; Proposer/Evaluator/Policy; roofline; QD/MAP-Elites.
-- `算子优化-完整Workflow.md` — the consolidated, corrected end-to-end workflow
-  (two BD coordinate systems, correctness oracle, measure harness, 50–150 budget).
-- `微观参数优化设计.md` — inner-loop parameter tuning (LLM physical-constraint
-  pruning + search).
-- `算子端到端优化全流程.md` — a worked GEMM example of the three-stage flow.
-- `opgen/docs/` — ncnn graph/kernel background + validation reports.
+- `算子优化-完整Workflow.md` — the consolidated, corrected end-to-end optimizer
+  workflow (Proposer/Evaluator/Policy; two BD coordinate systems; roofline;
+  QD/MAP-Elites; correctness oracle; measure harness; 50–150 budget).
+- `pipeline.md` — the overall operator-generation pipeline.
+- `ncnn-operator-profiling*.md` — ncnn operator profiling notes.
+- `agents/docs/` — ncnn graph/kernel background + validation reports.
 
 ---
 
