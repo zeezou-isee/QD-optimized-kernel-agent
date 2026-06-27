@@ -46,15 +46,24 @@ def _kernel_from_summary(task: str, sub: str) -> dict[str, str]:
 
 
 def _load_baseline_kernel(task: str, kernel_dir: str | None, backend: str) -> dict[str, str]:
-    """Read the kernel to optimize. base -> runs/<task>/kernel; arm -> runs/<task>/kernel_arm."""
+    """Read the kernel to optimize. base -> runs/<task>/kernel; arm -> kernel_arm;
+    vulkan -> kernel_vulkan (a .h/.cpp + .comp triple)."""
     if kernel_dir:
         d = Path(kernel_dir)
+        exts = (".h", ".hpp", ".cpp", ".cc", ".cxx") + ((".comp",) if backend == "vulkan" else ())
+
+        def _keep(name: str) -> bool:
+            if backend == "arm":
+                return name.endswith(("_arm.h", "_arm.cpp"))
+            if backend == "vulkan":
+                return name.endswith(("_vulkan.h", "_vulkan.cpp", ".comp"))
+            return not name.endswith(("_arm.h", "_arm.cpp", "_vulkan.h", "_vulkan.cpp"))
+
         code = {p.name: p.read_text(encoding="utf-8") for p in d.glob("*")
-                if p.suffix in (".h", ".hpp", ".cpp", ".cc", ".cxx")
-                and (backend != "arm") == (not p.name.endswith(("_arm.h", "_arm.cpp")))}
+                if p.suffix in exts and _keep(p.name)}
         if code:
             return code
-        raise FileNotFoundError(f"no matching .h/.cpp for backend={backend} in {d}")
+        raise FileNotFoundError(f"no matching kernel files for backend={backend} in {d}")
     sub = "kernel" if backend == "base" else f"kernel_{backend}"
     code = _kernel_from_summary(task, sub)
     if code:
@@ -89,15 +98,17 @@ def main() -> None:
                    help="path to the 兵器谱 JSON (warm-start seeds + persist on finish)")
     p.add_argument("--baseline-compare", action="store_true",
                    help="also run a best-first control arm and report the verdict (§7.5)")
-    p.add_argument("--backend", choices=["base", "arm"], default="base",
-                   help="base = portable C++; arm = optimize the NEON/NC4HW4 kernel "
-                        "(needs a verified base + arm kernel from run_kernel_agent)")
+    p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
+                   help="base = portable C++; arm = NEON/NC4HW4 kernel; vulkan = GPU kernel "
+                        "(.cpp + .comp, optimized & measured on a Vulkan device). "
+                        "arm/vulkan need a verified base + that-backend kernel from run_kernel_agent")
     args = p.parse_args()
 
     model_py = _resolve_model_py(args.task, args.model, args.dataset_root)
     baseline = _load_baseline_kernel(args.task, args.kernel_dir, args.backend)
     ncnn_root = args.ncnn_root or GraphConfig().ncnn_root
-    base_files = _kernel_from_summary(args.task, "kernel") if args.backend == "arm" else {}
+    # arm/vulkan subclass the verified base -> compile the base .cpp in as a fixed source
+    base_files = _kernel_from_summary(args.task, "kernel") if args.backend in ("arm", "vulkan") else {}
 
     agent = OptimizeAgent(
         task_name=args.task, baseline_kernel_code=baseline,

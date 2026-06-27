@@ -142,10 +142,15 @@ class LLMProposer:
         parent_code = (getattr(parent, "kernel_code", None)
                        or getattr(parent, "kernel_files", None) or self.baseline_kernel)
         tried: list[str] = []
+        fails: list[str] = []
         for it in history:
             if isinstance(it, dict):
                 tried.append(it.get("directive", ""))
+                fs = it.get("failure_summary") or it.get("error")
+                if fs:
+                    fails.append(f"[{it.get('directive', '?')}] {fs}")
         prompt = vary_prompt(self.task_name, parent_code, self.hardware,
-                             directive, sorted(set(t for t in tried if t)))
+                             directive, sorted(set(t for t in tried if t)),
+                             recent_failures=fails[-3:])
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)

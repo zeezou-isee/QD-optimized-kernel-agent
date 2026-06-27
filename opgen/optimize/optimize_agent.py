@@ -57,8 +57,8 @@ class OptimizeAgent:
         evaluator_obj: Any | None = None,       # injectable (fake) Evaluator for tests
         weight_keys: list[str] | None = None,
         params: dict[int, Any] | None = None,
-        backend: str = "base",                  # "base" | "arm"
-        base_files: dict[str, str] | None = None,   # arm: verified base layer code
+        backend: str = "base",                  # "base" | "arm" | "vulkan"
+        base_files: dict[str, str] | None = None,   # arm/vulkan: verified base layer code
         hardware: Any | None = None,            # HardwareSpecs override
         inner_budget: int = 10,
         warmup: int = 3,

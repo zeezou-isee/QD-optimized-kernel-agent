@@ -83,6 +83,7 @@ class CorrectnessReport:
     max_diff: float | None = None
     mean_diff: float | None = None
     detail: str = ""
+    failure_category: str = ""   # diagnosis-conditioned label (shared failure taxonomy)
 
 
 @dataclass

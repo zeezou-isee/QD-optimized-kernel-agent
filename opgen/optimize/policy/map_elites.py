@@ -14,6 +14,7 @@ so this loop is testable with a stub and reused by the real LLM proposer.
 from __future__ import annotations
 
 import random
+from collections import Counter
 from typing import Any, Callable, Protocol
 
 from schemas import BasinValue, MeasureSample, ParameterizedTemplate, materialize
@@ -21,6 +22,38 @@ from inner import ConstraintEngine, inner_search
 from .archive import Archive, Elite
 from .bd import classify
 from .roofline import RooflineResult
+
+
+def _summarize_failures(basin: BasinValue) -> str:
+    """One-line diagnosis of a basin's failed candidates, fed back to the proposer
+    (closes the optimizer's feedback loop): dominant failure category + a sample."""
+    fails = [s for s in basin.samples if not getattr(s, "correct", True)]
+    if not fails:
+        return ""
+    cats = []
+    for s in fails:
+        cr = getattr(s, "correctness", None)
+        if cr is not None and getattr(cr, "failure_category", ""):
+            cats.append(cr.failure_category)
+        elif "compile" in (s.error or ""):
+            cats.append("E1_COMPILE")
+        elif "crash" in (s.error or "") or "runtime" in (s.error or ""):
+            cats.append("E2_RUNTIME_CRASH")
+        else:
+            cats.append(s.error or "other")
+    top = Counter(cats).most_common(1)[0][0]
+    rep = ""
+    for s in fails:
+        cr = getattr(s, "correctness", None)
+        if cr is not None and getattr(cr, "failure_category", "") == top and cr.detail:
+            rep = cr.detail
+            break
+    if not rep:
+        for s in fails:
+            rep = s.error or s.compile_log_tail or ""
+            if rep:
+                break
+    return f"{len(fails)}/{len(basin.samples)} candidates failed; dominant={top}. e.g. {rep[:280]}"
 
 
 class _EvaluatorLike(Protocol):
@@ -139,7 +172,8 @@ def run_map_elites(
         iters.append({"round": len(iters), "directive": directive, "cell": list(cell),
                       "kept": kept, "cand_latency": basin.best_latency_ms,
                       "best_latency": best_lat, "coverage": arc.coverage(),
-                      "evaluated": basin.n_evaluated, "pruned": basin.n_pruned})
+                      "evaluated": basin.n_evaluated, "pruned": basin.n_pruned,
+                      "failure_summary": _summarize_failures(basin)})
 
         # convergence (§8.2): no global improvement for `patience` candidates
         if stale >= patience:

@@ -6,8 +6,9 @@ Pipeline (per (template, point)):
 """
 
 from .cpu_runner import CpuRunner
+from .vk_runner import VkRunner
 from .correctness_oracle import CorrectnessOracle
 from .measure_harness import MeasureHarness
 from .evaluator import Evaluator
 
-__all__ = ["CpuRunner", "CorrectnessOracle", "MeasureHarness", "Evaluator"]
+__all__ = ["CpuRunner", "VkRunner", "CorrectnessOracle", "MeasureHarness", "Evaluator"]

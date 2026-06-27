@@ -34,8 +34,14 @@ from schemas import (
 )
 
 from .cpu_runner import CpuRunner
+from .vk_runner import VkRunner
 from .correctness_oracle import CorrectnessOracle
 from .measure_harness import MeasureHarness
+
+
+def _shader_file(code: dict[str, str]) -> str | None:
+    """The vulkan candidate's .comp shader basename (vulkan kernels are a triple)."""
+    return next((n for n in code if n.endswith(".comp")), None)
 
 
 def _detect_class_name(code: dict[str, str]) -> str:
@@ -101,31 +107,41 @@ class Evaluator:
         self.params = {int(k): v for k, v in (params or {}).items()}
         self.tol = tol
 
-        self.oracle = LayerOracle(ncnn_root=ncnn_root, workdir=workdir)
-        self.runner = CpuRunner(self.oracle)
+        # vulkan optimizes on the GPU (VulkanLayerOracle, runtime-compiled shader);
+        # base/arm use the CPU LayerOracle.
+        if backend == "vulkan":
+            self.oracle = VulkanLayerOracle()
+            self.runner = VkRunner(self.oracle)
+        else:
+            self.oracle = LayerOracle(ncnn_root=ncnn_root, workdir=workdir)
+            self.runner = CpuRunner(self.oracle)
         self.harness = MeasureHarness(self.runner, warmup=warmup, runs=runs,
                                       aggregate=aggregate)
         self._cand_dir = self.oracle.workdir / "_cand"
         self._cand_dir.mkdir(parents=True, exist_ok=True)
 
-        # arm: drop the verified base layer next to candidates (parent class) and
-        # compile its .cpp in as an extra source; use src/layer/arm includes + NC4HW4.
+        # arm/vulkan subclass the verified base layer -> drop the base files next to
+        # the candidate and compile the base .cpp in as an extra source.
         self.extra_sources: list[Path] = []
         self.extra_includes: list[Path] = []
         self.packing = 0
-        if backend == "arm":
+        # vulkan: the candidate's .comp shader (compiled at runtime); injected per run.
+        self.shader_name = _shader_file(self.baseline_kernel) if backend == "vulkan" else None
+        if backend in ("arm", "vulkan"):
             for name, content in (base_files or {}).items():
                 p = self._cand_dir / name
                 p.write_text(content, encoding="utf-8")
                 if name.endswith((".cpp", ".cc", ".cxx")):
                     self.extra_sources.append(p)
+        if backend == "arm":
             self.extra_includes = [self.oracle.ncnn_root / "src" / "layer" / "arm"]
             self.packing = 4
 
         # derive I/O once, then compile+run the baseline to fix the reference.
         self.inputs, self.weights = self._derive_io()
-        self.correctness = CorrectnessOracle(self._baseline_reference(),
-                                             atol=tol, rtol=tol)
+        self.correctness = CorrectnessOracle(
+            self._baseline_reference(), atol=tol, rtol=tol, backend=backend,
+            input=(self.inputs[0] if self.inputs else None))
 
     # ------------------------------------------------------------------ I/O
     def _derive_io(self) -> tuple[list[np.ndarray], list[np.ndarray]]:
@@ -146,6 +162,10 @@ class Evaluator:
         return ncnn_inputs, weights
 
     # ----------------------------------------------------------- compile+run
+    def _shader_path(self) -> Path | None:
+        """vulkan: the .comp written into _cand_dir for the current candidate."""
+        return (self._cand_dir / self.shader_name) if self.shader_name else None
+
     def _compile_run_once(self, code: dict[str, str]) -> tuple[bool, np.ndarray | None, Any, str]:
         """Write code, compile, run once. Returns (ok, output|None, art|None, err)."""
         cpp, hdr = _split_files(code)
@@ -160,7 +180,7 @@ class Evaluator:
                 header=hdr or self.header, inputs=self.inputs,
                 weights=self.weights, params=self.params or None,
                 extra_sources=self.extra_sources, extra_includes=self.extra_includes,
-                packing=self.packing)
+                packing=self.packing, shader=self._shader_path())
         except Exception as exc:  # noqa: BLE001 — compile failure
             return False, None, None, f"compile failed: {exc}"
         ok, _ms, err = self.runner.run_once(art)
@@ -197,7 +217,7 @@ class Evaluator:
                 header=hdr or self.header, inputs=self.inputs,
                 weights=self.weights, params=self.params or None,
                 extra_sources=self.extra_sources, extra_includes=self.extra_includes,
-                packing=self.packing)
+                packing=self.packing, shader=self._shader_path())
         except Exception as exc:  # noqa: BLE001
             tail = str(exc)[-400:]
             return MeasureSample(point=point, correct=False,

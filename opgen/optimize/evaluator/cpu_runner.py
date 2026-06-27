@@ -56,6 +56,7 @@ class CpuRunner:
         extra_sources: Sequence[Path] = (),
         extra_includes: Sequence[Path] = (),
         packing: int = 0,
+        shader: Path | None = None,   # ignored by CpuRunner (vulkan-only); kept for a uniform call
     ) -> tuple[RunArtifacts, str]:
         """Compile the candidate kernel + lay out the I/O .bin files.
 

@@ -90,12 +90,14 @@ def vary_prompt(
     hardware: dict[str, Any],
     directive: str,
     tried: list[str],
+    recent_failures: list[str] | None = None,
 ) -> str:
     """Prompt for MAP-Elites variation: mutate a PARENT elite per a directive."""
     files = "\n\n".join(
         f"### {name}\n```cpp\n{code}\n```" for name, code in parent_kernel.items()
     )
     tried_block = ("\n".join(f"- {t}" for t in tried)) if tried else "(none yet)"
+    fail_block = ("\n".join(f"- {f}" for f in recent_failures)) if recent_failures else "(none)"
     goal = _DIRECTIVE_TEXT.get(directive, _DIRECTIVE_TEXT["optimize"])
     return f"""You are a senior mobile-CPU kernel optimization engineer running one step
 of a MAP-Elites search. You mutate a PARENT kernel into a new parameterized
@@ -112,6 +114,9 @@ template, keeping the output numerically identical to the parent.
 
 # Directives already explored
 {tried_block}
+
+# Recent candidate failures (diagnosis — fix the root cause, don't repeat these)
+{fail_block}
 
 # This round's directive
 {goal}
