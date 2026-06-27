@@ -56,6 +56,110 @@ def parse_ncnn_io(param_text: str) -> tuple[list[str], str]:
     return inputs, output
 
 
+def retarget_param_layer(param_text: str, src_type: str, dst_type: str,
+                         layer_name: str | None = None) -> tuple[str, int]:
+    """Re-point .ncnn.param layer lines of type `src_type` to `dst_type`.
+
+    Why: for an op ncnn already supports (e.g. Sigmoid), the PNNX conversion emits
+    the native layer type, so a Net/benchncnn run uses ncnn's BUILT-IN impl — not
+    the candidate we installed under a distinct name (Cand_Sigmoid). Rewriting the
+    layer TYPE token to `Cand_Sigmoid` makes the very same model resolve to OUR
+    implementation, while ncnn's built-in stays untouched (no source deletion).
+
+    Only the first whitespace-token (the layer TYPE) of matching layer lines is
+    replaced; blob names, the layer name, params, and all whitespace are preserved.
+    The two header lines (magic, "<layers> <blobs>") are never touched. If
+    `layer_name` is given, only the layer with that NAME (2nd token) is retargeted.
+
+    The new type MUST accept the same param-ids / inputs / outputs as the old one —
+    which holds because Cand_<Op> is a re-implementation of the same op.
+
+    Returns (new_param_text, n_replaced).
+    """
+    lines = param_text.splitlines()
+    if len(lines) < 2:
+        return param_text, 0
+    out = lines[:2]                       # preserve magic + "<layers> <blobs>"
+    n = 0
+    for ln in lines[2:]:
+        if not ln.strip():
+            out.append(ln)
+            continue
+        # split into: leading ws | type | sep-ws | name | rest
+        m = re.match(r"(\s*)(\S+)(\s+)(\S+)(.*)", ln)
+        if m and m.group(2) == src_type and (layer_name is None or m.group(4) == layer_name):
+            out.append(m.group(1) + dst_type + m.group(3) + m.group(4) + m.group(5))
+            n += 1
+        else:
+            out.append(ln)
+    new_text = "\n".join(out)
+    if param_text.endswith("\n"):
+        new_text += "\n"
+    return new_text, n
+
+
+def retarget_param_output_layer(param_text: str, dst_type: str) -> tuple[str, int]:
+    """Rewrite the TYPE of the layer that produces the graph's final output blob.
+
+    For a single-op reference model (the dataset ops) this layer IS the op under
+    test, so this retargets it to our `dst_type` (Cand_<Op>) regardless of its
+    native ncnn type — robust where the native name is NOT derivable from the task
+    name (e.g. torch.exp converts to ncnn 'UnaryOp', not 'Exp'; torch.gt -> a
+    'BinaryOp'/custom). Only the TYPE token is changed; everything else preserved.
+
+    Idempotent: if the output layer is already `dst_type` (the new-op path, where
+    GraphAgent forced the target), this rewrites cls->cls (text unchanged).
+
+    Returns (new_param_text, n) where n is 1 if a layer was rewritten else 0.
+    """
+    _, out_name = parse_ncnn_io(param_text)
+    lines = param_text.splitlines()
+    if len(lines) < 3:
+        return param_text, 0
+    target = None
+    for i in range(2, len(lines)):
+        parts = lines[i].split()
+        if len(parts) < 4 or parts[0] == "Input":
+            continue
+        nin, nout = int(parts[2]), int(parts[3])
+        out_blobs = parts[4:][nin:nin + nout]
+        if out_name in out_blobs:
+            target = i           # keep the LAST layer producing the output blob
+    if target is None:
+        return param_text, 0
+    m = re.match(r"(\s*)(\S+)(\s+)(\S+)(.*)", lines[target])
+    if not m:
+        return param_text, 0
+    lines[target] = m.group(1) + dst_type + m.group(3) + m.group(4) + m.group(5)
+    new_text = "\n".join(lines)
+    if param_text.endswith("\n"):
+        new_text += "\n"
+    return new_text, 1
+
+
+def retarget_param_output_file(src_path: str | Path, dst_path: str | Path,
+                               dst_type: str) -> int:
+    """Read a .ncnn.param, retarget its output-producing layer to `dst_type`,
+    write to dst_path. Returns 1 if a layer was rewritten else 0. Idempotent."""
+    text = Path(src_path).read_text(encoding="utf-8")
+    new_text, n = retarget_param_output_layer(text, dst_type)
+    Path(dst_path).write_text(new_text, encoding="utf-8")
+    return n
+
+
+def retarget_param_file(src_path: str | Path, dst_path: str | Path,
+                        src_type: str, dst_type: str,
+                        layer_name: str | None = None) -> int:
+    """Read a .ncnn.param, retarget `src_type`->`dst_type`, write to dst_path.
+
+    Returns the number of layer lines rewritten (0 means nothing matched).
+    """
+    text = Path(src_path).read_text(encoding="utf-8")
+    new_text, n = retarget_param_layer(text, src_type, dst_type, layer_name=layer_name)
+    Path(dst_path).write_text(new_text, encoding="utf-8")
+    return n
+
+
 class NetOracle:
     def __init__(self, ncnn_root: str | Path | None = None, build_lib: str | Path | None = None,
                  runner_src: str | Path | None = None, cxx: str = "g++",

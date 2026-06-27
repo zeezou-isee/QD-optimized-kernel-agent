@@ -52,10 +52,11 @@ def main() -> None:
     p.add_argument("--dataset-root", default=None)
     p.add_argument("--max-rounds", type=int, default=8)
     p.add_argument("--no-numeric", action="store_true", help="compile-only (skip allclose)")
-    p.add_argument("--backend", choices=["base", "arm"], default="base",
-                   help="base = portable C++; arm = NEON/NC4HW4 subclass of the base layer")
+    p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
+                   help="base = portable C++; arm = NEON/NC4HW4 subclass; "
+                        "vulkan = GPU subclass (.cpp + .comp, verified on a Vulkan device)")
     p.add_argument("--base-kernel-dir", default=None,
-                   help="arm: dir with the verified base cand_*.{h,cpp} + kernel_profile.json "
+                   help="arm/vulkan: dir with the verified base cand_*.{h,cpp} + kernel_profile.json "
                         "(default: runs/<task>/kernel)")
     args = p.parse_args()
 
@@ -67,7 +68,7 @@ def main() -> None:
         run_numeric=not args.no_numeric,
     )
     base_code, base_prof = ({}, {})
-    if args.backend == "arm":
+    if args.backend in ("arm", "vulkan"):
         base_code, base_prof = _load_base_kernel(args.task, args.base_kernel_dir)
     agent = KernelAgent(task_name=args.task, model_py=args.model, cfg=cfg,
                         backend=args.backend, base_kernel_code=base_code, base_profile=base_prof)

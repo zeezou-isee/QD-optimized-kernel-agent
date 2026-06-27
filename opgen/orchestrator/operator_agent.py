@@ -1,6 +1,6 @@
 """OperatorAgent: decision-driven end-to-end orchestrator for "add a new ncnn op".
 
-Pipeline (refactored — driven by an existence check on ncnn):
+Pipeline (driven by an existence check on ncnn):
 
   [1] KernelAgent          : write kernel + numeric vs PyTorch
   [2] BRIDGE               : install kernel + rebuild libncnn
@@ -14,7 +14,8 @@ Pipeline (refactored — driven by an existence check on ncnn):
         inner search / MAP-Elites QD) on the authored kernel. Each candidate is
         verified (对拍 baseline) + timed in a fast LayerOracle loop; the winner is
         re-installed and re-validated through production before being swapped into
-        [7]. Skipped when the op is already native in ncnn (custom kernel unused).
+        [7]. Runs for BOTH native and new operators (for native ops, the custom
+        kernel is optimized even though the graph uses baseline IR).
   [7] cleanup / --install
 """
 
@@ -206,8 +207,8 @@ class OperatorAgent:
                 summary["phases"]["graph"] = {"status": "skipped (already supported by ncnn)",
                                               "rounds": 0, "forced_target": None}
             else:
-                # ------------- [3b] GraphAgent (15 rounds) -------------
-                print(f"\n===== [3b] GraphAgent (forced target, max_rounds={self.graph_max_rounds}) =====")
+                # ------------- [3b] GraphAgent (forced target) -------------
+                print(f"\n===== [3b] GraphAgent (forced target={cls}, max_rounds={self.graph_max_rounds}) =====")
                 graph_sum = GraphAgent(
                     task_name=self.task_name, model_py=self.model_py,
                     cfg=self._cfg(run_numeric=False, max_rounds=self.graph_max_rounds),
@@ -227,7 +228,7 @@ class OperatorAgent:
 
             # ------------- [4] End-to-end numeric (functional) -------------
             if self.end_to_end:
-                num = self._net_numeric(netoc, graph_sum)
+                num = self._net_numeric(netoc, graph_sum, op_class=cls)
                 summary["phases"]["end_to_end_numeric"] = num
                 print(f"[orchestrator] end-to-end numeric: passed={num.get('passed')} "
                       f"{num.get('detail')}")
@@ -235,7 +236,7 @@ class OperatorAgent:
 
             # ------------- [5] Production validation -------------
             if self.end_to_end and (e2e_ok is not False):
-                prod_ok = self._production_validation(graph_sum, summary)
+                prod_ok = self._production_validation(graph_sum, summary, op_class=cls)
 
             functional_ok = (
                 kernel_ok and graph_ok
@@ -245,7 +246,7 @@ class OperatorAgent:
             all_ok = functional_ok
 
             # ------------- [6] Optimization (real; opt-in) -------------
-            if self.optimize and functional_ok and not already_in_ncnn:
+            if self.optimize and functional_ok:
                 tgt = "arm" if (self.want_arm and arm_code) else "base"
                 print(f"\n===== [6] OptimizeAgent (backend={tgt}, policy={self.optimize_policy}, "
                       f"map_budget={self.optimize_map_budget}) =====")
@@ -257,10 +258,6 @@ class OperatorAgent:
                 else:
                     print(f"[orchestrator] optimization kept baseline "
                           f"(stopped: {opt_result.get('stopped_reason')})")
-            elif self.optimize and functional_ok and already_in_ncnn:
-                print("[orchestrator] [6] optimization skipped: op already native in "
-                      "ncnn (authored kernel not used by the conversion)")
-                summary["phases"]["optimization"] = {"skipped": "op already native in ncnn"}
         finally:
             if self.install and all_ok:
                 print("\n===== [7] REGISTER: inject operator into ncnn/pnnx (permanent) =====")
@@ -358,26 +355,34 @@ class OperatorAgent:
         return manifest
 
     # --------------------------------------------------------- production validation
-    def _production_validation(self, graph_sum: dict, summary: dict) -> bool:
+    def _production_validation(self, graph_sum: dict, summary: dict,
+                               op_class: str | None = None) -> bool:
         """MoKA-style production validation appended after end-to-end numeric.
 
         Returns True if mandatory steps pass (benchmark never blocks success).
         """
         print("\n===== [5] PRODUCTION: compile + correctness"
               + (" + benchmark" if self.do_benchmark else "") + " =====")
-        prod = self._run_production_step(self.model_py or self._resolve_model_py(), graph_sum)
+        prod = self._run_production_step(self.model_py or self._resolve_model_py(), graph_sum,
+                                         op_class=op_class)
         summary["phases"]["production"] = prod
         return bool(prod.get("_mandatory_ok"))
 
-    def _run_production_step(self, model_py: str, graph_sum: dict) -> dict:
+    def _run_production_step(self, model_py: str, graph_sum: dict,
+                            op_class: str | None = None) -> dict:
         """Reusable production step. Returns {compile, correctness, benchmark?,
-        _mandatory_ok}. Suitable as part of the optimization evaluator too."""
+        _mandatory_ok}. Suitable as part of the optimization evaluator too.
+
+        `op_class` (= Cand_<Op>) re-points the benchmarked model's output layer to
+        OUR kernel so benchncnn measures it, not ncnn's built-in (needed when the
+        op already existed in ncnn; idempotent otherwise).
+        """
         from production_validation import ProductionValidator, torch_input_shapes_str
         pv = ProductionValidator(ncnn_root=self.ncnn_root, compile_mode=self.compile_mode,
                                  do_benchmark=self.do_benchmark, workdir=self.run_dir)
         pc = pv.production_compile()
         print(f"[orchestrator] production compile ({pc.get('mode')}): ok={pc.get('ok')}")
-        cr = pv.production_correctness(graph_sum, model_py)
+        cr = pv.production_correctness(graph_sum, model_py, retarget_to=op_class)
         print(f"[orchestrator] production correctness: passed={cr.get('passed')} "
               f"{cr.get('detail','')}")
         prod = {"compile": pc, "correctness": cr,
@@ -386,9 +391,9 @@ class OperatorAgent:
             art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
             param = art.get(".ncnn.param")
             shapes = torch_input_shapes_str(model_py)
-            bm = pv.benchmark(param, shapes)
+            bm = pv.benchmark(param, shapes, retarget_to=op_class)
             print(f"[orchestrator] benchmark: ran={bm.get('ran')} skipped={bm.get('skipped')} "
-                  f"reason={bm.get('reason','')} avg={bm.get('avg')}")
+                  f"retargeted={bm.get('retargeted')} reason={bm.get('reason','')} avg={bm.get('avg')}")
             prod["benchmark"] = bm
         return prod
 
@@ -451,7 +456,7 @@ class OperatorAgent:
         new_arm_handle = netoc.install_layer(win_arm, cls, subdir="arm", add_cmake=False) if win_arm else None
         ok, _ = netoc.rebuild_libncnn()
         if improved:
-            prod = self._run_production_step(model_py, graph_sum) if ok else {"_mandatory_ok": False}
+            prod = self._run_production_step(model_py, graph_sum, op_class=cls) if ok else {"_mandatory_ok": False}
             summary["phases"]["production_optimized"] = prod
             if ok and prod.get("_mandatory_ok"):
                 opt["production_optimized_ok"] = True
@@ -468,9 +473,10 @@ class OperatorAgent:
         return opt, new_handle, new_arm_handle, win_base, win_arm
 
     # ----------------------------------------------------------- net numeric
-    def _net_numeric(self, netoc: NetOracle, graph_sum: dict) -> dict:
+    def _net_numeric(self, netoc: NetOracle, graph_sum: dict,
+                     op_class: str | None = None) -> dict:
         try:
-            return self._net_numeric_impl(netoc, graph_sum)
+            return self._net_numeric_impl(netoc, graph_sum, op_class=op_class)
         except Exception as exc:  # noqa: BLE001
             import traceback
             (self.run_dir / "net_numeric.log").write_text(
@@ -478,13 +484,22 @@ class OperatorAgent:
             return {"passed": False,
                     "detail": f"net numeric raised: {type(exc).__name__}: {exc}"}
 
-    def _net_numeric_impl(self, netoc: NetOracle, graph_sum: dict) -> dict:
+    def _net_numeric_impl(self, netoc: NetOracle, graph_sum: dict,
+                          op_class: str | None = None) -> dict:
         import torch
+        from layer_oracle import retarget_param_output_file
         art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
         param = art.get(".ncnn.param"); binf = art.get(".ncnn.bin")
         if not param or not binf or not Path(param).exists():
             return {"passed": False,
                     "detail": "no converted .ncnn.param/.bin from graph phase"}
+
+        # re-point the output layer to OUR impl so the net runs ours, not the
+        # built-in (needed for ops ncnn already supports; idempotent for new ops).
+        if op_class:
+            rp = self.run_dir / "net_numeric_retargeted.param"
+            retarget_param_output_file(param, rp, op_class)
+            param = str(rp)
 
         import importlib.util
         mp = self._resolve_model_py()

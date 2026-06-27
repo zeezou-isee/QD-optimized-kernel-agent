@@ -25,7 +25,7 @@ def main() -> None:
     p.add_argument("--task", required=True)
     p.add_argument("--model", default=None)
     p.add_argument("--model-name", default="z-ai/glm-5.1")
-    p.add_argument("--max-rounds", type=int, default=8)
+    p.add_argument("--max-rounds", type=int, default=15)
     p.add_argument("--ncnn-root", default=None)
     p.add_argument("--dataset-root", default=None)
     p.add_argument("--torch-install-dir", default=None)
@@ -47,9 +47,8 @@ def main() -> None:
     p.add_argument("--optimize", action="store_true",
                    help="after functional+production pass, drive the REAL OptimizeAgent "
                         "(LLM proposer + inner search / MAP-Elites) to improve perf; "
-                        "winner is re-validated through production. Skipped if op is "
-                        "already native in ncnn.")
-    p.add_argument("--max-optimize-rounds", type=int, default=5,
+                        "winner is re-validated through production.")
+    p.add_argument("--max-optimize-rounds", type=int, default=15,
                    help="OptimizeAgent rounds (linear policy)")
     p.add_argument("--improve-tol", type=float, default=0.02,
                    help="convergence threshold for optimization (<2%% improvement -> stop)")

@@ -87,6 +87,33 @@ static Mat read_weight(const char* path)
     return flat.clone();
 }
 
+// Strict ModelBin that validates requested size — catches load_model bugs
+// where the kernel requests the wrong number of weights (real ncnn's
+// ModelBinFromDataReader checks this; the loose ModelBinFromMatArray does not).
+class ModelBinFromMatArrayStrict : public ModelBin
+{
+public:
+    ModelBinFromMatArrayStrict(const Mat* _weights) : weights_(_weights) {}
+    Mat load(int w, int /*type*/) const override
+    {
+        if (!weights_) return Mat();
+        Mat m = weights_[index_];
+        int actual = m.w * m.h * m.d * m.c;
+        if (actual != w)
+        {
+            fprintf(stderr, "load_model size mismatch: requested %d, actual %d (weight index %d)\n",
+                    w, actual, index_);
+            return Mat();
+        }
+        index_++;
+        return m;
+    }
+
+private:
+    const Mat* weights_;
+    mutable int index_ = 0;
+};
+
 static void parse_params(const std::string& s, ParamDict& pd)
 {
     // comma-separated id=value ; value with '.'/'e' -> float else int
@@ -130,7 +157,7 @@ int main(int argc, char** argv)
 
     std::vector<Mat> w;
     for (size_t i = 0; i < weights.size(); i++) w.push_back(read_weight(weights[i].c_str()));
-    ModelBinFromMatArray mb(w.data());
+    ModelBinFromMatArrayStrict mb(w.data());
     if (op->load_model(mb) != 0) { fprintf(stderr, "load_model failed\n"); return 3; }
 
     Option opt;

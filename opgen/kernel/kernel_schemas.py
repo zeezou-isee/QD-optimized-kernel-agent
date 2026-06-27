@@ -19,8 +19,9 @@ class KernelProfile:
     params: dict[str, Any] = field(default_factory=dict)   # {param_id(str): value}
     weight_keys: list[str] = field(default_factory=list)   # state_dict keys, in load_model order
     analog_layer: str = ""         # nearest existing ncnn base layer to imitate (file stem)
-    backend: str = "base"          # "base" | "arm" | "vulkan"(future)
+    backend: str = "base"          # "base" | "arm" | "vulkan"
     base_class: str = ""           # for arm/vulkan: the base layer class it subclasses (Cand_Abs)
+    shader: str = ""               # vulkan only: the .comp shader file (e.g. cand_abs.comp)
     notes: str = ""
 
     # naming suffix per backend (base has none); vulkan reserved for a later phase.
@@ -69,6 +70,8 @@ class KernelProfile:
         p.class_name = base_class + suffix
         p.header = f"cand_{safe.lower()}{suffix}.h"
         p.file = f"cand_{safe.lower()}{suffix}.cpp"
+        # vulkan authors a separate compute shader compiled at runtime
+        p.shader = f"cand_{safe.lower()}.comp" if backend == "vulkan" else ""
         return p
 
 

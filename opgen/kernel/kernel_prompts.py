@@ -86,6 +86,10 @@ Conventions (CRITICAL):
 - Header: `#include "{base_header}"` then `class {arm_class} : public {base_class}`.
   Override ONLY the forward method(s); inherit params/weights/flags from the base
   constructor by calling nothing special — the base ctor already ran.
+- MANDATORY OVERRIDE: you MUST define `{arm_class}::forward` (or
+  `{arm_class}::forward_inplace`) out-of-line in the .cpp with the NEON path. If you
+  omit it, C++ silently dispatches to the inherited base CPU forward — the kernel is
+  then a degraded base kernel (not arm) and WILL BE REJECTED even if numerics match.
 - Constructor: enable packing:
     {arm_class}::{arm_class}() {{
     #if __ARM_NEON
@@ -110,19 +114,96 @@ Conventions (CRITICAL):
 """
 
 
+VULKAN_LAYER_BACKGROUND = """\
+THIS IS A VULKAN (GPU) BACKEND KERNEL — it SUBCLASSES the base layer (already
+written & verified). You author THREE files: a C++ header, a C++ source, and a
+SEPARATE GLSL compute shader `{shader_file}` (the actual math lives in the shader).
+It is verified by isolated instantiation on the GPU (`new {vulkan_class}()`, run
+`forward` on VkMat) and must be numerically identical to the base op. v1 runs at
+elempack=1 (the oracle force-unpacks inputs), so write a SCALAR shader.
+
+Conventions (CRITICAL):
+- Header `{vulkan_header}`: `#include "{base_header}"` then
+  `class {vulkan_class} : public {base_class}`. Declare:
+    virtual int create_pipeline(const Option& opt);
+    virtual int destroy_pipeline(const Option& opt);
+    using {base_class}::forward_inplace;   // if the op is inplace
+    virtual int forward_inplace(VkMat& bottom_top_blob, VkCompute& cmd, const Option& opt) const;
+    // or, if NOT inplace: virtual int forward(const VkMat& bottom, VkMat& top, VkCompute& cmd, const Option& opt) const;
+  and a `Pipeline* pipeline_xxx;` member.
+- Source `{vulkan_file}`: `#include "{vulkan_header}"` and
+  `#include "cand_vulkan_shader.h"` (a helper on the include path; it reads the
+  shader file and online-compiles it — see below).
+- Constructor — MANDATORY: set `support_vulkan = true;` (also `support_inplace`
+  as needed) and `pipeline_xxx = 0;`. If you omit `support_vulkan = true` the
+  oracle REFUSES the kernel (it must not fall back to CPU).
+- create_pipeline — compile the shader AT RUNTIME (do NOT reference
+  `LayerShaderType::xxx`; that build-time enum is unavailable here):
+    int {vulkan_class}::create_pipeline(const Option& opt) {{
+        std::vector<uint32_t> spirv;
+        if (compile_candidate_shader(opt, spirv) != 0) return -1;  // helper reads {shader_file}
+        std::vector<vk_specialization_type> specializations(1);    // MUST match the shader's
+        specializations[0].i = 0;                                  // constant_id count (1 here)
+        pipeline_xxx = new Pipeline(vkdev);
+        pipeline_xxx->set_optimal_local_size_xyz(vkdev->info.subgroup_size(), 1, 1); // 1D!
+        return pipeline_xxx->create(spirv.data(), spirv.size() * sizeof(uint32_t), specializations);
+    }}
+  NOTE the workgroup MUST be 1D `(subgroup_size,1,1)` to match a 1D dispatch — the
+  default `set_optimal_local_size_xyz()` is 3D and leaves most elements unprocessed.
+- destroy_pipeline: `delete pipeline_xxx; pipeline_xxx = 0; return 0;`
+- forward_inplace(VkMat&, VkCompute& cmd, opt): dispatch over total elements:
+    int n = (int)bottom_top_blob.total();   // elempack==1 -> scalar count
+    std::vector<VkMat> bindings(1); bindings[0] = bottom_top_blob;
+    std::vector<vk_constant_type> constants(1); constants[0].i = n;  // -> push_constant
+    VkMat dispatcher; dispatcher.w = n; dispatcher.h = 1; dispatcher.c = 1;
+    cmd.record_pipeline(pipeline_xxx, bindings, constants, dispatcher);
+    return 0;
+- Do NOT write DEFINE_LAYER_CREATOR (vulkan registration is automatic via cmake).
+
+The shader `{shader_file}` — ncnn shader dialect, SCALAR (elempack=1):
+```glsl
+#version 450
+layout(constant_id = 0) const int n = 0;
+layout(binding = 0) buffer bottom_top_blob {{ sfp bottom_top_blob_data[]; }};
+layout(push_constant) uniform parameter {{ int n; }} p;
+void main() {{
+    const int gi = int(gl_GlobalInvocationID.x);
+    if (gi >= psc(n)) return;
+    afp v = buffer_ld1(bottom_top_blob_data, gi);
+    v = /* f(v) — the op's math */;
+    buffer_st1(bottom_top_blob_data, gi, v);
+}}
+```
+Shader rules: `sfp`=storage float, `afp`=arithmetic float; load `buffer_ld1(buf,i)`,
+store `buffer_st1(buf,i,v)`; `psc(x)` resolves a push-constant when its spec-const
+is 0. Use ONLY scalar `sfp`/`buffer_ld1` (NOT `sfpvec4`/pack4) for v1. For multi-input
+ops add more `layout(binding=k) readonly buffer ...` and more bindings in the .cpp.
+"""
+
+
 def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
-    if backend != "arm":
+    if backend not in ("arm", "vulkan"):
         return NCNN_LAYER_BACKGROUND
     base_class = (profile.base_class if profile else "") or "BaseLayer"
-    arm_class = (profile.class_name if profile else "") or (base_class + "_arm")
-    base_header = f"{base_class.lower().replace('cand_', 'cand_')}.h" if profile else "base.h"
+    suffix = "_" + backend
+    sub_class = (profile.class_name if profile else "") or (base_class + suffix)
     # derive base header from the base class name deterministically (cand_<x>.h)
+    base_header = "base.h"
     if profile and profile.base_class:
-        stem = profile.base_class[len("Cand_"):].lower() if profile.base_class.startswith("Cand_") else profile.base_class.lower()
+        stem = (profile.base_class[len("Cand_"):].lower()
+                if profile.base_class.startswith("Cand_") else profile.base_class.lower())
         base_header = f"cand_{stem}.h"
-    arm_addendum = ARM_LAYER_BACKGROUND.format(
-        base_header=base_header, base_class=base_class, arm_class=arm_class)
-    return NCNN_LAYER_BACKGROUND + "\n" + arm_addendum
+    if backend == "arm":
+        addendum = ARM_LAYER_BACKGROUND.format(
+            base_header=base_header, base_class=base_class, arm_class=sub_class)
+    else:  # vulkan
+        shader_file = (profile.shader if profile and profile.shader else "cand_x.comp")
+        addendum = VULKAN_LAYER_BACKGROUND.format(
+            base_header=base_header, base_class=base_class, vulkan_class=sub_class,
+            vulkan_header=(profile.header if profile else "cand_x_vulkan.h"),
+            vulkan_file=(profile.file if profile else "cand_x_vulkan.cpp"),
+            shader_file=shader_file)
+    return NCNN_LAYER_BACKGROUND + "\n" + addendum
 
 
 OUTPUT_CONTRACT = """\
@@ -201,6 +282,20 @@ def parse_profile_json(task_name: str, text: str, backend: str = "base") -> Kern
     return KernelProfile.from_llm(task_name, payload, backend=backend)
 
 
+def _files_instruction(profile: KernelProfile) -> str:
+    """Backend-aware 'which files to emit' line for the coder/debugger prompts."""
+    if profile.backend == "vulkan":
+        return (f"Write exactly THREE files: {profile.header}, {profile.file}, and the "
+                f"GLSL shader {profile.shader}. The class must be `{profile.class_name}`. "
+                f"Do NOT write DEFINE_LAYER_CREATOR. Do NOT reference LayerShaderType.")
+    if profile.backend == "arm":
+        return (f"Write exactly two files: {profile.header} and {profile.file}. The class "
+                f"must be `{profile.class_name}` and MUST override forward/forward_inplace. "
+                f"Do NOT write DEFINE_LAYER_CREATOR (arm registration is automatic).")
+    return (f"Write exactly two files: {profile.header} and {profile.file}. The class must be "
+            f"`{profile.class_name}` and end the .cpp with DEFINE_LAYER_CREATOR({profile.class_name}).")
+
+
 def coder_prompt(profile: KernelProfile, examples: dict[str, str], model_code: str, intro: dict | None) -> str:
     return f"""Write the from-scratch ncnn {profile.backend} kernel for this operator.
 
@@ -220,8 +315,7 @@ PyTorch model (the semantics to reproduce):
 Nearest existing ncnn base layer(s) to imitate (style + Mat usage):
 {_examples(examples)}
 
-Write exactly two files: {profile.header} and {profile.file}. The class must be
-`{profile.class_name}` and end the .cpp with DEFINE_LAYER_CREATOR({profile.class_name}).
+{_files_instruction(profile)}
 
 {OUTPUT_CONTRACT}"""
 
@@ -247,6 +341,13 @@ def debugger_prompt(phase: str, profile: KernelProfile, code_book: dict[str, str
             extra += ("\nARM-specific: forgot elempack (size must be w*h*d*elempack), wrong NEON "
                       "tail handling, mismatched output elempack/elemsize, or computing a different "
                       "value than the base op. Must match PyTorch after unpacking to elempack=1.")
+        if profile.backend == "vulkan":
+            extra += ("\nVULKAN-specific: forgot `support_vulkan = true` (rejected); 3D workgroup "
+                      "instead of 1D `(subgroup_size,1,1)` (only part of the data processed); "
+                      "specialization vector length != shader constant_id count; referenced "
+                      "LayerShaderType (unavailable — use compile_candidate_shader); used "
+                      "sfpvec4/pack4 instead of scalar sfp/buffer_ld1 at elempack=1; wrong push "
+                      "constant wiring (psc(n) reads p.n). Must match PyTorch.")
     return f"""Repair the from-scratch ncnn {profile.backend} kernel.
 
 Situation: {framing}{extra}
@@ -269,6 +370,8 @@ Diagnostic feedback:
 
 History:
 {memory or "(none)"}
+
+{_files_instruction(profile)}
 
 State the root cause in 1-3 sentences, then return the COMPLETE corrected files.
 

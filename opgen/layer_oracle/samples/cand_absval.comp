@@ -1,0 +1,28 @@
+// Hand-written ncnn vulkan compute shader (scalar, elempack=1) for AbsVal.
+// Written in ncnn's shader dialect (sfp/afp/buffer_ld1/buffer_st1/psc), compiled
+// at runtime by the oracle via ncnn::compile_spirv_module — no build-time baking.
+
+#version 450
+
+layout(constant_id = 0) const int n = 0;
+
+layout(binding = 0) buffer bottom_top_blob { sfp bottom_top_blob_data[]; };
+
+layout(push_constant) uniform parameter
+{
+    int n;
+} p;
+
+void main()
+{
+    const int gi = int(gl_GlobalInvocationID.x);
+
+    if (gi >= psc(n))
+        return;
+
+    afp v = buffer_ld1(bottom_top_blob_data, gi);
+
+    v = abs(v);
+
+    buffer_st1(bottom_top_blob_data, gi, v);
+}

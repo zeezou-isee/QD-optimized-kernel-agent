@@ -28,7 +28,13 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from layer_oracle import NetOracle, parse_ncnn_io, torch_to_ncnn_input
+from layer_oracle import (
+    NetOracle,
+    parse_ncnn_io,
+    torch_to_ncnn_input,
+    retarget_param_output_layer,
+    retarget_param_output_file,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -131,11 +137,18 @@ class ProductionValidator:
 
     # --- 2. correctness (NetOracle reuse) --------------------------------
     def production_correctness(self, graph_sum: dict, model_py: str | Path,
-                               tol: float = 2e-3) -> dict:
+                               tol: float = 2e-3, retarget_to: str | None = None) -> dict:
         art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
         param, binf = art.get(".ncnn.param"), art.get(".ncnn.bin")
         if not param or not binf or not Path(param).exists():
             return {"passed": False, "detail": "no converted .ncnn.param/.bin in graph summary"}
+
+        # re-point the output layer to OUR impl so the net runs ours, not built-in
+        # (needed for ops ncnn already supports; idempotent for new ops).
+        if retarget_to:
+            rp = self.workdir / "prod_correctness_retargeted.param"
+            retarget_param_output_file(param, rp, retarget_to)
+            param = str(rp)
 
         import torch
         spec = importlib.util.spec_from_file_location("ds_model", str(model_py))
@@ -175,7 +188,16 @@ class ProductionValidator:
     def android_build_dir(self) -> Path:
         return self.ncnn_root / "build-android-aarch64"
 
-    def benchmark(self, model_param_path: str | Path, input_shapes_str: str) -> dict:
+    def benchmark(self, model_param_path: str | Path, input_shapes_str: str,
+                  retarget_to: str | None = None) -> dict:
+        """Benchmark the converted model on-device via benchncnn.
+
+        `retarget_to` (= the candidate's Cand_<Op> class) re-points the model's
+        output-producing layer to OUR implementation before pushing, so benchncnn
+        measures the kernel we generated rather than ncnn's built-in. Needed for
+        ops ncnn already supports (the native conversion emits the built-in type);
+        idempotent for new ops (the conversion already targets Cand_<Op>).
+        """
         if not self.do_benchmark:
             return {"ran": False, "skipped": True, "reason": "benchmark disabled"}
         if not self.android_ndk:
@@ -183,6 +205,20 @@ class ProductionValidator:
         have, why = detect_android_device()
         if not have:
             return {"ran": False, "skipped": True, "reason": why}
+
+        # re-point the output layer to our impl so benchncnn runs OURS, not built-in
+        param_to_push = Path(model_param_path)
+        retarget_n = 0
+        if retarget_to:
+            try:
+                text = param_to_push.read_text(encoding="utf-8")
+                new_text, retarget_n = retarget_param_output_layer(text, retarget_to)
+                rp = self.workdir / "model_retargeted.param"
+                rp.write_text(new_text, encoding="utf-8")
+                param_to_push = rp
+            except Exception as exc:  # noqa: BLE001
+                return {"ran": False, "skipped": True,
+                        "reason": f"param retarget failed: {exc}"}
 
         log = self.workdir / "benchmark.log"
         self.android_build_dir.mkdir(parents=True, exist_ok=True)
@@ -217,7 +253,7 @@ class ProductionValidator:
             subprocess.run(["adb", "shell", "mkdir", "-p", "/data/local/tmp/ncnn"], check=True, capture_output=True, timeout=10)
             subprocess.run(["adb", "push", str(benchncnn), "/data/local/tmp/ncnn/benchncnn"],
                            check=True, capture_output=True, timeout=30)
-            subprocess.run(["adb", "push", str(model_param_path), "/data/local/tmp/ncnn/model.param"],
+            subprocess.run(["adb", "push", str(param_to_push), "/data/local/tmp/ncnn/model.param"],
                            check=True, capture_output=True, timeout=30)
             subprocess.run(["adb", "shell", "chmod", "+x", "/data/local/tmp/ncnn/benchncnn"],
                            check=True, capture_output=True, timeout=10)
@@ -233,9 +269,9 @@ class ProductionValidator:
             f.write("\n" + res.stdout + "\n" + res.stderr)
         if res.returncode != 0:
             return {"ran": True, "skipped": False, "reason": "benchncnn crashed",
-                    **parse_benchmark_output(res.stdout + res.stderr)}
+                    "retargeted": retarget_n, **parse_benchmark_output(res.stdout + res.stderr)}
         parsed = parse_benchmark_output(res.stdout)
-        return {"ran": True, "skipped": False, "reason": "", **parsed}
+        return {"ran": True, "skipped": False, "reason": "", "retargeted": retarget_n, **parsed}
 
 
 def torch_input_shapes_str(model_py: str | Path) -> str:

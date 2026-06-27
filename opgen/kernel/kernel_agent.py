@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,7 +27,7 @@ from kernel_pipeline import (
 )
 from kernel_prompts import analyzer_prompt, coder_prompt, debugger_prompt, parse_profile_json
 from kernel_schemas import KernelProfile, KernelResult, KernelRound
-from layer_oracle import LayerOracle
+from layer_oracle import LayerOracle, VulkanLayerOracle
 from llm_api import query_llm
 
 
@@ -40,9 +40,9 @@ class KernelAgent:
         model_code: str | None = None,
         cfg: GraphConfig | None = None,
         llm_query: Callable[[str, str], str] | None = None,
-        backend: str = "base",                      # "base" | "arm"
-        base_kernel_code: dict[str, str] | None = None,   # arm: verified base files
-        base_profile: dict | None = None,           # arm: the base KernelProfile dict
+        backend: str = "base",                      # "base" | "arm" | "vulkan"
+        base_kernel_code: dict[str, str] | None = None,   # arm/vulkan: verified base files
+        base_profile: dict | None = None,           # arm/vulkan: the base KernelProfile dict
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
@@ -50,11 +50,18 @@ class KernelAgent:
         self.backend = backend
         self.base_kernel_code = base_kernel_code or {}
         self.base_profile_dict = base_profile or {}
-        self.oracle = LayerOracle(ncnn_root=self.cfg.ncnn_root, workdir=RUNS_ROOT / "_oracle")
+        # vulkan verifies on the GPU via VulkanLayerOracle (isolated instantiation,
+        # runtime-compiled shader); base/arm use the CPU LayerOracle.
+        if backend == "vulkan":
+            self.oracle = VulkanLayerOracle()
+        else:
+            self.oracle = LayerOracle(ncnn_root=self.cfg.ncnn_root, workdir=RUNS_ROOT / "_oracle")
         # arm: compile the candidate against src/layer/arm helpers + NC4HW4 packing.
         self._extra_includes = ([str(self.cfg.ncnn_root / "src" / "layer" / "arm")]
                                 if backend == "arm" else [])
         self._packing = 4 if backend == "arm" else 0
+        # arm and vulkan both subclass the verified base layer
+        self._subclasses_base = backend in ("arm", "vulkan")
         self.profile: KernelProfile | None = None
         self.intro: dict | None = None
         self.history: list[KernelRound] = []
@@ -89,8 +96,168 @@ class KernelAgent:
         text = self.llm(prompt, self.cfg.model)
         (self.run_dir / "analyzer.md").write_text(text, encoding="utf-8")
         profile = parse_profile_json(self.task_name, text)
+        self._validate_weight_keys(profile)
+        self._infer_params(profile)
         write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
         return profile
+
+    def _validate_weight_keys(self, profile: KernelProfile) -> None:
+        """Auto-correct weight_keys against the model's actual state_dict.
+
+        LLMs occasionally hallucinate truncated weight key names
+        (e.g. ``weight`` instead of ``linear.weight``). This method matches
+        each profile weight_key against the real state_dict and corrects
+        mismatches before the compile step tries to load them.
+        """
+        if not profile.weight_keys:
+            return  # weightless op — nothing to validate
+
+        sd = (self.intro or {}).get("state_dict") or {}
+        if not sd:
+            return  # no state_dict in introspect (shouldn't happen if weight_keys is set)
+
+        corrected: list[str] = []
+        for wk in profile.weight_keys:
+            if wk in sd:
+                corrected.append(wk)
+                continue
+            # exact match failed — try suffix / fuzzy match
+            candidates = [k for k in sd if k.endswith("." + wk) or k == wk]
+            if len(candidates) == 1:
+                print(f"[analyze] corrected weight_key: '{wk}' -> '{candidates[0]}'")
+                corrected.append(candidates[0])
+            elif len(candidates) > 1:
+                # pick the shortest match (most direct)
+                best = min(candidates, key=len)
+                print(f"[analyze] corrected weight_key (ambiguous): '{wk}' -> '{best}' "
+                      f"(from {candidates})")
+                corrected.append(best)
+            else:
+                # no match at all — keep original (let compile step report error)
+                print(f"[analyze] WARNING: weight_key '{wk}' not found in state_dict "
+                      f"{list(sd)}; keeping as-is")
+                corrected.append(wk)
+
+        if corrected != profile.weight_keys:
+            profile.weight_keys = corrected
+            # persist the corrected profile immediately
+            write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
+
+    def _infer_params(self, profile: KernelProfile) -> None:
+        """Infer ncnn param values from the actual model state_dict + input shapes.
+
+        LLMs cannot reliably map PyTorch semantics to ncnn param IDs (e.g.
+        they confuse ``num_output`` with ``alpha``). Since all the necessary
+        information is already in the introspected model, we compute params
+        mechanically and merge them into the profile, overriding any LLM
+        guesses.
+        """
+        sd = (self.intro or {}).get("state_dict") or {}
+        input_shapes = (self.intro or {}).get("input_shapes") or []
+        analog = (profile.analog_layer or "").lower()
+        params: dict[str, Any] = {}
+
+        # --- helpers ----------------------------------------------------------
+        def _find_weight(*candidates: str):
+            """Return (key, shape) for the first matching weight in sd."""
+            for c in candidates:
+                for k, s in sd.items():
+                    if c in k.lower():
+                        return k, s
+            return None, None
+
+        def _has_bias():
+            return any("bias" in k.lower() for k in sd)
+
+        # --- per-analog inference --------------------------------------------
+        if analog in ("innerproduct", "gemm"):
+            # nn.Linear(in_features, out_features, bias=...)
+            # ncnn params: 0=num_output, 1=bias_term, 2=weight_data_size
+            _, wshape = _find_weight("weight")
+            if wshape and len(wshape) == 2:
+                out_features, in_features = wshape[0], wshape[1]
+                params["0"] = out_features
+                params["1"] = 1 if _has_bias() else 0
+                params["2"] = out_features * in_features
+                print(f"[analyze] inferred innerproduct params: num_output={out_features}, "
+                      f"bias_term={params['1']}, weight_size={params['2']}")
+
+        elif analog in ("batchnorm", "instancenorm", "layernorm"):
+            # ncnn params: 0=channels, (optional) 1=eps
+            _, wshape = _find_weight("weight")
+            if wshape and len(wshape) == 1:
+                params["0"] = wshape[0]
+                # eps is usually 1e-5; keep LLM value if present, else default
+                if "1" not in profile.params:
+                    params["1"] = 1e-5
+                print(f"[analyze] inferred {analog} params: channels={params['0']}")
+
+        elif analog == "convolution":
+            # nn.Conv2d(in, out, kernel, stride, pad, dilation, bias)
+            # ncnn params: 0=num_output, 1=kernel_w, 2=dilation_w,
+            #              3=stride_w, 4=pad_left, 5=bias_term, 6=weight_data_size
+            # We can get num_output / bias_term / weight_size from state_dict.
+            # kernel/stride/pad/dilation need model source — keep LLM values.
+            _, wshape = _find_weight("weight")
+            if wshape and len(wshape) == 4:
+                out_ch = wshape[0]
+                in_ch, kh, kw = wshape[1], wshape[2], wshape[3]
+                params["0"] = out_ch
+                params["5"] = 1 if _has_bias() else 0
+                params["6"] = out_ch * in_ch * kh * kw
+                print(f"[analyze] inferred convolution params: num_output={out_ch}, "
+                      f"bias_term={params['5']}, weight_size={params['6']}")
+
+        elif analog in ("deconvolution", "deconvolutiondepthwise",
+                        "convolutiondepthwise"):
+            _, wshape = _find_weight("weight")
+            if wshape and len(wshape) == 4:
+                out_ch = wshape[0]
+                in_ch, kh, kw = wshape[1], wshape[2], wshape[3]
+                params["0"] = out_ch
+                params["5"] = 1 if _has_bias() else 0
+                params["6"] = out_ch * in_ch * kh * kw
+                print(f"[analyze] inferred {analog} params from state_dict")
+
+        elif analog == "prelu":
+            # ncnn params: 0=num_slope
+            _, wshape = _find_weight("weight")
+            if wshape:
+                params["0"] = wshape[0] if len(wshape) == 1 else 1
+                print(f"[analyze] inferred prelu params: num_slope={params['0']}")
+
+        elif analog == "embed":
+            # nn.Embedding(num_emb, emb_dim)
+            # ncnn params: 0=num_output(emb_dim), 1=input_dim(num_emb),
+            #              2=bias_term, 3=weight_data_size
+            _, wshape = _find_weight("weight")
+            if wshape and len(wshape) == 2:
+                num_emb, emb_dim = wshape[0], wshape[1]
+                params["0"] = emb_dim
+                params["1"] = num_emb
+                params["2"] = 1 if _has_bias() else 0
+                params["3"] = num_emb * emb_dim
+
+        elif analog == "scale":
+            # ncnn params: 0=scale_data_size, 1=bias_term
+            _, wshape = _find_weight("weight")
+            if wshape:
+                prod = 1
+                for d in wshape:
+                    prod *= d
+                params["0"] = wshape[0] if len(wshape) == 1 else prod
+                params["1"] = 1 if _has_bias() else 0
+
+        # --- merge: computed params take precedence over LLM -----------------
+        if params:
+            # log corrections
+            for pid, computed in params.items():
+                llm_val = profile.params.get(pid)
+                if llm_val is not None and llm_val != computed:
+                    print(f"[analyze] param {pid} corrected: LLM={llm_val} -> "
+                          f"inferred={computed}")
+            profile.params = {**profile.params, **params}
+            write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
 
     # ------------------------------------------------------------------ memory
     def _format_memory(self) -> str:
@@ -117,7 +284,7 @@ class KernelAgent:
         rd = self.run_dir / f"round_{idx:02d}"
         return verify_kernel(self.oracle, self.profile, code_book, self.model_py, rd,
                              run_numeric=self.cfg.run_numeric,
-                             base_files=(self.base_kernel_code if self.backend == "arm" else None),
+                             base_files=(self.base_kernel_code if self._subclasses_base else None),
                              extra_includes=tuple(self._extra_includes),
                              packing=self._packing)
 
@@ -146,10 +313,10 @@ class KernelAgent:
             "run_numeric": self.cfg.run_numeric,
         })
 
-        if self.backend == "arm":
-            # derive the arm profile from the verified base (no second analyzer call)
+        if self._subclasses_base:
+            # derive the arm/vulkan profile from the verified base (no 2nd analyzer call)
             base_prof = KernelProfile.from_llm(self.task_name, self.base_profile_dict, backend="base")
-            self.profile = base_prof.as_backend("arm")
+            self.profile = base_prof.as_backend(self.backend)
             write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
         else:
             self.profile = self.analyze()

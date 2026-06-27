@@ -101,6 +101,7 @@ class OracleResult:
     run_log: str = ""
     runner: str = ""
     error: str = ""
+    skipped: bool = False   # vulkan: no GPU device available -> treat as skipped, not fail
 
     # filled by verify()
     passed: bool | None = None

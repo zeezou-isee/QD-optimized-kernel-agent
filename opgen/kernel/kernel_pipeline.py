@@ -31,6 +31,28 @@ from kernel_schemas import KernelProfile, KernelResult
 _FILE_RE = re.compile(r"[A-Za-z0-9_./+-]+\.(?:cpp|cc|cxx|hpp|h)")
 _FENCE_RE = re.compile(r"```(?:[a-zA-Z0-9_+]*)\s*\n(.*?)```", re.DOTALL)
 
+_ARM_DEGRADE_MSG = (
+    "ARM ISOLATION: the arm subclass {cls} does not define its own "
+    "forward/forward_inplace, so C++ virtual dispatch silently falls back to the "
+    "inherited base CPU kernel — the 'arm' result is a degraded base result (it can "
+    "still pass allclose for elementwise ops). Define {cls}::forward (or "
+    "{cls}::forward_inplace) with the NEON/NC4HW4 implementation."
+)
+
+
+def arm_forward_overridden(code_book: dict[str, str], arm_class: str) -> bool:
+    """True if the arm subclass defines its OWN forward/forward_inplace.
+
+    The arm oracle instantiates the arm class directly (isolated instantiation), but
+    the arm forward shares the base's signature `forward(const Mat&, ...)`. If the
+    subclass forgets to override it, virtual dispatch uses the inherited *base* CPU
+    forward and numeric still passes — i.e. a degraded base kernel masquerading as
+    arm. We require an explicit out-of-line override (`<arm_class>::forward[...]`),
+    which is the ncnn convention, so the run actually exercises the NEON path.
+    """
+    pat = re.compile(re.escape(arm_class) + r"\s*::\s*forward")
+    return any(pat.search(c or "") for c in code_book.values())
+
 
 def extract_kernel_code(response: str) -> dict[str, str]:
     """{basename: code} for fenced blocks whose first inner line is a filename."""
@@ -152,6 +174,11 @@ def verify_kernel(
         return res
     res.generate_ok = True
 
+    # arm isolation precondition: the subclass must override forward, else it
+    # silently degrades to the inherited base CPU kernel (enforced at each return).
+    arm_degraded = (profile.backend == "arm"
+                    and not arm_forward_overridden(code_book, profile.class_name))
+
     # write candidate files into the round dir
     round_dir.mkdir(parents=True, exist_ok=True)
     cpp_path = None
@@ -166,14 +193,31 @@ def verify_kernel(
         return res
     res.artifacts["cpp"] = str(cpp_path)
 
-    # arm: drop the verified base files next to the candidate (parent class) and
-    # compile the base .cpp in as an extra source.
+    # arm/vulkan: drop the verified base files next to the candidate (parent class)
+    # and compile the base .cpp in as an extra source.
     extra_sources: list[str] = []
     for name, content in (base_files or {}).items():
         p = round_dir / name
         p.write_text(content, encoding="utf-8")
         if name.endswith((".cpp", ".cc", ".cxx")):
             extra_sources.append(str(p))
+
+    # vulkan: the candidate also emits a separate .comp shader (compiled at runtime
+    # by the VulkanLayerOracle). Locate it among the written files.
+    shader_path = None
+    if profile.backend == "vulkan":
+        if profile.shader and (round_dir / profile.shader).exists():
+            shader_path = round_dir / profile.shader
+        else:
+            shader_path = next((round_dir / n for n in code_book if n.endswith(".comp")), None)
+        if shader_path is None:
+            res.compile_error = f"vulkan kernel missing its .comp shader ({profile.shader})"
+            res.messages.append("missing .comp")
+            return res
+
+    # backend-specific oracle kwargs: vulkan passes the shader; base/arm pass packing
+    backend_kwargs: dict = ({"shader": str(shader_path)} if profile.backend == "vulkan"
+                            else {"packing": packing})
 
     # PyTorch reference (single sample, ncnn layout)
     import torch
@@ -205,10 +249,14 @@ def verify_kernel(
         # compile-only check via oracle.run (still needs an input)
         out = oracle.run(candidate_cpp=cpp_path, class_name=profile.class_name,
                          header=profile.header, params=params, inputs=ncnn_inputs, weights=weights,
-                         extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
+                         extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
         res.compile_ok = "compile failed" not in (out.error or "")
         if not res.compile_ok:
             res.compile_error = locate_build_errors(out.compile_log, profile.file.split(".")[0])
+        elif arm_degraded:
+            res.numeric_ok = False
+            res.numeric_log = _ARM_DEGRADE_MSG.format(cls=profile.class_name)
+            res.messages.append("arm not overridden (degrades to base)")
         else:
             res.numeric_skipped = True  # compile-only mode
             res.messages.append("numeric skipped")
@@ -217,7 +265,7 @@ def verify_kernel(
     verdict = oracle.verify(candidate_cpp=cpp_path, class_name=profile.class_name,
                             header=profile.header, params=params, inputs=ncnn_inputs,
                             weights=weights, reference=reference, tol=tol,
-                            extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
+                            extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
 
     # classify
     if verdict.error and "compile failed" in verdict.error:
@@ -226,6 +274,13 @@ def verify_kernel(
         res.messages.append("compile failed")
         return res
     res.compile_ok = True
+    # vulkan on a host without a GPU: compiled+linked OK but cannot run -> skip
+    # (not a failure). The kernel is accepted as compile-verified.
+    if getattr(verdict, "skipped", False):
+        res.numeric_skipped = True
+        res.numeric_log = verdict.detail or "vulkan device unavailable (skipped)"
+        res.messages.append("numeric skipped (no vulkan device)")
+        return res
     if not verdict.ok:  # compiled but runner crashed at runtime
         res.numeric_ok = False
         res.numeric_log = "kernel crashed at runtime:\n" + "\n".join(verdict.run_log.splitlines()[-12:])
@@ -235,4 +290,10 @@ def verify_kernel(
     res.numeric_ok = bool(verdict.passed)
     res.numeric_log = verdict.detail
     res.messages.append("numeric passed" if verdict.passed else "numeric failed")
+    # arm isolation guard: a numeric pass on a non-overriding arm subclass is a
+    # false pass (it ran the base kernel). Flip to failure so the loop repairs it.
+    if res.numeric_ok and arm_degraded:
+        res.numeric_ok = False
+        res.numeric_log = _ARM_DEGRADE_MSG.format(cls=profile.class_name)
+        res.messages.append("arm not overridden (degrades to base)")
     return res
