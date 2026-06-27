@@ -65,6 +65,7 @@ class OperatorAgent:
         optimize_coverage_target: int = 4,
         experience_pool_path: str | Path | None = None,   # 兵器谱 warm-start + persist
         backends: list[str] | None = None,    # subset of ["base","arm"]; default ["base"]
+        allow_backend_fallback: bool = False, # if a target backend (arm) fails: off=abort, on=base-only
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -90,6 +91,7 @@ class OperatorAgent:
         self.experience_pool_path = experience_pool_path
         self.backends = backends or ["base"]
         self.want_arm = "arm" in self.backends
+        self.allow_backend_fallback = allow_backend_fallback
         self.llm_query = llm_query
 
     # ------------------------------------------------------------------ paths
@@ -152,11 +154,22 @@ class OperatorAgent:
                 "class_name": (arm_sum.get("kernel_profile") or {}).get("class_name"),
             }
             print(f"[orchestrator] arm kernel: {arm_sum.get('status')}")
-            # arm is an accelerator, not a correctness gate: if it fails, fall back
-            # to base-only (graph/e2e still target the base class).
+            # A requested target backend is a hard gate by default: if arm fails the
+            # whole operator run fails. Only when --allow-backend-fallback is set do
+            # we degrade to base-only (arm as a non-blocking accelerator).
             if not arm_ok:
-                arm_code = {}
-                print("[orchestrator] arm kernel failed — continuing with base only")
+                if self.allow_backend_fallback:
+                    arm_code = {}
+                    print("[orchestrator] arm kernel failed — continuing with base only "
+                          "(fallback enabled)")
+                else:
+                    summary["status"] = "fail"
+                    summary["note"] = ("arm kernel failed and backend fallback is disabled "
+                                       "(--allow-backend-fallback off); aborting.")
+                    write_json(self.run_dir / "summary.json", summary)
+                    print("[orchestrator] arm kernel failed — aborting "
+                          "(fallback disabled; pass --allow-backend-fallback to degrade to base)")
+                    return summary
 
         # ---------------- [2] Bridge ----------------
         netoc = NetOracle(ncnn_root=self.ncnn_root, workdir=RUNS_ROOT / "_net")

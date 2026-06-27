@@ -39,6 +39,7 @@ from .oracle import (
     _find_kernelgen,
     _strip_creator_inplace,
 )
+from .failure_taxonomy import classify_failure
 
 _THIS = Path(__file__).resolve().parent           # .../opgen/layer_oracle
 _OPGEN = _THIS.parent                              # .../opgen
@@ -221,7 +222,8 @@ target_link_libraries(runner ncnn)
                tol: float = 1e-3,
                extra_sources: Sequence[str | Path] = (),
                extra_includes: Sequence[str | Path] = (),
-               packing: int = 0) -> OracleResult:
+               packing: int = 0,
+               backend: str = "vulkan") -> OracleResult:
         res = self.run(candidate_cpp=candidate_cpp, class_name=class_name, header=header,
                        shader=shader, params=params, inputs=inputs, weights=weights,
                        extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
@@ -235,17 +237,25 @@ target_link_libraries(runner ncnn)
             return res
         out = res.outputs[0]
         ref = np.asarray(reference, dtype=np.float32)
+        _inp = inputs[0] if len(inputs) else None
         try:
             out_r = out.reshape(ref.shape)
         except ValueError:
+            cat, det = classify_failure(out, ref, tol, input=_inp, backend=backend)
             res.passed = False
-            res.detail = f"shape mismatch: ncnn {out.shape} vs ref {ref.shape}"
+            res.failure_category = cat
+            res.detail = f"[{cat}] {det}"
             return res
         diff = np.abs(out_r - ref)
         res.max_diff = float(diff.max())
         res.mean_diff = float(diff.mean())
         res.passed = bool(np.allclose(out_r, ref, atol=tol, rtol=tol))
-        res.detail = f"max_diff={res.max_diff:.6f} mean_diff={res.mean_diff:.6f} tol={tol}"
+        if res.passed:
+            res.detail = f"max_diff={res.max_diff:.6f} mean_diff={res.mean_diff:.6f} tol={tol}"
+        else:
+            cat, det = classify_failure(out, ref, tol, input=_inp, backend=backend)
+            res.failure_category = cat
+            res.detail = f"[{cat}] {det}"
         return res
 
     @staticmethod

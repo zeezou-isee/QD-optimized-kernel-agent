@@ -231,6 +231,14 @@ def _introspect(intro: dict | None) -> str:
     if not intro:
         return "(model introspection unavailable)"
     parts = [f"input shapes (torch, with batch): {intro.get('input_shapes')}"]
+    if intro.get("output_shape"):
+        nsh = intro.get("ncnn_output_shape") or []
+        nelem = 1
+        for d in nsh:
+            nelem *= int(d)
+        parts.append(f"EXPECTED OUTPUT (shape contract): torch {intro['output_shape']} -> ncnn Mat "
+                     f"(batch dropped) {nsh} = {nelem} elements. Your forward MUST allocate top with "
+                     f"exactly this shape/element-count.")
     if intro.get("state_dict"):
         parts.append("state_dict (key: shape) — these are the candidate weights:")
         for k, s in intro["state_dict"].items():

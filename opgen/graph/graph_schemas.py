@@ -30,6 +30,10 @@ class OpProfile:
     category: str = "unary"
     # target ncnn layer type string, e.g. "HardSigmoid" (used for structural check + type_str)
     target_ncnn_layer: str = ""
+    # set by the analyzer (grounded on the pnnx probe): the op already converts to a
+    # native ncnn layer (target is then that generic type, e.g. UnaryOp), so no new
+    # layer/pass is needed. Informational; the orchestrator's existence check also detects this.
+    already_supported: bool = False
     needs_weight: bool = False
     # torch entry point, e.g. "F.hardsigmoid" / "aten::hardsigmoid"
     torch_op: str = ""

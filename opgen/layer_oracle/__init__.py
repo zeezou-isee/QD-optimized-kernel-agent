@@ -17,10 +17,12 @@ from .net_oracle import (
     retarget_param_file,
 )
 from .vulkan_oracle import VulkanLayerOracle
+from .failure_taxonomy import classify_failure
 
 __all__ = [
     "LayerOracle",
     "OracleResult",
+    "classify_failure",
     "read_bin",
     "write_bin",
     "torch_to_ncnn_input",

@@ -94,13 +94,41 @@ class GraphAgent:
         return self.cfg.run_dir(self.task_name)
 
     # ------------------------------------------------------------------ roles
-    def analyze(self) -> OpProfile:
-        prompt = analyzer_prompt(self.task_name, self.model_code)
+    def analyze(self, grounding: dict | None = None) -> OpProfile:
+        prompt = analyzer_prompt(self.task_name, self.model_code, grounding=grounding)
         text = self.llm(prompt, self.cfg.model)
         (self.run_dir / "analyzer.md").write_text(text, encoding="utf-8")
         profile = parse_profile_json(self.task_name, text)
+        self._ground_target(profile, grounding)
         write_json(self.run_dir / "op_profile.json", profile.to_dict())
         return profile
+
+    @staticmethod
+    def _ground_target(profile: OpProfile, grounding: dict | None) -> None:
+        """Hard guard against the analyzer inventing a non-existent target layer.
+
+        If the probe shows the op is FULLY converted natively (no unconverted
+        aten/prim residuals) but the LLM's target_ncnn_layer is not among the ncnn
+        layer types the conversion actually produces, the LLM hallucinated a layer
+        (e.g. "Log" when torch.log folds into "UnaryOp"). Correct it to the real
+        compute layer from the probe. Only fires for the fully-native case so a
+        genuinely-new op (residuals present -> custom Cand_<Op>) is never touched.
+        """
+        if not grounding:
+            return
+        op_types = [t for t in (grounding.get("op_types") or []) if t != "Input"]
+        residual = grounding.get("residual_aten") or []
+        if residual or not op_types:
+            return  # genuinely new op, or no probe info — leave the LLM's choice
+        if profile.target_ncnn_layer in op_types:
+            profile.already_supported = True
+            return  # already correct
+        # invented name on a fully-native op -> correct to the real compute layer
+        corrected = op_types[-1]  # the output-producing compute layer for single-op models
+        print(f"[analyze] target corrected (grounded): '{profile.target_ncnn_layer}' "
+              f"-> '{corrected}' (op natively converts to {op_types})")
+        profile.target_ncnn_layer = corrected
+        profile.already_supported = True
 
     # ------------------------------------------------------------------ memory
     def _format_memory(self) -> str:
@@ -270,8 +298,11 @@ class GraphAgent:
                 print("[agent] operator already supported; skip_if_supported=True -> stop.")
                 raise _AlreadySupported()
 
-            # identify (analyzer) then author the conversion from scratch
-            self.profile = self.analyze()
+            # identify (analyzer) then author the conversion from scratch.
+            # Pass the pnnx probe so the analyzer grounds target_ncnn_layer on the
+            # REAL ncnn layer types (avoids inventing e.g. "Log" for torch.log,
+            # which actually folds into "UnaryOp").
+            self.profile = self.analyze(grounding)
             if self.force_target_layer:
                 self.profile.target_ncnn_layer = self.force_target_layer
                 print(f"[agent] forced target ncnn layer = {self.force_target_layer}")

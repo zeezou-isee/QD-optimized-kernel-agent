@@ -177,7 +177,26 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------
 # analyzer
 # ---------------------------------------------------------------------------
-def analyzer_prompt(task_name: str, model_code: str) -> str:
+_TARGET_JUDGMENT = """\
+=== target_ncnn_layer — DECIDE FROM THE REAL IR ABOVE, DO NOT GUESS ===
+The probe above is ground truth. Use it to set target_ncnn_layer correctly:
+- "Baseline ncnn graph ... current pnnx already produces" lists the ACTUAL ncnn
+  layer types this op converts to today. If the op already appears there as a
+  concrete ncnn layer — very often a GENERIC one (UnaryOp / BinaryOp / Reduction /
+  Slice / Crop / Permute), NOT a same-name dedicated layer — then THAT generic
+  type is target_ncnn_layer and the op is ALREADY natively supported.
+  Example: torch.log / torch.exp / torch.sqrt fold into "UnaryOp" (there is NO
+  "Log"/"Exp" layer); torch.gt / torch.add fold into "BinaryOp"; torch.sum into
+  "Reduction". Set target_ncnn_layer to the generic type shown, set
+  "already_supported": true, and say so in notes.
+- A dedicated / NEW layer is needed ONLY when "Unconverted aten/prim ops" is
+  non-empty (no ncnn layer exists for it). THEN target_ncnn_layer is your new
+  Cand_<Op> layer and "already_supported": false.
+- NEVER invent a layer name that is neither in the baseline ncnn graph above nor a
+  layer you are explicitly adding. When unsure, prefer the generic op in the IR."""
+
+
+def analyzer_prompt(task_name: str, model_code: str, grounding: dict | None = None) -> str:
     return f"""You analyze a PyTorch operator and plan its ncnn graph conversion.
 
 Operator task name: {task_name}
@@ -188,18 +207,24 @@ PyTorch reference model:
 
 {PNNX_BACKGROUND}
 
+REAL pnnx/ncnn IR for THIS model (ground truth — base target_ncnn_layer on it):
+{format_grounding(grounding)}
+
+{_TARGET_JUDGMENT}
+
 Classify the operator and decide which passes are needed. Return ONLY a JSON
 object (no prose) with these fields:
 {{
   "source_form": "nn_module | functional | aten | composite",
   "category": "unary | binary | weighted | tensor_manip | composite",
-  "target_ncnn_layer": "<the ncnn layer type string this should become>",
+  "target_ncnn_layer": "<ncnn type from the IR above (e.g. UnaryOp), or your new Cand_<Op>>",
+  "already_supported": false,
   "needs_weight": false,
   "torch_op": "<e.g. F.hardsigmoid or aten::hardsigmoid>",
   "rank_coverage": [1, 2, 3, 4],
   "files_to_write": ["pass_ncnn/F_<op>.cpp", "pass_level2/F_<op>.cpp", "tests/ncnn/test_F_<op>.py"],
   "analog_ops": ["F_hardsigmoid", "F_relu6"],
-  "notes": "<short reasoning: which existing ncnn layer to reuse, expected param ids>"
+  "notes": "<short reasoning: which ncnn layer (generic or new) and why; expected param ids>"
 }}
 NOTE: this first version targets weightless unary/functional operators."""
 

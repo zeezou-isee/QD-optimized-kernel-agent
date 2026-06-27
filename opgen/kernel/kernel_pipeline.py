@@ -90,15 +90,33 @@ def _build_model(mod):
 
 
 def introspect_model(model_py: str | Path) -> dict[str, Any]:
-    """Input shapes + state_dict (key->shape) + init inputs, for grounding."""
+    """Input shapes + state_dict (key->shape) + init inputs + EXPECTED OUTPUT shape.
+
+    The output shape is the explicit shape contract (8.3): the kernel's forward must
+    produce exactly this (batch dropped) ncnn Mat shape.
+    """
+    import torch
     mod = _load_module(model_py)
     model, init = _build_model(mod)
     inputs = mod.get_inputs()
     sd = {k: list(v.shape) for k, v in model.state_dict().items()}
+    out_shape = None
+    ncnn_out_shape = None
+    try:
+        with torch.no_grad():
+            out = model(*inputs)
+        if isinstance(out, (tuple, list)):
+            out = out[0]
+        out_shape = list(out.shape)
+        ncnn_out_shape = out_shape[1:] if len(out_shape) >= 2 else out_shape
+    except Exception:  # noqa: BLE001
+        pass
     return {
         "input_shapes": [list(t.shape) for t in inputs],
         "state_dict": sd,
         "init_inputs": _jsonable(init),
+        "output_shape": out_shape,
+        "ncnn_output_shape": ncnn_out_shape,
     }
 
 
@@ -145,6 +163,56 @@ def retrieve_layer_example(ncnn_root: Path, analog: str, max_files: int = 1,
         if not _read_into(layer_dir, base_stem):
             _read_into(layer_dir, "absval")
     return out
+
+
+# ---------------------------------------------------------------------------
+def _size_variants(inputs):
+    """Same-rank, smaller-size variants of the model inputs, made by SLICING (keeps
+    values in the op's valid domain — random tensors would break log/sqrt/det etc.).
+    Halves the last two non-batch axes. Returns [] if nothing could be varied."""
+    variant = []
+    changed = False
+    for t in inputs:
+        s = list(t.shape)
+        idx = [slice(None)] * len(s)
+        for ax in (len(s) - 1, len(s) - 2):
+            if ax >= 1 and s[ax] >= 2:        # keep axis 0 (batch) fixed
+                idx[ax] = slice(0, s[ax] // 2)
+                changed = True
+        variant.append(t[tuple(idx)].contiguous())
+    return [tuple(variant)] if changed else []
+
+
+def _multishape_check(oracle, profile, cpp_path, params, model_py,
+                      extra_sources, extra_includes, backend_kwargs, tol):
+    """Re-verify a weightless kernel on size variants (8.2). Returns (category, detail)
+    of the first failing variant, or None if all pass / the op rejects them."""
+    import torch
+    mod = _load_module(model_py)
+    model, _ = _build_model(mod)
+    for vin in _size_variants(mod.get_inputs()):
+        try:
+            with torch.no_grad():
+                ref = model(*vin)
+            if isinstance(ref, (tuple, list)):
+                ref = ref[0]
+            ref_np = ref.detach().numpy()
+            reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
+            ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in vin]
+        except Exception:  # noqa: BLE001 — op rejects this shape, skip it
+            continue
+        v = oracle.verify(candidate_cpp=cpp_path, class_name=profile.class_name,
+                          header=profile.header, params=params, inputs=ncnn_inputs,
+                          weights=(), reference=reference, tol=tol, backend=profile.backend,
+                          extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
+        if getattr(v, "skipped", False):
+            return None  # vulkan w/o GPU — can't judge variants
+        if not (v.ok and v.passed):
+            shp = tuple(int(x) for x in vin[0].shape)
+            cat = getattr(v, "failure_category", "") or "E6_VALUE_NUMERICAL"
+            return (cat, f"MULTI-SHAPE: passed the model's shape but FAILED a size variant "
+                         f"(input {shp}) — your indexing is hardcoded to one shape. {v.detail}")
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +332,7 @@ def verify_kernel(
 
     verdict = oracle.verify(candidate_cpp=cpp_path, class_name=profile.class_name,
                             header=profile.header, params=params, inputs=ncnn_inputs,
-                            weights=weights, reference=reference, tol=tol,
+                            weights=weights, reference=reference, tol=tol, backend=profile.backend,
                             extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
 
     # classify
@@ -289,6 +357,7 @@ def verify_kernel(
     res.max_diff = verdict.max_diff
     res.numeric_ok = bool(verdict.passed)
     res.numeric_log = verdict.detail
+    res.failure_category = getattr(verdict, "failure_category", "")
     res.messages.append("numeric passed" if verdict.passed else "numeric failed")
     # arm isolation guard: a numeric pass on a non-overriding arm subclass is a
     # false pass (it ran the base kernel). Flip to failure so the loop repairs it.
@@ -296,4 +365,25 @@ def verify_kernel(
         res.numeric_ok = False
         res.numeric_log = _ARM_DEGRADE_MSG.format(cls=profile.class_name)
         res.messages.append("arm not overridden (degrades to base)")
+
+    # 8.1 differential framing: the base kernel was already verified == PyTorch, so an
+    # arm/vulkan numeric failure is a PORT bug (algorithm OK, error in the backend path).
+    if (not res.numeric_ok) and (not res.numeric_skipped) and profile.backend in ("arm", "vulkan"):
+        res.numeric_log = (f"PORT BUG: the base kernel for this op is already verified == PyTorch, "
+                           f"so this {profile.backend} kernel's failure is in the {profile.backend} "
+                           f"path (the algorithm is correct — fix the "
+                           f"{'NEON/packing' if profile.backend == 'arm' else 'shader/dispatch'} "
+                           f"port, not the math).\n" + (res.numeric_log or ""))
+
+    # 8.2 multi-shape scrutiny: a numeric PASS on the single model shape can still hide a
+    # shape-specific indexing bug. For weightless ops (input dims not tied to weights),
+    # re-verify on a couple of same-rank size variants; any failure flips the verdict.
+    if res.numeric_ok and run_numeric and not profile.weight_keys:
+        bad = _multishape_check(oracle, profile, cpp_path, params, model_py,
+                                extra_sources, extra_includes, backend_kwargs, tol)
+        if bad is not None:
+            res.numeric_ok = False
+            res.failure_category = bad[0]
+            res.numeric_log = bad[1]
+            res.messages.append("multi-shape: failed a size variant")
     return res

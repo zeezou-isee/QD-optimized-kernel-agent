@@ -89,6 +89,7 @@ class KernelResult:
     response_code: dict[str, str] = field(default_factory=dict)
     compile_error: str = ""
     numeric_log: str = ""
+    failure_category: str = ""   # diagnosis-conditioned label (E3/E4/E5/E6...) for stats
     max_diff: float | None = None
     artifacts: dict[str, str] = field(default_factory=dict)
     messages: list[str] = field(default_factory=list)

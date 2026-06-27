@@ -66,6 +66,9 @@ def main() -> None:
                    help="comma list of kernel backends to author/install: base[,arm]. "
                         "arm adds a NEON/NC4HW4 subclass; the conversion graph targets the "
                         "base class and ncnn auto-selects arm at runtime.")
+    p.add_argument("--allow-backend-fallback", action="store_true",
+                   help="if a requested target backend (e.g. arm) fails, degrade to base-only "
+                        "instead of aborting. OFF by default: a target backend is a hard gate.")
     args = p.parse_args()
 
     summary = OperatorAgent(
@@ -82,6 +85,7 @@ def main() -> None:
         optimize_coverage_target=args.optimize_coverage_target,
         experience_pool_path=args.experience_pool,
         backends=[b.strip() for b in args.backends.split(",") if b.strip()],
+        allow_backend_fallback=args.allow_backend_fallback,
     ).run()
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

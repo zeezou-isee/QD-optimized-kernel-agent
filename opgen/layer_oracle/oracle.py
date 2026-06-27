@@ -33,6 +33,8 @@ import subprocess
 
 import numpy as np
 
+from .failure_taxonomy import classify_failure
+
 # The runner instantiates the candidate class directly, so DEFINE_LAYER_CREATOR is
 # dead code — and it collides with the copy ncnn_add_layer bakes into libncnn.a when
 # the same layer is already installed (orchestrator bridge path). Strip it.
@@ -108,6 +110,7 @@ class OracleResult:
     max_diff: float | None = None
     mean_diff: float | None = None
     detail: str = ""
+    failure_category: str = ""   # diagnosis-conditioned feedback label (see failure_taxonomy)
 
 
 class LayerOracle:
@@ -254,6 +257,7 @@ class LayerOracle:
         extra_sources: Sequence[str | Path] = (),
         extra_includes: Sequence[str | Path] = (),
         packing: int = 0,
+        backend: str = "base",
     ) -> OracleResult:
         res = self.run(candidate_cpp=candidate_cpp, class_name=class_name, header=header,
                        params=params, inputs=inputs, weights=weights,
@@ -267,14 +271,25 @@ class LayerOracle:
         try:
             out_r = out.reshape(ref.shape)
         except ValueError:
+            # shape/element-count mismatch -> taxonomy (E3 wrong-count / E4 permuted)
+            cat, det = classify_failure(out, ref, tol,
+                                        input=(inputs[0] if len(inputs) else None), backend=backend)
             res.passed = False
-            res.detail = f"shape mismatch: ncnn {out.shape} vs ref {ref.shape}"
+            res.failure_category = cat
+            res.detail = f"[{cat}] {det}"
             return res
         diff = np.abs(out_r - ref)
         res.max_diff = float(diff.max())
         res.mean_diff = float(diff.mean())
         res.passed = bool(np.allclose(out_r, ref, atol=tol, rtol=tol))
-        res.detail = f"max_diff={res.max_diff:.6f} mean_diff={res.mean_diff:.6f} tol={tol}"
+        if res.passed:
+            res.detail = f"max_diff={res.max_diff:.6f} mean_diff={res.mean_diff:.6f} tol={tol}"
+        else:
+            # diagnosis-conditioned feedback (E4/E5/E6/E8/instability; backend-aware)
+            cat, det = classify_failure(out, ref, tol,
+                                        input=(inputs[0] if len(inputs) else None), backend=backend)
+            res.failure_category = cat
+            res.detail = f"[{cat}] {det}"
         return res
 
     @staticmethod
