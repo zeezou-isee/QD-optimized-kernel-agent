@@ -127,39 +127,68 @@ def probe_pnnx_ir(cfg: GraphConfig, model_py: str | Path, run_dir: Path, task_na
         out["baseline_numeric_ok"] = baseline_numeric(cfg, model_py, probe_dir, Path(pt).stem)
     else:
         out["baseline_numeric_ok"] = None
-    out["baseline_supported"] = out["baseline_structural_ok"] and out["baseline_numeric_ok"] is True
+    # Verdict = STRUCTURAL only. baseline_numeric is kept as informational signal
+    # (recorded under baseline_numeric_ok) but does NOT gate the verdict.
+    # Why: the numeric driver runs ncnn::Net with a generic I/O shim that breaks on
+    # many op shapes (reduce-to-scalar, batch-vs-no-batch, blob name remapping,
+    # fast-math/Floor/Round drift). Empirically it produces ~25% confident-FAILs
+    # against ops the offline ground-truth audit confirms are SUPPORTED, i.e. the
+    # gate hurts more than it helps. The structural rule (pnnx emits >=1 real ncnn
+    # layer AND no aten::*/prim::* residual) matched the audit on 168/183 ops.
+    out["baseline_supported"] = out["baseline_structural_ok"]
     return out
 
 
 _BASELINE_NUM_DRIVER = '''
 import importlib.util, numpy as np, torch, ncnn
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location("ref_model", r"{model_py}")
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
 net = (mod.Model(*init) if init else mod.Model()).eval()
 inputs = mod.get_inputs()
-if len(inputs) != 1:
-    print("RESULT=SKIP multi-input"); raise SystemExit
-inp = inputs[0]
+
+# Reference from PyTorch on the EXACT model inputs (any rank / count). For ncnn
+# we drop the leading batch dim on each input AND on the reference (ncnn::Mat
+# has no batch). Multi-input models ARE supported — parse the .ncnn.param to
+# learn the blob names instead of guessing in0/out0.
+def _drop_batch(arr):
+    return arr[0] if arr.ndim >= 2 else arr
+def _parse_io(param_text):
+    ins, out = [], "out0"
+    for ln in [l for l in param_text.splitlines() if l.strip()][2:]:
+        p = ln.split()
+        if len(p) < 4: continue
+        kind, _name, nin, nout = p[0], p[1], int(p[2]), int(p[3])
+        blobs = p[4:]; out_blobs = blobs[nin:nin+nout]
+        if kind == "Input" and out_blobs: ins.append(out_blobs[0])
+        elif out_blobs: out = out_blobs[0]
+    return ins, out
+
 with torch.no_grad():
-    ref = net(inp)
+    ref = net(*inputs)
 if isinstance(ref, (tuple, list)):
     ref = ref[0]
-ref = ref.detach().numpy()
+ref = _drop_batch(ref.detach().numpy())
 
-a = inp.detach().numpy()
-nd = a.ndim
-mat_in = a[0] if nd >= 2 else a   # drop batch -> (C,H,W)/(H,W)/(C,)
+in_arrays = [np.ascontiguousarray(_drop_batch(t.detach().numpy())) for t in inputs]
+in_names, out_name = _parse_io(Path(r"{param}").read_text())
+if len(in_names) != len(in_arrays):
+    in_names = ["in%d" % i for i in range(len(in_arrays))]
+
 with ncnn.Net() as n:
     n.load_param(r"{param}"); n.load_model(r"{bin}")
     with n.create_extractor() as ex:
-        ex.input("in0", ncnn.Mat(np.ascontiguousarray(mat_in)).clone())
-        ret, o = ex.extract("out0")
+        for name, arr in zip(in_names, in_arrays):
+            ex.input(name, ncnn.Mat(arr).clone())
+        ret, o = ex.extract(out_name)
 out = np.array(o).reshape(ref.shape)
-ok = np.allclose(out, ref, atol=1e-3, rtol=1e-3)
-print("RESULT=" + ("PASS" if ok else "FAIL"),
-      "maxdiff=%.5f" % float(np.abs(out - ref).max()))
+diff = float(np.abs(out - ref).max())
+# tol matches downstream verifier (production_validation.py: tol=2e-3); ncnn's
+# optimized layers (LayerNorm/Softmax/etc.) routinely show ~1e-3 diffs vs torch.
+ok = np.allclose(out, ref, atol=2e-3, rtol=2e-3)
+print("RESULT=" + ("PASS" if ok else "FAIL"), "maxdiff=%.5f" % diff)
 '''
 
 
@@ -637,6 +666,11 @@ def run_conversion(cfg: GraphConfig, pt_path: str, inputshape: str, run_dir: Pat
         p = run_dir / f"{stem}{suffix}"
         if p.exists():
             artifacts[suffix] = str(p)
+    # _ncnn.py is the pnnx-emitted feed/squeeze policy — net-numeric callers
+    # parse it to mirror pnnx's per-blob squeeze decisions exactly.
+    ncnn_py = run_dir / f"{stem}_ncnn.py"
+    if ncnn_py.exists():
+        artifacts["_ncnn.py"] = str(ncnn_py)
     ok = ".ncnn.param" in artifacts
     if not ok:
         log = annotate_convert_log(log)
