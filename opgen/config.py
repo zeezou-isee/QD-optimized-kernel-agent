@@ -53,7 +53,7 @@ class GraphConfig:
     ncnn_root: Path = field(default_factory=lambda: KERNELGEN_ROOT / "ncnn")
 
     # --- LLM ---------------------------------------------------------------
-    model: str = "anthropic/claude-sonnet-4.5"
+    model: str = "deepseek-v4-pro"
     max_rounds: int = 8
 
     # --- behaviour ---------------------------------------------------------

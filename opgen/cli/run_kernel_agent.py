@@ -47,7 +47,8 @@ def main() -> None:
     p = argparse.ArgumentParser(description="From-scratch ncnn kernel writer (base/arm) + PyTorch oracle.")
     p.add_argument("--task", required=True)
     p.add_argument("--model", default=None, help="Path to the PyTorch reference .py (overrides dataset lookup).")
-    p.add_argument("--model-name", default="z-ai/glm-5.1", help="LLM model id (OpenRouter).")
+    p.add_argument("--model-name", default="deepseek-v4-pro",
+                   help="LLM model id (DeepSeek by default; OpenRouter ids like 'anthropic/...' also work).")
     p.add_argument("--ncnn-root", default=None)
     p.add_argument("--dataset-root", default=None)
     p.add_argument("--max-rounds", type=int, default=8)

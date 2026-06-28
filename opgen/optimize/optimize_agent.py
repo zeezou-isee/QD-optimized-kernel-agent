@@ -52,7 +52,7 @@ class OptimizeAgent:
         model_py: str | Path | None = None,
         ncnn_root: str | Path | None = None,
         llm_query: Callable[[str, str], str] | None = None,
-        model: str = "z-ai/glm-5.1",
+        model: str = "deepseek-v4-pro",
         proposer: Any | None = None,            # injectable (stub) Proposer for tests
         evaluator_obj: Any | None = None,       # injectable (fake) Evaluator for tests
         weight_keys: list[str] | None = None,
