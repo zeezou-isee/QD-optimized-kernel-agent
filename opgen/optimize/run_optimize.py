@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # EndtoEnd.. for 
 import opgen as _opgen; _opgen.bootstrap_paths()
 
 from config import KERNELGEN_ROOT, RUNS_ROOT, GraphConfig
-from llm_api import query_llm
+from llm_api import get_llm_query
 from optimize_agent import OptimizeAgent
 from schemas import OptimizeResult
 
@@ -112,7 +112,7 @@ def main() -> None:
 
     agent = OptimizeAgent(
         task_name=args.task, baseline_kernel_code=baseline,
-        model_py=model_py, ncnn_root=ncnn_root, llm_query=query_llm,
+        model_py=model_py, ncnn_root=ncnn_root, llm_query=get_llm_query(),
         model=args.model_name, max_rounds=args.max_rounds,
         inner_budget=args.inner_budget, runs=args.runs, warmup=args.warmup,
         improve_tol=args.improve_tol,

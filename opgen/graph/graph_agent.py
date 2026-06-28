@@ -36,7 +36,7 @@ from graph_pipeline import (
 )
 from graph_prompts import analyzer_prompt, coder_prompt, debugger_prompt, parse_profile_json
 from graph_schemas import BackupHandle, GraphResult, GraphRound, OpProfile, write_json
-from llm_api import query_llm
+from llm_api import get_llm_query
 
 
 class _AlreadySupported(Exception):
@@ -56,7 +56,7 @@ class GraphAgent:
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
-        self.llm = llm_query or query_llm
+        self.llm = llm_query or get_llm_query()
         # When set, the conversion MUST map to this exact ncnn layer type (the
         # newly-written kernel), instead of reusing arbitrary existing ops.
         self.force_target_layer = force_target_layer

@@ -442,8 +442,8 @@ class OperatorAgent:
 
         baseline_perf = (summary.get("phases", {}).get("production", {}) or {}).get("benchmark", {}) or {}
 
-        from llm_api import query_llm
-        llm = self.llm_query or query_llm
+        from llm_api import get_llm_query
+        llm = self.llm_query or get_llm_query()
         agent = OptimizeAgent(
             task_name=self.task_name, baseline_kernel_code=baseline_kernel,
             model_py=model_py, ncnn_root=self.ncnn_root, llm_query=llm,

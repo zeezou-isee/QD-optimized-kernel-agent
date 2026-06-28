@@ -28,7 +28,7 @@ from kernel_pipeline import (
 from kernel_prompts import analyzer_prompt, coder_prompt, debugger_prompt, parse_profile_json
 from kernel_schemas import KernelProfile, KernelResult, KernelRound
 from layer_oracle import LayerOracle, VulkanLayerOracle
-from llm_api import query_llm
+from llm_api import get_llm_query
 
 
 class KernelAgent:
@@ -46,7 +46,7 @@ class KernelAgent:
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
-        self.llm = llm_query or query_llm
+        self.llm = llm_query or get_llm_query()
         self.backend = backend
         self.base_kernel_code = base_kernel_code or {}
         self.base_profile_dict = base_profile or {}
