@@ -12,6 +12,16 @@ venv/
 
 # opgen runtime artifacts
 opgen/runs/
+opgen/runs_*/
+opgen/run_logs/
+
+# Intermediate / large dataset artifacts (kept: *.json baselines, miniset/subset .py)
+dataset/Mobilekernelbench_pt/
+dataset/*.bak
+dataset/*.json.*.bak
+
+# OSS sync reports
+ossutil_output/
 
 # ncnn_kernel_test scratch / logs (kept results: *_results.json, REPORT.md, *.md)
 ncnn_kernel_test/_probe/
