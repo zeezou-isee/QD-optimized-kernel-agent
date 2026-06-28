@@ -24,7 +24,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="From-scratch ncnn operator: kernel + conversion, coupled + e2e numeric.")
     p.add_argument("--task", required=True)
     p.add_argument("--model", default=None)
-    p.add_argument("--model-name", default="z-ai/glm-5.1")
+    p.add_argument("--model-name", default="deepseek-v4-pro")
     p.add_argument("--max-rounds", type=int, default=15)
     p.add_argument("--ncnn-root", default=None)
     p.add_argument("--dataset-root", default=None)
@@ -69,6 +69,10 @@ def main() -> None:
     p.add_argument("--allow-backend-fallback", action="store_true",
                    help="if a requested target backend (e.g. arm) fails, degrade to base-only "
                         "instead of aborting. OFF by default: a target backend is a hard gate.")
+    p.add_argument("--auto-cleanup", action="store_true",
+                   help="ncnn-tree guard: if the ncnn source tree is found dirty at startup "
+                        "(typically leaked from a prior killed run), silently clean it instead "
+                        "of aborting. OFF by default — abort is safer; turn on for batch jobs.")
     args = p.parse_args()
 
     summary = OperatorAgent(
@@ -86,6 +90,7 @@ def main() -> None:
         experience_pool_path=args.experience_pool,
         backends=[b.strip() for b in args.backends.split(",") if b.strip()],
         allow_backend_fallback=args.allow_backend_fallback,
+        auto_cleanup_ncnn=args.auto_cleanup,
     ).run()
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
