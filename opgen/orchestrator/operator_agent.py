@@ -34,7 +34,7 @@ from graph_agent import GraphAgent
 from graph_pipeline import probe_pnnx_ir
 from graph_schemas import write_json
 from kernel_agent import KernelAgent
-from layer_oracle import NetOracle, parse_ncnn_io, torch_to_ncnn_input
+from layer_oracle import NetOracle, parse_ncnn_io, pnnx_driven_ncnn_inputs
 from ncnn_tree_guard import arm_guard
 from optimize_agent import OptimizeAgent
 
@@ -550,10 +550,13 @@ class OperatorAgent:
             ref = ref[0]
         ref_np = ref.detach().numpy()
         reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
-        ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
         in_names, out_name = parse_ncnn_io(Path(param).read_text(encoding="utf-8"))
-        if len(in_names) != len(ncnn_inputs):
-            in_names = [f"in{i}" for i in range(len(ncnn_inputs))]
+        if len(in_names) != len(inputs):
+            in_names = [f"in{i}" for i in range(len(inputs))]
+        # pnnx-driven per-blob squeeze policy (falls back to drop-axis-0 when
+        # _ncnn.py is missing or a blob name has no recorded policy).
+        ncnn_py = art.get("_ncnn.py")
+        ncnn_inputs = pnnx_driven_ncnn_inputs(inputs[:len(in_names)], in_names, ncnn_py)
         feed = {n: x for n, x in zip(in_names, ncnn_inputs)}
         out, log = netoc.run_net(param, binf, feed, out_name)
         (self.run_dir / "net_numeric.log").write_text(log, encoding="utf-8")

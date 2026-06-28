@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from layer_oracle import (
     NetOracle,
     parse_ncnn_io,
-    torch_to_ncnn_input,
+    pnnx_driven_ncnn_inputs,
     retarget_param_output_layer,
     retarget_param_output_file,
 )
@@ -162,10 +162,13 @@ class ProductionValidator:
             ref = ref[0]
         ref_np = ref.detach().numpy()
         reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
-        ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
         in_names, out_name = parse_ncnn_io(Path(param).read_text(encoding="utf-8"))
-        if len(in_names) != len(ncnn_inputs):
-            in_names = [f"in{i}" for i in range(len(ncnn_inputs))]
+        if len(in_names) != len(inputs):
+            in_names = [f"in{i}" for i in range(len(inputs))]
+        # pnnx-driven per-blob squeeze policy (falls back to drop-axis-0 when
+        # _ncnn.py is missing or a blob name has no recorded policy).
+        ncnn_py = art.get("_ncnn.py")
+        ncnn_inputs = pnnx_driven_ncnn_inputs(inputs[:len(in_names)], in_names, ncnn_py)
         feed = {n: x for n, x in zip(in_names, ncnn_inputs)}
 
         netoc = NetOracle(ncnn_root=self.ncnn_root, workdir=self.workdir / "_prod_net")
