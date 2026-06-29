@@ -1,4 +1,4 @@
-"""Production-grade validation: compile + correctness + (optional) android benchmark.
+"""Production-grade validation: compile + correctness + (optional) on-device profile.
 
 Mirrors what MoKA's NCNN pipeline does after register, but plugged after our
 OperatorAgent's end-to-end numeric so we keep the existing flow intact:
@@ -6,23 +6,25 @@ OperatorAgent's end-to-end numeric so we keep the existing flow intact:
   production_compile     build_lib (default; quick - uses existing libncnn.a) OR
                          build_full (MoKA-style full ncnn build with examples+tests)
   production_correctness reuse NetOracle: run converted .ncnn.{param,bin} vs PyTorch
-  benchmark              MoKA-style android arm64 cross-build + adb push benchncnn +
-                         parse min/max/avg. Skipped (NOT failed) if no device/NDK.
+  profile_op             android arm64 cross-build + adb push benchncnn, then run it
+                         under simpleperf (ncnn_kernel_test/op_profiler.py). One run
+                         per thread config yields BOTH micro-arch metrics (IPC /
+                         cache-miss / branch-miss) AND latency (min/max/avg). The
+                         optimizer's baseline latency is taken from here — there is
+                         no separate benchmark() run. Skipped (NOT failed) w/o device/NDK.
 
-All three are independent: failures in must-have steps fail the operator;
-benchmark failure only annotates the summary.
+Mandatory steps (compile + correctness) fail the operator; profile failure only
+annotates the summary.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import os
-import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -55,25 +57,6 @@ def detect_android_device() -> tuple[bool, str]:
     return True, ",".join(devices)
 
 
-def parse_benchmark_output(log_text: str) -> dict[str, Any]:
-    """Adapted from MoKA's parse_benchmark_output (ncnnpipeline/ncnn_pipeline.py)."""
-    perf_re = re.compile(
-        r"\s+(?P<m>\S+)\s+min\s*=\s*(?P<mn>[\d.]+)\s+max\s*=\s*(?P<mx>[\d.]+)\s+avg\s*=\s*(?P<av>[\d.]+)"
-    )
-    m = perf_re.search(log_text)
-    loop = re.search(r"loop_count\s*=\s*(\d+)", log_text)
-    threads = re.search(r"num_threads\s*=\s*(\d+)", log_text)
-    if m:
-        return {
-            "runloop": int(loop.group(1)) if loop else 100,
-            "num_threads": int(threads.group(1)) if threads else 4,
-            "min": float(m.group("mn")), "max": float(m.group("mx")), "avg": float(m.group("av")),
-            "error": "",
-        }
-    return {"runloop": 100, "num_threads": 4, "min": None, "max": None, "avg": None,
-            "error": log_text[-400:]}
-
-
 # ---------------------------------------------------------------------------
 @dataclass
 class ProductionValidator:
@@ -83,6 +66,7 @@ class ProductionValidator:
     workdir: Path = field(default_factory=Path)  # runs/<task>/operator
     android_ndk: str | None = None
     build_jobs: int = 8
+    profile_loop: int = 10000              # benchncnn loop_count under simpleperf
 
     def __post_init__(self) -> None:
         self.ncnn_root = Path(self.ncnn_root)
@@ -186,21 +170,74 @@ class ProductionValidator:
                 "max_diff": float(diff.max()), "mean_diff": float(diff.mean()),
                 "detail": f"max_diff={float(diff.max()):.6f} out_name={out_name} in_names={in_names}"}
 
-    # --- 3. benchmark (MoKA-style android+adb; skipped if no device) ------
+    # --- 3. android build dir (shared by the profiler below) --------------
     @property
     def android_build_dir(self) -> Path:
         return self.ncnn_root / "build-android-aarch64"
 
-    def benchmark(self, model_param_path: str | Path, input_shapes_str: str,
-                  retarget_to: str | None = None) -> dict:
-        """Benchmark the converted model on-device via benchncnn.
+    # --- 4. operator micro-architecture profile (simpleperf PMU) ----------
+    @property
+    def ndk_simpleperf(self) -> Path:
+        """arm64 simpleperf shipped with the Android NDK (push fallback)."""
+        return Path(self.android_ndk or "") / "simpleperf" / "bin" / "android" / "arm64" / "simpleperf"
 
-        `retarget_to` (= the candidate's Cand_<Op> class) re-points the model's
-        output-producing layer to OUR implementation before pushing, so benchncnn
-        measures the kernel we generated rather than ncnn's built-in. Needed for
-        ops ncnn already supports (the native conversion emits the built-in type);
-        idempotent for new ops (the conversion already targets Cand_<Op>).
+    def _resolve_simpleperf(self, device_dir: str) -> tuple[str, str]:
+        """Find a usable simpleperf. Prefer one already on the device (system
+        PATH or device_dir), else push the NDK arm64 build. Returns (invocation,
+        reason): invocation is the command to call simpleperf with (e.g.
+        "simpleperf" or "./simpleperf"); reason is "" on success else a SKIP msg.
         """
+        # (a) system simpleperf on PATH (many vendor builds ship it)
+        try:
+            r = subprocess.run(["adb", "shell", "command -v simpleperf"],
+                               capture_output=True, text=True, timeout=10)
+            if r.returncode == 0 and r.stdout.strip():
+                return "simpleperf", ""
+        except subprocess.SubprocessError:
+            pass
+        # (b) already pushed into device_dir
+        try:
+            r = subprocess.run(["adb", "shell", f"ls {device_dir}/simpleperf"],
+                               capture_output=True, text=True, timeout=10)
+            if r.returncode == 0 and "No such" not in r.stdout:
+                return "./simpleperf", ""
+        except subprocess.SubprocessError:
+            pass
+        # (c) push from the NDK
+        if not self.ndk_simpleperf.exists():
+            return "", (f"no simpleperf on device and NDK copy missing at "
+                        f"{self.ndk_simpleperf}")
+        try:
+            subprocess.run(["adb", "push", str(self.ndk_simpleperf), f"{device_dir}/simpleperf"],
+                           check=True, capture_output=True, timeout=60)
+            subprocess.run(["adb", "shell", "chmod", "+x", f"{device_dir}/simpleperf"],
+                           check=True, capture_output=True, timeout=10)
+        except subprocess.SubprocessError as e:
+            return "", f"simpleperf push failed: {e}"
+        return "./simpleperf", ""
+
+    def profile_op(self, model_param_path: str | Path, input_shapes_str: str,
+                   op_name: str, retarget_to: str | None = None,
+                   thread_configs: tuple = (1, 2), device_dir: str = "/data/local/tmp/ncnn") -> dict:
+        """Self-contained on-device PMU profile of ONE operator via simpleperf.
+
+        Unlike benchmark() (which measures end-to-end latency), this returns
+        micro-architecture metrics (IPC / cache-miss / branch-miss / operator
+        fraction) per thread config by delegating to ncnn_kernel_test/op_profiler.py.
+
+        This method owns every device-setup step op_profiler.py assumes is already
+        done: cross-compile benchncnn, push benchncnn + .param, resolve simpleperf
+        (device-first, NDK fallback). It does NOT reuse benchmark(). Same
+        SKIP-never-blocks semantics: any missing prerequisite returns
+        {"ran": False, "skipped": True, "reason": ...}.
+
+        `retarget_to` (= Cand_<Op>) re-points the output layer to OUR kernel so the
+        profiled hotspot is ours, not ncnn's built-in (idempotent for new ops).
+        Each per-thread config also carries latency_{avg,min,max} (benchncnn at that
+        thread count), so threads=1 and threads=2 both report latency + micro-arch.
+        Returns {"ran", "skipped", "reason", "retargeted", "configs": [profile_t1, ...]}.
+        """
+        # ---- gating (SKIP never blocks success) ----
         if not self.do_benchmark:
             return {"ran": False, "skipped": True, "reason": "benchmark disabled"}
         if not self.android_ndk:
@@ -209,29 +246,28 @@ class ProductionValidator:
         if not have:
             return {"ran": False, "skipped": True, "reason": why}
 
-        # re-point the output layer to our impl so benchncnn runs OURS, not built-in
+        # ---- retarget output layer to OUR impl (so the hotspot is ours) ----
         param_to_push = Path(model_param_path)
         retarget_n = 0
         if retarget_to:
             try:
-                text = param_to_push.read_text(encoding="utf-8")
-                new_text, retarget_n = retarget_param_output_layer(text, retarget_to)
-                rp = self.workdir / "model_retargeted.param"
+                new_text, retarget_n = retarget_param_output_layer(
+                    param_to_push.read_text(encoding="utf-8"), retarget_to)
+                rp = self.workdir / "profile_retargeted.param"
                 rp.write_text(new_text, encoding="utf-8")
                 param_to_push = rp
             except Exception as exc:  # noqa: BLE001
-                return {"ran": False, "skipped": True,
-                        "reason": f"param retarget failed: {exc}"}
+                return {"ran": False, "skipped": True, "reason": f"param retarget failed: {exc}"}
 
-        log = self.workdir / "benchmark.log"
+        # ---- cross-compile benchncnn (android arm64) ----
+        log = self.workdir / "profile.log"
         self.android_build_dir.mkdir(parents=True, exist_ok=True)
         cmd_cfg = [
             "cmake",
             f"-DCMAKE_TOOLCHAIN_FILE={self.android_ndk}/build/cmake/android.toolchain.cmake",
             "-DANDROID_ABI=arm64-v8a", "-DANDROID_PLATFORM=android-21",
             "-DNCNN_VULKAN=OFF", "-DCMAKE_BUILD_TYPE=Release",
-            "-DNCNN_BUILD_BENCHMARK=ON",
-            str(self.ncnn_root),
+            "-DNCNN_BUILD_BENCHMARK=ON", str(self.ncnn_root),
         ]
         try:
             with log.open("w", encoding="utf-8") as f:
@@ -239,12 +275,14 @@ class ProductionValidator:
                 cfg = subprocess.run(cmd_cfg, cwd=self.android_build_dir,
                                      stdout=f, stderr=subprocess.STDOUT, text=True)
                 if cfg.returncode != 0:
-                    return {"ran": False, "skipped": True, "reason": "android cmake configure failed; see benchmark.log"}
+                    return {"ran": False, "skipped": True,
+                            "reason": "android cmake configure failed; see profile.log"}
                 bld = subprocess.run(["cmake", "--build", ".", "-j", str(self.build_jobs)],
                                      cwd=self.android_build_dir,
                                      stdout=f, stderr=subprocess.STDOUT, text=True)
                 if bld.returncode != 0:
-                    return {"ran": False, "skipped": True, "reason": "android build failed; see benchmark.log"}
+                    return {"ran": False, "skipped": True,
+                            "reason": "android build failed; see profile.log"}
         except Exception as exc:  # noqa: BLE001
             return {"ran": False, "skipped": True, "reason": f"android build crashed: {exc}"}
 
@@ -252,29 +290,48 @@ class ProductionValidator:
         if not benchncnn.exists():
             return {"ran": False, "skipped": True, "reason": f"benchncnn not built at {benchncnn}"}
 
+        # ---- push benchncnn + simpleperf + param to device ----
         try:
-            subprocess.run(["adb", "shell", "mkdir", "-p", "/data/local/tmp/ncnn"], check=True, capture_output=True, timeout=10)
-            subprocess.run(["adb", "push", str(benchncnn), "/data/local/tmp/ncnn/benchncnn"],
-                           check=True, capture_output=True, timeout=30)
-            subprocess.run(["adb", "push", str(param_to_push), "/data/local/tmp/ncnn/model.param"],
-                           check=True, capture_output=True, timeout=30)
-            subprocess.run(["adb", "shell", "chmod", "+x", "/data/local/tmp/ncnn/benchncnn"],
+            subprocess.run(["adb", "shell", "mkdir", "-p", device_dir],
                            check=True, capture_output=True, timeout=10)
-            test_cmd = (f"cd /data/local/tmp/ncnn && ./benchncnn 100 4 2 -1 1 "
-                        f"param=model.param shape={input_shapes_str}")
-            res = subprocess.run(["adb", "shell", test_cmd], capture_output=True, text=True, timeout=600)
+            subprocess.run(["adb", "push", str(benchncnn), f"{device_dir}/benchncnn"],
+                           check=True, capture_output=True, timeout=60)
+            subprocess.run(["adb", "shell", "chmod", "+x", f"{device_dir}/benchncnn"],
+                           check=True, capture_output=True, timeout=10)
+            subprocess.run(["adb", "push", str(param_to_push), f"{device_dir}/model.param"],
+                           check=True, capture_output=True, timeout=30)
         except subprocess.TimeoutExpired as e:
-            return {"ran": False, "skipped": True, "reason": f"adb/benchmark timed out: {e.cmd}"}
+            return {"ran": False, "skipped": True, "reason": f"adb push timed out: {e.cmd}"}
         except subprocess.CalledProcessError as e:
-            return {"ran": False, "skipped": True, "reason": f"adb step failed: {e.stderr or e}"}
+            return {"ran": False, "skipped": True, "reason": f"adb push failed: {e.stderr or e}"}
 
-        with log.open("a", encoding="utf-8") as f:
-            f.write("\n" + res.stdout + "\n" + res.stderr)
-        if res.returncode != 0:
-            return {"ran": True, "skipped": False, "reason": "benchncnn crashed",
-                    "retargeted": retarget_n, **parse_benchmark_output(res.stdout + res.stderr)}
-        parsed = parse_benchmark_output(res.stdout)
-        return {"ran": True, "skipped": False, "reason": "", "retargeted": retarget_n, **parsed}
+        # ---- resolve simpleperf (device-first, NDK fallback) ----
+        sp_cmd, sp_reason = self._resolve_simpleperf(device_dir)
+        if not sp_cmd:
+            return {"ran": False, "skipped": True, "reason": sp_reason}
+
+        # ---- delegate to op_profiler: one profile per thread config ----
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ncnn_kernel_test"))
+        try:
+            import op_profiler  # noqa: E402
+        except Exception as exc:  # noqa: BLE001
+            return {"ran": False, "skipped": True, "reason": f"import op_profiler failed: {exc}"}
+        configs = []
+        for t in thread_configs:
+            # op_profiler runs benchncnn under simpleperf, so each profile already
+            # carries that run's latency_{avg,min,max} — no separate benchncnn run.
+            try:
+                prof = op_profiler.profile_operator(
+                    op_name, "model.param", input_shapes_str,
+                    threads=t, loop=self.profile_loop,
+                    device_dir=device_dir, simpleperf_cmd=sp_cmd)
+            except Exception as exc:  # noqa: BLE001
+                prof = {"op": op_name, "threads": t, "error": f"profile raised: {exc}"}
+            configs.append(prof)
+        (self.workdir / "op_profile.json").write_text(
+            __import__("json").dumps(configs, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"ran": True, "skipped": False, "reason": "", "retargeted": retarget_n,
+                "simpleperf": sp_cmd, "configs": configs}
 
 
 def torch_input_shapes_str(model_py: str | Path) -> str:
