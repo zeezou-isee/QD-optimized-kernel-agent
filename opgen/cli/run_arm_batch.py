@@ -31,7 +31,7 @@ import opgen as _opgen; _opgen.bootstrap_paths()
 
 from config import GraphConfig, RUNS_ROOT
 from kernel_agent import KernelAgent
-from llm_api import query_llm
+from llm_api import get_llm_query
 from optimize_agent import OptimizeAgent
 
 OUT_DIR = RUNS_ROOT / "_arm_batch"
@@ -65,7 +65,7 @@ def _run_one(op: str, py_path: str, model: str, cfg_rounds: int,
     # --- 1) base kernel ---
     cfg = GraphConfig(model=model, max_rounds=cfg_rounds, run_numeric=True)
     base_sum = KernelAgent(task_name=op, model_py=py_path, cfg=cfg,
-                           llm_query=query_llm, backend="base").run()
+                           llm_query=get_llm_query(), backend="base").run()
     row["base"] = _kernel_row(base_sum)
     if base_sum.get("status") != "success":
         row["stage"] = "base_failed"
@@ -74,7 +74,7 @@ def _run_one(op: str, py_path: str, model: str, cfg_rounds: int,
     base_prof = base_sum.get("kernel_profile") or {}
 
     # --- 2) arm kernel ---
-    arm_sum = KernelAgent(task_name=op, model_py=py_path, cfg=cfg, llm_query=query_llm,
+    arm_sum = KernelAgent(task_name=op, model_py=py_path, cfg=cfg, llm_query=get_llm_query(),
                           backend="arm", base_kernel_code=base_code,
                           base_profile=base_prof).run()
     row["arm"] = _kernel_row(arm_sum)
@@ -92,7 +92,7 @@ def _run_one(op: str, py_path: str, model: str, cfg_rounds: int,
     params = {int(k): v for k, v in (base_prof.get("params") or {}).items()}
     res = OptimizeAgent(
         task_name=op, baseline_kernel_code=arm_code, model_py=py_path,
-        ncnn_root=cfg.ncnn_root, llm_query=query_llm, model=model,
+        ncnn_root=cfg.ncnn_root, llm_query=get_llm_query(), model=model,
         weight_keys=weight_keys, params=params, backend="arm", base_files=base_code,
         policy="map_elites", map_budget=map_budget, inner_budget=inner_budget,
         coverage_target=2, op_class=base_prof.get("class_name", ""),
