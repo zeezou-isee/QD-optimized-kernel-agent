@@ -121,3 +121,15 @@ def query_llm(prompt: str, model: str = "deepseek-v4-pro") -> str:
             print(f"[llm retry {attempt}/{_MAX_RETRIES}] {last_exc} (sleep {sleep_s:.0f}s)")
             time.sleep(sleep_s)
     raise RuntimeError(f"LLM query failed after {_MAX_RETRIES} attempts: {last_exc}")
+
+
+def get_llm_query():
+    """Return the active LLM query callable: ``(prompt, model) -> str``.
+
+    Compatibility shim: several callers (graph_agent, operator_agent,
+    run_optimize, run_arm_batch) import ``get_llm_query`` from the pre-sync API.
+    The post-sync API routes by model name inside ``query_llm`` itself, so the
+    "active backend" is simply ``query_llm``. Kept so those imports resolve
+    without each caller needing to change.
+    """
+    return query_llm
