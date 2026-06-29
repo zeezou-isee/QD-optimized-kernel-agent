@@ -1,0 +1,189 @@
+{
+  "identity": {
+    "vendor_id": 4203,
+    "device_id": 436535818,
+    "device_name": "Apple M5",
+    "device_type": "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU",
+    "api_version": 4211022,
+    "driver_version": 10401
+  },
+  "compute_limits": {
+    "max_compute_shared_memory_size": 32768,
+    "max_compute_workgroup_size": [
+      1024,
+      1024,
+      1024
+    ],
+    "max_compute_workgroup_invocations": 1024,
+    "max_compute_workgroup_count": [
+      1073741824,
+      1073741824,
+      1073741824
+    ],
+    "max_push_constants_size": 4096,
+    "max_storage_buffer_range": 4294967295,
+    "min_storage_buffer_offset_alignment": 16,
+    "min_uniform_buffer_offset_alignment": 16
+  },
+  "subgroup": {
+    "subgroup_size": 32,
+    "subgroup_supported_stages": [
+      "VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT",
+      "VK_SHADER_STAGE_FRAGMENT_BIT",
+      "VK_SHADER_STAGE_COMPUTE_BIT"
+    ],
+    "subgroup_supported_operations": [
+      "VK_SUBGROUP_FEATURE_BASIC_BIT",
+      "VK_SUBGROUP_FEATURE_VOTE_BIT",
+      "VK_SUBGROUP_FEATURE_ARITHMETIC_BIT",
+      "VK_SUBGROUP_FEATURE_BALLOT_BIT",
+      "VK_SUBGROUP_FEATURE_SHUFFLE_BIT",
+      "VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT",
+      "VK_SUBGROUP_FEATURE_CLUSTERED_BIT",
+      "VK_SUBGROUP_FEATURE_QUAD_BIT",
+      "VK_SUBGROUP_FEATURE_ROTATE_BIT",
+      "VK_SUBGROUP_FEATURE_ROTATE_CLUSTERED_BIT"
+    ]
+  },
+  "image_limits": {
+    "max_image_dimension_2d": 32768,
+    "max_image_dimension_3d": 2048
+  },
+  "features": {
+    "shader_int16": true,
+    "shader_int64": true,
+    "shader_float64": false,
+    "storage_buffer_16bit_access": true,
+    "uniform_and_storage_buffer_16bit_access": true,
+    "shader_float16": true,
+    "shader_int8": true,
+    "shader_buffer_int64_atomics": false,
+    "compute_full_subgroups": true,
+    "subgroup_size_control": true
+  },
+  "extensions_present": {
+    "VK_KHR_cooperative_matrix": false,
+    "VK_NV_cooperative_matrix": false,
+    "VK_KHR_16bit_storage": true,
+    "VK_KHR_shader_float16_int8": true,
+    "VK_KHR_shader_subgroup_extended_types": true,
+    "VK_KHR_shader_integer_dot_product": true,
+    "VK_EXT_subgroup_size_control": true,
+    "VK_EXT_descriptor_indexing": true,
+    "VK_KHR_push_descriptor": true
+  },
+  "behavior_profile": {
+    "schema_version": 1,
+    "measured": false,
+    "benches": [
+      {
+        "name": "wg_size_sweep",
+        "status": "stub",
+        "purpose": "occupancy cliff: largest workgroup size before throughput drops",
+        "shader_glsl_sketch": "layout(local_size_x=WG) in;\nlayout(set=0,binding=0) buffer A { float a[]; };\nlayout(set=0,binding=1) buffer B { float b[]; };\nvoid main(){ b[gl_GlobalInvocationID.x] = a[gl_GlobalInvocationID.x]; }",
+        "sweep_axis": "local_size_x",
+        "data": [
+          {
+            "local_size_x": 32,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          },
+          {
+            "local_size_x": 64,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          },
+          {
+            "local_size_x": 128,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          },
+          {
+            "local_size_x": 256,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          },
+          {
+            "local_size_x": 512,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          },
+          {
+            "local_size_x": 1024,
+            "wg_size": null,
+            "gflops": null,
+            "gbps": null,
+            "ms_per_dispatch": null
+          }
+        ],
+        "ts": "2026-06-29T12:44:21"
+      },
+      {
+        "name": "fp16_vs_fp32",
+        "status": "stub",
+        "purpose": "ratio of fp16:fp32 throughput on memory-bound copy",
+        "shader_glsl_sketch": "// two variants: float vs float16_t (requires VK_KHR_shader_float16_int8)\nlayout(local_size_x=64) in;\n// copy 4 elements per thread; one variant uses f32, the other f16.",
+        "sweep_axis": "dtype",
+        "data": [
+          {
+            "dtype": "fp32",
+            "gbps": null,
+            "ms_per_dispatch": null,
+            "ratio_vs_fp32": null
+          },
+          {
+            "dtype": "fp16",
+            "gbps": null,
+            "ms_per_dispatch": null,
+            "ratio_vs_fp32": null
+          }
+        ],
+        "ts": "2026-06-29T12:44:21"
+      },
+      {
+        "name": "shared_mem_bw",
+        "status": "stub",
+        "purpose": "bandwidth ratio: shared-memory read vs global read",
+        "shader_glsl_sketch": "shared float tile[TILE];\n// one variant reads from shared after a barrier; the other from\n// the storage buffer directly. ratio = SMEM_BW / GLOBAL_BW.",
+        "sweep_axis": "tile_size",
+        "data": [
+          {
+            "tile_size": 64,
+            "smem_gbps": null,
+            "global_gbps": null,
+            "ratio": null
+          },
+          {
+            "tile_size": 256,
+            "smem_gbps": null,
+            "global_gbps": null,
+            "ratio": null
+          },
+          {
+            "tile_size": 1024,
+            "smem_gbps": null,
+            "global_gbps": null,
+            "ratio": null
+          },
+          {
+            "tile_size": 4096,
+            "smem_gbps": null,
+            "global_gbps": null,
+            "ratio": null
+          }
+        ],
+        "ts": "2026-06-29T12:44:21"
+      }
+    ]
+  }
+}
