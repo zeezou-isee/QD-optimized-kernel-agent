@@ -19,7 +19,7 @@ import subprocess
 
 import numpy as np
 
-from .oracle import read_bin, write_bin, _find_kernelgen
+from .oracle import read_bin, write_bin, _find_kernelgen, _run_cmake_bounded
 
 _THIS = Path(__file__).resolve().parent           # .../opgen/layer_oracle
 _OPGEN = _THIS.parent                              # .../opgen
@@ -219,10 +219,16 @@ class NetOracle:
             except OSError:
                 pass
 
-    def rebuild_libncnn(self, jobs: int = 8) -> tuple[bool, str]:
-        proc = subprocess.run(["cmake", "--build", str(self.build_lib), "-j", str(jobs)],
-                              capture_output=True, text=True)
-        return proc.returncode == 0 and self.libncnn.exists(), proc.stdout + proc.stderr
+    def rebuild_libncnn(self, jobs: int = 8, timeout: int = 600) -> tuple[bool, str]:
+        # start_new_session: if our parent gets SIGTERM (e.g. batch timeout), the
+        # ncnn-tree guard signal handler propagates here; without an own session,
+        # cmake/make/g++ grandchildren survive and corrupt the shared build dir
+        # while the next op starts. Own session + bounded timeout = safe teardown.
+        rc, out = _run_cmake_bounded(
+            ["cmake", "--build", str(self.build_lib), "-j", str(jobs)],
+            timeout=timeout,
+        )
+        return rc == 0 and self.libncnn.exists(), out
 
     # --- compile + run -----------------------------------------------------
     def compile_runner(self) -> tuple[Path, str]:

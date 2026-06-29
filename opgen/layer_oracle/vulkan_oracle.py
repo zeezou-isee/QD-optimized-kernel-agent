@@ -38,6 +38,7 @@ from .oracle import (
     read_bin,
     _find_kernelgen,
     _strip_creator_inplace,
+    _run_cmake_bounded,
 )
 from .failure_taxonomy import classify_failure
 
@@ -134,9 +135,10 @@ class VulkanLayerOracle:
             raise RuntimeError(f"vulkan runner cmake configure failed:\n{log}")
 
         bld = [self.cmake, "--build", str(build), "-j", "8"]
-        p2 = subprocess.run(bld, capture_output=True, text=True)
-        log += "\n" + " ".join(bld) + "\n" + p2.stdout + p2.stderr
-        if p2.returncode != 0 or not runner.exists():
+        # bounded + own session so a parent SIGTERM kills cmake/make/g++ cleanly.
+        rc2, out2 = _run_cmake_bounded(bld, timeout=600)
+        log += "\n" + " ".join(bld) + "\n" + out2
+        if rc2 != 0 or not runner.exists():
             raise RuntimeError(f"vulkan runner build failed:\n{log}")
         return runner, log
 

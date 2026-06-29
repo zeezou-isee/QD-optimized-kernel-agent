@@ -35,6 +35,7 @@ from layer_oracle import (
     retarget_param_output_layer,
     retarget_param_output_file,
 )
+from layer_oracle.oracle import _run_cmake_bounded
 
 
 # ---------------------------------------------------------------------------
@@ -125,11 +126,12 @@ class ProductionValidator:
                 out["log_tail"] = "[configure failed]\n" + log_path.read_text(errors="replace")[-600:]
                 return out
             build_cmd = ["cmake", "--build", str(self.build_full_dir), "-j", str(self.build_jobs)]
+            # bounded + own session so a parent SIGTERM kills make/g++ cleanly
+            rc, output = _run_cmake_bounded(build_cmd, timeout=900)
             with log_path.open("a", encoding="utf-8") as log:
-                log.write("$ " + " ".join(build_cmd) + "\n")
-                bld = subprocess.run(build_cmd, stdout=log, stderr=subprocess.STDOUT, text=True)
+                log.write("$ " + " ".join(build_cmd) + "\n" + output)
             out["log_tail"] = log_path.read_text(errors="replace")[-800:]
-            out["ok"] = bld.returncode == 0
+            out["ok"] = rc == 0
             return out
 
         out["log_tail"] = f"unknown compile_mode={self.compile_mode}"
@@ -240,10 +242,11 @@ class ProductionValidator:
                                      stdout=f, stderr=subprocess.STDOUT, text=True)
                 if cfg.returncode != 0:
                     return {"ran": False, "skipped": True, "reason": "android cmake configure failed; see benchmark.log"}
-                bld = subprocess.run(["cmake", "--build", ".", "-j", str(self.build_jobs)],
-                                     cwd=self.android_build_dir,
-                                     stdout=f, stderr=subprocess.STDOUT, text=True)
-                if bld.returncode != 0:
+                bld_cmd = ["cmake", "--build", ".", "-j", str(self.build_jobs)]
+                rc_bld, out_bld = _run_cmake_bounded(bld_cmd, timeout=1200,
+                                                      cwd=self.android_build_dir)
+                f.write("$ " + " ".join(bld_cmd) + "\n" + out_bld)
+                if rc_bld != 0:
                     return {"ran": False, "skipped": True, "reason": "android build failed; see benchmark.log"}
         except Exception as exc:  # noqa: BLE001
             return {"ran": False, "skipped": True, "reason": f"android build crashed: {exc}"}

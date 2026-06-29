@@ -23,6 +23,10 @@ dataset/*.json.*.bak
 # OSS sync reports
 ossutil_output/
 
+# batch runner artifacts (kept: results/*.json — those are committable summaries)
+batch/results/*.bak
+batch/results/*.json.bak
+
 # ncnn_kernel_test scratch / logs (kept results: *_results.json, REPORT.md, *.md)
 ncnn_kernel_test/_probe/
 ncnn_kernel_test/_imperative_work/

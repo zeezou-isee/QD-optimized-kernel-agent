@@ -27,13 +27,47 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Sequence
+import os
 import re
+import signal
 import struct
 import subprocess
 
 import numpy as np
 
 from .failure_taxonomy import classify_failure
+
+
+# ---------------------------------------------------------------------------
+# Shared helper: run a build command in its own process group with a timeout,
+# so that (a) a SIGTERM from our parent (e.g. batch-driver timeout) propagates
+# to make/g++ grandchildren via killpg, and (b) a runaway compile cannot pin
+# the orchestrator forever. All cmake --build call sites should go through this.
+# ---------------------------------------------------------------------------
+def _run_cmake_bounded(cmd: list[str], timeout: int = 600,
+                       cwd: str | Path | None = None,
+                       env: dict | None = None) -> tuple[int, str]:
+    """Spawn `cmd` in its own session, wait up to `timeout` seconds.
+
+    On timeout: SIGTERM the process group (give cmake ~3s to flush), then SIGKILL.
+    Returns (returncode_or_-1, captured_stdout+stderr).
+    """
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, cwd=str(cwd) if cwd else None, env=env,
+                            start_new_session=True)
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        return proc.returncode, (out or "") + (err or "")
+    except subprocess.TimeoutExpired:
+        try: os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError: pass
+        try:
+            out, err = proc.communicate(timeout=3)
+        except subprocess.TimeoutExpired:
+            try: os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+            out, err = proc.communicate()
+        return -1, "TIMEOUT after %ds\n" % timeout + (out or "") + (err or "")
 
 # The runner instantiates the candidate class directly, so DEFINE_LAYER_CREATOR is
 # dead code — and it collides with the copy ncnn_add_layer bakes into libncnn.a when
