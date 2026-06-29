@@ -1,0 +1,92 @@
+{
+  "Add": {
+    "category": "Binary",
+    "elapsed_s": 147.8,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "success",
+    "kernel": "success",
+    "kernel_arm": "success",
+    "graph": "success",
+    "already_in_ncnn": false,
+    "e2e": true,
+    "production": true,
+    "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
+  },
+  "Mul": {
+    "category": "Binary",
+    "elapsed_s": 153.2,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "crash",
+    "tail": "\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'cmake'\n"
+  },
+  "Conv": {
+    "category": "Convolution",
+    "elapsed_s": 1800.1,
+    "returncode": -1,
+    "timed_out": true,
+    "status": "timeout",
+    "tail": "TIMEOUT"
+  },
+  "And": {
+    "category": "Logic",
+    "elapsed_s": 192.8,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "crash",
+    "tail": "\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'cmake'\n"
+  },
+  "Greater": {
+    "category": "Logic",
+    "elapsed_s": 933.6,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "kernel": "success",
+    "kernel_arm": "success",
+    "graph": "skipped (already supported by ncnn)",
+    "already_in_ncnn": true,
+    "e2e": true,
+    "production": true,
+    "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
+  },
+  "Gemm": {
+    "category": "Matrix",
+    "elapsed_s": 201.9,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "crash",
+    "tail": "\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'cmake'\n"
+  },
+  "BatchNormalization": {
+    "category": "Normalization",
+    "elapsed_s": 369.8,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "crash",
+    "tail": "\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'cmake'\n"
+  },
+  "AveragePool": {
+    "category": "Pooling",
+    "elapsed_s": 230.2,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "crash",
+    "tail": "\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/homebrew/Cellar/python@3.12/3.12.13_2/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'cmake'\n"
+  },
+  "Abs": {
+    "category": "Unary",
+    "elapsed_s": 166.6,
+    "returncode": 1,
+    "timed_out": false,
+    "status": "success",
+    "kernel": "success",
+    "kernel_arm": null,
+    "graph": "success",
+    "already_in_ncnn": false,
+    "e2e": null,
+    "production": null,
+    "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
+  }
+}
