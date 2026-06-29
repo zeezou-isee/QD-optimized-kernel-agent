@@ -295,13 +295,40 @@ def _force_target_block(force_target: str | None) -> str:
             f"params/inputs that '{force_target}' needs (often none for a simple elementwise op).\n")
 
 
+def _target_interface_block(target_layer: str | None) -> str:
+    """Inject the ncnn built-in interface of `target_layer`, when known.
+
+    Used when the GraphAgent is asked to emit a pass_ncnn that targets an
+    EXISTING ncnn layer (not a new Cand_<Op>). The block tells the LLM the
+    exact param IDs it must use in `op->params["N"] = ...` and the exact
+    weight write order in `op->weights`.
+
+    Returns "" when target_layer is empty or unknown (new layers,
+    Cand_<Op>) — in that case the LLM is on its own, which is correct:
+    a brand-new layer's interface is whatever the KernelAgent wrote.
+    """
+    if not target_layer:
+        return ""
+    try:
+        from lookup import render_for_prompt
+    except ImportError:
+        return ""
+    block = render_for_prompt(target_layer, role="graph")
+    if not block:
+        return ""
+    return "\n" + block + "\n"
+
+
 def coder_prompt(profile: OpProfile, examples: dict[str, str], model_code: str,
                  grounding: dict | None = None, force_target: str | None = None) -> str:
+    # target the LLM should align with: explicit force_target wins, else the
+    # profile's own target_ncnn_layer (which the analyzer chose from the IR)
+    target = force_target or getattr(profile, "target_ncnn_layer", "") or ""
     return f"""You implement the ncnn graph-conversion passes for an operator.
 
 {PNNX_BACKGROUND}
 {_force_target_block(force_target)}
-
+{_target_interface_block(target)}
 Operator profile (from analysis):
 {json.dumps(profile.to_dict(), ensure_ascii=False, indent=2)}
 
@@ -340,12 +367,14 @@ _PHASE_FRAMING = {
 def debugger_prompt(phase: str, profile: OpProfile, code_book: dict[str, str], feedback: str, memory: str, grounding: dict | None = None, force_target: str | None = None) -> str:
     framing = _PHASE_FRAMING.get(phase, "The conversion failed.")
     current = "\n\n".join(f"----- {p} -----\n{c}" for p, c in code_book.items()) or "(none)"
+    target = force_target or getattr(profile, "target_ncnn_layer", "") or ""
     return f"""You are repairing an ncnn graph-conversion implementation.
 
 Situation: {framing}
 
 {PNNX_BACKGROUND}
 {_force_target_block(force_target)}
+{_target_interface_block(target)}
 
 Operator profile:
 {json.dumps(profile.to_dict(), ensure_ascii=False, indent=2)}

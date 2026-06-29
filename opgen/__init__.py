@@ -30,6 +30,7 @@ _FLAT_SUBDIRS = (
     "optimize",
     "layer_oracle",    # already a self-contained package, but its package dir
                        # must also be on sys.path so `from layer_oracle import ...` works
+    "ncnn_interface",  # same rationale: `from ncnn_interface.lookup import ...`
     "tools",
 )
 

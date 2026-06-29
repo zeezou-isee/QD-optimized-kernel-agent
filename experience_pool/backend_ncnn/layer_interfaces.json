@@ -1,0 +1,6486 @@
+[
+  {
+    "name": "AbsVal",
+    "header": "absval.h",
+    "source": "absval.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "ArgMax",
+    "header": "argmax.h",
+    "source": "argmax.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "out_max_val",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "topk",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "BatchNorm",
+    "header": "batchnorm.h",
+    "source": "batchnorm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "channels",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "eps",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "slope_data",
+        "size_expr": "channels",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "mean_data",
+        "size_expr": "channels",
+        "flag": 1
+      },
+      {
+        "index": 2,
+        "var": "var_data",
+        "size_expr": "channels",
+        "flag": 1
+      },
+      {
+        "index": 3,
+        "var": "bias_data",
+        "size_expr": "channels",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Bias",
+    "header": "bias.h",
+    "source": "bias.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "bias_data_size",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "bias_data",
+        "size_expr": "bias_data_size",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "BinaryOp",
+    "header": "binaryop.h",
+    "source": "binaryop.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const",
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "op_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "with_scalar",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "b",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to true depending on params (see source)",
+      "load_param may toggle support_inplace to true depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "BNLL",
+    "header": "bnll.h",
+    "source": "bnll.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Cast",
+    "header": "cast.h",
+    "source": "cast.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "type_from",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "type_to",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "CELU",
+    "header": "celu.h",
+    "source": "celu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "1.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Clip",
+    "header": "clip.h",
+    "source": "clip.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "min",
+        "default": "-FLT_MAX",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "max",
+        "default": "FLT_MAX",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Concat",
+    "header": "concat.h",
+    "source": "concat.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Convolution",
+    "header": "convolution.h",
+    "source": "convolution.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      },
+      {
+        "index": 2,
+        "var": "weight_data_int8_scales",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      },
+      {
+        "index": 3,
+        "var": "bottom_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      },
+      {
+        "index": 4,
+        "var": "top_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1,
+        "conditional": "int8_scale_term > 100"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "doc_only",
+        "id": 17,
+        "name": "impl_type"
+      },
+      {
+        "type": "src_only",
+        "id": 19,
+        "name": "dynamic_weight"
+      }
+    ]
+  },
+  {
+    "name": "Convolution1D",
+    "header": "convolution1d.h",
+    "source": "convolution1d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Convolution3D",
+    "header": "convolution3d.h",
+    "source": "convolution3d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 17,
+        "name": "pad_behind",
+        "default": "pad_front",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "kernel_d",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 22,
+        "name": "dilation_d",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 23,
+        "name": "stride_d",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 24,
+        "name": "pad_front",
+        "default": "pad_left",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "ConvolutionDepthWise",
+    "header": "convolutiondepthwise.h",
+    "source": "convolutiondepthwise.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      },
+      {
+        "index": 2,
+        "var": "weight_data_int8_scales",
+        "size_expr": "group",
+        "flag": 1,
+        "conditional": "int8_scale_term == 1 || int8_scale_term == 101"
+      },
+      {
+        "index": 3,
+        "var": "bottom_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1,
+        "conditional": "int8_scale_term == 1 || int8_scale_term == 101"
+      },
+      {
+        "index": 4,
+        "var": "weight_data_int8_scales",
+        "size_expr": "1",
+        "flag": 1
+      },
+      {
+        "index": 5,
+        "var": "bottom_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1
+      },
+      {
+        "index": 6,
+        "var": "top_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1,
+        "conditional": "int8_scale_term > 100"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 19,
+        "name": "dynamic_weight"
+      }
+    ]
+  },
+  {
+    "name": "ConvolutionDepthWise1D",
+    "header": "convolutiondepthwise1d.h",
+    "source": "convolutiondepthwise1d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "ConvolutionDepthWise3D",
+    "header": "convolutiondepthwise3d.h",
+    "source": "convolutiondepthwise3d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 17,
+        "name": "pad_behind",
+        "default": "pad_front",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "kernel_d",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 22,
+        "name": "dilation_d",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 23,
+        "name": "stride_d",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 24,
+        "name": "pad_front",
+        "default": "pad_left",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "CopyTo",
+    "header": "copyto.h",
+    "source": "copyto.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "woffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "hoffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "coffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "starts",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 13,
+        "name": "doffset",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Crop",
+    "header": "crop.h",
+    "source": "crop.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "woffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "hoffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "coffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "outw",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "outh",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "outc",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "woffset2",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "hoffset2",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "coffset2",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "starts",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "ends",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 13,
+        "name": "doffset",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 14,
+        "name": "outd",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "doffset2",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "starts_expr",
+        "default": "\"\"",
+        "default_is_var": false
+      },
+      {
+        "id": 20,
+        "name": "ends_expr",
+        "default": "\"\"",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "axes_expr",
+        "default": "\"\"",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)",
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 13,
+        "name": "doffset"
+      },
+      {
+        "type": "src_only",
+        "id": 14,
+        "name": "outd"
+      },
+      {
+        "type": "src_only",
+        "id": 15,
+        "name": "doffset2"
+      },
+      {
+        "type": "src_only",
+        "id": 19,
+        "name": "starts_expr"
+      },
+      {
+        "type": "src_only",
+        "id": 20,
+        "name": "ends_expr"
+      },
+      {
+        "type": "src_only",
+        "id": 21,
+        "name": "axes_expr"
+      }
+    ]
+  },
+  {
+    "name": "CumulativeSum",
+    "header": "cumulativesum.h",
+    "source": "cumulativesum.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Deconvolution",
+    "header": "deconvolution.h",
+    "source": "deconvolution.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "output_pad_bottom",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 20,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "output_h",
+        "default": "output_w",
+        "default_is_var": true
+      },
+      {
+        "id": 28,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 28,
+        "name": "dynamic_weight"
+      }
+    ]
+  },
+  {
+    "name": "Deconvolution1D",
+    "header": "deconvolution1d.h",
+    "source": "deconvolution1d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 20,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 28,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Deconvolution3D",
+    "header": "deconvolution3d.h",
+    "source": "deconvolution3d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 17,
+        "name": "pad_behind",
+        "default": "pad_front",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "output_pad_bottom",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 20,
+        "name": "output_pad_behind",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 21,
+        "name": "kernel_d",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 22,
+        "name": "dilation_d",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 23,
+        "name": "stride_d",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 24,
+        "name": "pad_front",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 25,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 26,
+        "name": "output_h",
+        "default": "output_w",
+        "default_is_var": true
+      },
+      {
+        "id": 27,
+        "name": "output_d",
+        "default": "output_w",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "DeconvolutionDepthWise",
+    "header": "deconvolutiondepthwise.h",
+    "source": "deconvolutiondepthwise.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "output_pad_bottom",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 20,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "output_h",
+        "default": "output_w",
+        "default_is_var": true
+      },
+      {
+        "id": 28,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 28,
+        "name": "dynamic_weight"
+      }
+    ]
+  },
+  {
+    "name": "DeconvolutionDepthWise1D",
+    "header": "deconvolutiondepthwise1d.h",
+    "source": "deconvolutiondepthwise1d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 20,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 28,
+        "name": "dynamic_weight",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "DeconvolutionDepthWise3D",
+    "header": "deconvolutiondepthwise3d.h",
+    "source": "deconvolutiondepthwise3d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 17,
+        "name": "pad_behind",
+        "default": "pad_front",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "output_pad_right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 19,
+        "name": "output_pad_bottom",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 20,
+        "name": "output_pad_behind",
+        "default": "output_pad_right",
+        "default_is_var": true
+      },
+      {
+        "id": 21,
+        "name": "kernel_d",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 22,
+        "name": "dilation_d",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 23,
+        "name": "stride_d",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 24,
+        "name": "pad_front",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 25,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 26,
+        "name": "output_h",
+        "default": "output_w",
+        "default_is_var": true
+      },
+      {
+        "id": 27,
+        "name": "output_d",
+        "default": "output_w",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "DeepCopy",
+    "header": "deepcopy.h",
+    "source": "deepcopy.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "DeformableConv2D",
+    "header": "deformableconv2d.h",
+    "source": "deformableconv2d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Dequantize",
+    "header": "dequantize.h",
+    "source": "dequantize.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "scale_data_size",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "bias_data_size",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "scale_data",
+        "size_expr": "scale_data_size",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "bias_data_size",
+        "flag": 1,
+        "conditional": "bias_data_size"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "scale",
+        "src": "scale_data_size"
+      },
+      {
+        "type": "name_diff",
+        "id": 1,
+        "doc": "bias_term",
+        "src": "bias_data_size"
+      },
+      {
+        "type": "doc_only",
+        "id": 2,
+        "name": "bias_data_size"
+      }
+    ]
+  },
+  {
+    "name": "DetectionOutput",
+    "header": "detectionoutput.h",
+    "source": "detectionoutput.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_class",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "nms_threshold",
+        "default": "0.05f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "nms_top_k",
+        "default": "300",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "keep_top_k",
+        "default": "100",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "confidence_threshold",
+        "default": "0.5f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "doc_only",
+        "id": 5,
+        "name": "variances[0]"
+      },
+      {
+        "type": "doc_only",
+        "id": 6,
+        "name": "variances[1]"
+      },
+      {
+        "type": "doc_only",
+        "id": 7,
+        "name": "variances[2]"
+      },
+      {
+        "type": "doc_only",
+        "id": 8,
+        "name": "variances[3]"
+      }
+    ]
+  },
+  {
+    "name": "Diag",
+    "header": "diag.h",
+    "source": "diag.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "diagonal",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Dropout",
+    "header": "dropout.h",
+    "source": "dropout.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "scale",
+        "default": "1.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Einsum",
+    "header": "einsum.h",
+    "source": "einsum.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "equation_mat",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Eltwise",
+    "header": "eltwise.h",
+    "source": "eltwise.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "op_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "coeffs",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "ELU",
+    "header": "elu.h",
+    "source": "elu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "0.1f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Embed",
+    "header": "embed.h",
+    "source": "embed.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "input_dim",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 18,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 18,
+        "name": "int8_scale_term"
+      }
+    ]
+  },
+  {
+    "name": "Erf",
+    "header": "erf.h",
+    "source": "erf.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Exp",
+    "header": "exp.h",
+    "source": "exp.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "base",
+        "default": "-1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "shift",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "ExpandDims",
+    "header": "expanddims.h",
+    "source": "expanddims.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 3,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "doc_only",
+        "id": 0,
+        "name": "expand_w"
+      },
+      {
+        "type": "doc_only",
+        "id": 1,
+        "name": "expand_h"
+      },
+      {
+        "type": "doc_only",
+        "id": 2,
+        "name": "expand_c"
+      }
+    ]
+  },
+  {
+    "name": "Flatten",
+    "header": "flatten.h",
+    "source": "flatten.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Flip",
+    "header": "flip.h",
+    "source": "flip.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Fold",
+    "header": "fold.h",
+    "source": "fold.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 20,
+        "name": "output_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "output_h",
+        "default": "output_w",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "GELU",
+    "header": "gelu.h",
+    "source": "gelu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "fast_gelu",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Gemm",
+    "header": "gemm.h",
+    "source": "gemm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "beta",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "transA",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "transB",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "constantA",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "constantB",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "constantC",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "constantM",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "constantN",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "constantK",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "constant_broadcast_type_C",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "output_N1M",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 12,
+        "name": "output_elempack",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 13,
+        "name": "output_elemtype",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 14,
+        "name": "output_transpose",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 18,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 20,
+        "name": "constant_TILE_M",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "constant_TILE_N",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 22,
+        "name": "constant_TILE_K",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "C_data",
+        "size_expr": "1",
+        "flag": 0,
+        "conditional": "constantC == 1 && constant_broadcast_type_C != -1"
+      },
+      {
+        "index": 1,
+        "var": "C_data",
+        "size_expr": "constantM",
+        "flag": 0,
+        "conditional": "constantC == 1 && constant_broadcast_type_C != -1"
+      },
+      {
+        "index": 2,
+        "var": "A_data_int8_scales",
+        "size_expr": "constantM",
+        "flag": 1,
+        "conditional": "constantA == 1"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to true depending on params (see source)",
+      "load_param may toggle one_blob_only to true depending on params (see source)",
+      "load_param may toggle one_blob_only to true depending on params (see source)"
+    ],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "GLU",
+    "header": "glu.h",
+    "source": "glu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "GridSample",
+    "header": "gridsample.h",
+    "source": "gridsample.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "sample_type",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "padding_mode",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "align_corner",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "permute_fusion",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "GroupNorm",
+    "header": "groupnorm.h",
+    "source": "groupnorm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "channels",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "eps",
+        "default": "0.001f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "affine",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "gamma_data",
+        "size_expr": "channels",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "beta_data",
+        "size_expr": "channels",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "GRU",
+    "header": "gru.h",
+    "source": "gru.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "direction",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "HardSigmoid",
+    "header": "hardsigmoid.h",
+    "source": "hardsigmoid.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "0.2f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "beta",
+        "default": "0.5f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "HardSwish",
+    "header": "hardswish.h",
+    "source": "hardswish.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "0.2f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "beta",
+        "default": "0.5f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "InnerProduct",
+    "header": "innerproduct.h",
+    "source": "innerproduct.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "weight_data",
+        "size_expr": "weight_data_size",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "bias_term"
+      },
+      {
+        "index": 2,
+        "var": "weight_data_int8_scales",
+        "size_expr": "num_output",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      },
+      {
+        "index": 3,
+        "var": "bottom_blob_int8_scales",
+        "size_expr": "1",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Input",
+    "header": "input.h",
+    "source": "input.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const",
+      "int forward_inplace(VkMat& bottom_top_blob, VkCompute& cmd, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "h",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "c",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "d",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 11,
+        "name": "d"
+      }
+    ]
+  },
+  {
+    "name": "InstanceNorm",
+    "header": "instancenorm.h",
+    "source": "instancenorm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "channels",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "eps",
+        "default": "0.001f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "affine",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "gamma_data",
+        "size_expr": "channels",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "beta_data",
+        "size_expr": "channels",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 2,
+        "name": "affine"
+      }
+    ]
+  },
+  {
+    "name": "Interp",
+    "header": "interp.h",
+    "source": "interp.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "resize_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "height_scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "width_scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "output_height",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "output_width",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "dynamic_target_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "align_corner",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "size_expr",
+        "default": "\"\"",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)",
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 5,
+        "name": "dynamic_target_size"
+      },
+      {
+        "type": "src_only",
+        "id": 6,
+        "name": "align_corner"
+      },
+      {
+        "type": "src_only",
+        "id": 9,
+        "name": "size_expr"
+      }
+    ]
+  },
+  {
+    "name": "InverseSpectrogram",
+    "header": "inversespectrogram.h",
+    "source": "inversespectrogram.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "n_fft",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "returns",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "hoplen",
+        "default": "n_fft / 4",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "winlen",
+        "default": "n_fft",
+        "default_is_var": true
+      },
+      {
+        "id": 4,
+        "name": "window_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "center",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "normalized",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "LayerNorm",
+    "header": "layernorm.h",
+    "source": "layernorm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "affine_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "eps",
+        "default": "0.001f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "affine",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "gamma_data",
+        "size_expr": "affine_size",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "beta_data",
+        "size_expr": "affine_size",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Log",
+    "header": "log.h",
+    "source": "log.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "base",
+        "default": "-1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "shift",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "LRN",
+    "header": "lrn.h",
+    "source": "lrn.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "region_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "local_size",
+        "default": "5",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "alpha",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "beta",
+        "default": "0.75f",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "bias",
+        "default": "1.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "LSTM",
+    "header": "lstm.h",
+    "source": "lstm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "direction",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "hidden_size",
+        "default": "num_output",
+        "default_is_var": true
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 3,
+        "name": "hidden_size"
+      },
+      {
+        "type": "src_only",
+        "id": 8,
+        "name": "int8_scale_term"
+      }
+    ]
+  },
+  {
+    "name": "MatMul",
+    "header": "matmul.h",
+    "source": "matmul.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "transB",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "MemoryData",
+    "header": "memorydata.h",
+    "source": "memorydata.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "h",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "c",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "d",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 21,
+        "name": "load_type",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 11,
+        "name": "d"
+      },
+      {
+        "type": "src_only",
+        "id": 21,
+        "name": "load_type"
+      }
+    ]
+  },
+  {
+    "name": "Mish",
+    "header": "mish.h",
+    "source": "mish.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "MultiHeadAttention",
+    "header": "multiheadattention.h",
+    "source": "multiheadattention.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "embed_dim",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "num_heads",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "kdim",
+        "default": "embed_dim",
+        "default_is_var": true
+      },
+      {
+        "id": 4,
+        "name": "vdim",
+        "default": "embed_dim",
+        "default_is_var": true
+      },
+      {
+        "id": 5,
+        "name": "attn_mask",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "scale",
+        "default": "1.f / sqrtf(embed_dim / num_heads)",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "kv_cache",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 18,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "q_weight_data",
+        "size_expr": "embed_dim * qdim",
+        "flag": 0
+      },
+      {
+        "index": 1,
+        "var": "q_bias_data",
+        "size_expr": "embed_dim",
+        "flag": 1
+      },
+      {
+        "index": 2,
+        "var": "k_weight_data",
+        "size_expr": "embed_dim * kdim",
+        "flag": 0
+      },
+      {
+        "index": 3,
+        "var": "k_bias_data",
+        "size_expr": "embed_dim",
+        "flag": 1
+      },
+      {
+        "index": 4,
+        "var": "v_weight_data",
+        "size_expr": "embed_dim * vdim",
+        "flag": 0
+      },
+      {
+        "index": 5,
+        "var": "v_bias_data",
+        "size_expr": "embed_dim",
+        "flag": 1
+      },
+      {
+        "index": 6,
+        "var": "out_weight_data",
+        "size_expr": "qdim * embed_dim",
+        "flag": 0
+      },
+      {
+        "index": 7,
+        "var": "out_bias_data",
+        "size_expr": "qdim",
+        "flag": 1
+      },
+      {
+        "index": 8,
+        "var": "q_weight_data_int8_scales",
+        "size_expr": "embed_dim",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      },
+      {
+        "index": 9,
+        "var": "k_weight_data_int8_scales",
+        "size_expr": "embed_dim",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      },
+      {
+        "index": 10,
+        "var": "v_weight_data_int8_scales",
+        "size_expr": "embed_dim",
+        "flag": 1,
+        "conditional": "int8_scale_term"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 1,
+        "doc": "num_head",
+        "src": "num_heads"
+      },
+      {
+        "type": "src_only",
+        "id": 3,
+        "name": "kdim"
+      },
+      {
+        "type": "src_only",
+        "id": 4,
+        "name": "vdim"
+      },
+      {
+        "type": "src_only",
+        "id": 5,
+        "name": "attn_mask"
+      },
+      {
+        "type": "src_only",
+        "id": 6,
+        "name": "scale"
+      },
+      {
+        "type": "src_only",
+        "id": 7,
+        "name": "kv_cache"
+      },
+      {
+        "type": "src_only",
+        "id": 18,
+        "name": "int8_scale_term"
+      }
+    ]
+  },
+  {
+    "name": "MVN",
+    "header": "mvn.h",
+    "source": "mvn.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "normalize_variance",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "across_channels",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "eps",
+        "default": "0.0001f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Noop",
+    "header": "noop.h",
+    "source": "noop.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(std::vector<Mat>& bottom_top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Normalize",
+    "header": "normalize.h",
+    "source": "normalize.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "across_spatial",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "channel_shared",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "eps",
+        "default": "0.0001f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "scale_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "across_channel",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "eps_mode",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "scale_data",
+        "size_expr": "scale_data_size",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Packing",
+    "header": "packing.h",
+    "source": "packing.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "out_elempack",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "use_padding",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "cast_type_from",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "cast_type_to",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "out_packing",
+        "src": "out_elempack"
+      },
+      {
+        "type": "doc_only",
+        "id": 4,
+        "name": "storage_type_from"
+      },
+      {
+        "type": "doc_only",
+        "id": 5,
+        "name": "storage_type_to"
+      }
+    ]
+  },
+  {
+    "name": "Padding",
+    "header": "padding.h",
+    "source": "padding.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "top",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "bottom",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "right",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "value",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "per_channel_pad_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "front",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "behind",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "per_channel_pad_data",
+        "size_expr": "per_channel_pad_data_size",
+        "flag": 1,
+        "conditional": "per_channel_pad_data_size"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Permute",
+    "header": "permute.h",
+    "source": "permute.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "order_type",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "PixelShuffle",
+    "header": "pixelshuffle.h",
+    "source": "pixelshuffle.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "upscale_factor",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "mode",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 1,
+        "name": "mode"
+      }
+    ]
+  },
+  {
+    "name": "Pooling",
+    "header": "pooling.h",
+    "source": "pooling.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooling_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "global_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "pad_mode",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "avgpool_count_include_pad",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "adaptive_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "out_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "out_h",
+        "default": "out_w",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "pooling_type(0: max 1: avg)",
+        "src": "pooling_type"
+      },
+      {
+        "type": "src_only",
+        "id": 6,
+        "name": "avgpool_count_include_pad"
+      },
+      {
+        "type": "src_only",
+        "id": 7,
+        "name": "adaptive_pooling"
+      },
+      {
+        "type": "src_only",
+        "id": 8,
+        "name": "out_w"
+      },
+      {
+        "type": "src_only",
+        "id": 18,
+        "name": "out_h"
+      }
+    ]
+  },
+  {
+    "name": "Pooling1D",
+    "header": "pooling1d.h",
+    "source": "pooling1d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooling_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "global_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "pad_mode",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "avgpool_count_include_pad",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "adaptive_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "out_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 14,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Pooling3D",
+    "header": "pooling3d.h",
+    "source": "pooling3d.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooling_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "global_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "pad_mode",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "avgpool_count_include_pad",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "adaptive_pooling",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "out_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_behind",
+        "default": "pad_front",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "out_h",
+        "default": "out_w",
+        "default_is_var": true
+      },
+      {
+        "id": 21,
+        "name": "kernel_d",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 22,
+        "name": "stride_d",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 23,
+        "name": "pad_front",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 28,
+        "name": "out_d",
+        "default": "out_w",
+        "default_is_var": true
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Power",
+    "header": "power.h",
+    "source": "power.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "power",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "shift",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "PReLU",
+    "header": "prelu.h",
+    "source": "prelu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_slope",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "slope_data",
+        "size_expr": "num_slope",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "PriorBox",
+    "header": "priorbox.h",
+    "source": "priorbox.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "min_sizes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "max_sizes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "aspect_ratios",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "flip",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "clip",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 9,
+        "name": "image_width",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 10,
+        "name": "image_height",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "step_width",
+        "default": "-233.f",
+        "default_is_var": false
+      },
+      {
+        "id": 12,
+        "name": "step_height",
+        "default": "-233.f",
+        "default_is_var": false
+      },
+      {
+        "id": 13,
+        "name": "offset",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 14,
+        "name": "step_mmdetection",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 15,
+        "name": "center_mmdetection",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "doc_only",
+        "id": 3,
+        "name": "varainces[0]"
+      },
+      {
+        "type": "doc_only",
+        "id": 4,
+        "name": "varainces[1]"
+      },
+      {
+        "type": "doc_only",
+        "id": 5,
+        "name": "varainces[2]"
+      },
+      {
+        "type": "doc_only",
+        "id": 6,
+        "name": "varainces[3]"
+      }
+    ]
+  },
+  {
+    "name": "Proposal",
+    "header": "proposal.h",
+    "source": "proposal.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "feat_stride",
+        "default": "16",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "base_size",
+        "default": "16",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "pre_nms_topN",
+        "default": "6000",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "after_nms_topN",
+        "default": "300",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "nms_thresh",
+        "default": "0.7f",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "min_size",
+        "default": "16",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 4,
+        "doc": "num_thresh",
+        "src": "nms_thresh"
+      }
+    ]
+  },
+  {
+    "name": "PSROIPooling",
+    "header": "psroipooling.h",
+    "source": "psroipooling.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooled_width",
+        "default": "7",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "pooled_height",
+        "default": "7",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "spatial_scale",
+        "default": "0.0625f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "output_dim",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Quantize",
+    "header": "quantize.h",
+    "source": "quantize.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "scale_data_size",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "scale_data",
+        "size_expr": "scale_data_size",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "scale",
+        "src": "scale_data_size"
+      }
+    ]
+  },
+  {
+    "name": "Reduction",
+    "header": "reduction.h",
+    "source": "reduction.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "operation",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "reduce_all",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "coeff",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "keepdims",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "fixbug0",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 1,
+        "doc": "dim",
+        "src": "reduce_all"
+      },
+      {
+        "type": "src_only",
+        "id": 5,
+        "name": "fixbug0"
+      }
+    ]
+  },
+  {
+    "name": "ReLU",
+    "header": "relu.h",
+    "source": "relu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "slope",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Reorg",
+    "header": "reorg.h",
+    "source": "reorg.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "stride",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "mode",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 1,
+        "name": "mode"
+      }
+    ]
+  },
+  {
+    "name": "Requantize",
+    "header": "requantize.h",
+    "source": "requantize.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "scale_in_data_size",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "scale_out_data_size",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "bias_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "activation_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "activation_params",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "scale_in_data",
+        "size_expr": "scale_in_data_size",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "scale_out_data",
+        "size_expr": "scale_out_data_size",
+        "flag": 1
+      },
+      {
+        "index": 2,
+        "var": "bias_data",
+        "size_expr": "bias_data_size",
+        "flag": 1,
+        "conditional": "bias_data_size"
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "scale_in",
+        "src": "scale_in_data_size"
+      },
+      {
+        "type": "name_diff",
+        "id": 1,
+        "doc": "scale_out",
+        "src": "scale_out_data_size"
+      },
+      {
+        "type": "name_diff",
+        "id": 2,
+        "doc": "bias_term",
+        "src": "bias_data_size"
+      },
+      {
+        "type": "name_diff",
+        "id": 3,
+        "doc": "bias_data_size",
+        "src": "activation_type"
+      },
+      {
+        "type": "name_diff",
+        "id": 4,
+        "doc": "fusion_relu",
+        "src": "activation_params"
+      }
+    ]
+  },
+  {
+    "name": "Reshape",
+    "header": "reshape.h",
+    "source": "reshape.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "w",
+        "default": "-233",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "h",
+        "default": "-233",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "c",
+        "default": "-233",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "shape_expr",
+        "default": "\"\"",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "d",
+        "default": "-233",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "doc_only",
+        "id": 3,
+        "name": "permute"
+      },
+      {
+        "type": "src_only",
+        "id": 6,
+        "name": "shape_expr"
+      },
+      {
+        "type": "src_only",
+        "id": 11,
+        "name": "d"
+      }
+    ]
+  },
+  {
+    "name": "RMSNorm",
+    "header": "rmsnorm.h",
+    "source": "rmsnorm.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "affine_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "eps",
+        "default": "0.001f",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "affine",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "gamma_data",
+        "size_expr": "affine_size",
+        "flag": 1
+      }
+    ],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "RNN",
+    "header": "rnn.h",
+    "source": "rnn.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const",
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_output",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "weight_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "direction",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 8,
+        "name": "int8_scale_term"
+      }
+    ]
+  },
+  {
+    "name": "ROIAlign",
+    "header": "roialign.h",
+    "source": "roialign.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooled_width",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "pooled_height",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "spatial_scale",
+        "default": "1.f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "sampling_ratio",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "aligned",
+        "default": "false",
+        "default_is_var": true
+      },
+      {
+        "id": 5,
+        "name": "version",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "ROIPooling",
+    "header": "roipooling.h",
+    "source": "roipooling.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooled_width",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "pooled_height",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "spatial_scale",
+        "default": "1.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "RotaryEmbed",
+    "header": "rotaryembed.h",
+    "source": "rotaryembed.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "interleaved",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Scale",
+    "header": "scale.h",
+    "source": "scale.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(std::vector<Mat>& bottom_top_blobs, const Option& opt) const",
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "scale_data_size",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "bias_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [
+      {
+        "index": 0,
+        "var": "scale_data",
+        "size_expr": "scale_data_size",
+        "flag": 1
+      },
+      {
+        "index": 1,
+        "var": "bias_data",
+        "size_expr": "scale_data_size",
+        "flag": 1,
+        "conditional": "bias_term"
+      }
+    ],
+    "parse_warnings": [
+      "load_param may toggle one_blob_only to false depending on params (see source)"
+    ],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "SDPA",
+    "header": "sdpa.h",
+    "source": "sdpa.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 5,
+        "name": "attn_mask",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "scale",
+        "default": "0.f",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "kv_cache",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 18,
+        "name": "int8_scale_term",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "SELU",
+    "header": "selu.h",
+    "source": "selu.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "alpha",
+        "default": "1.67326324f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "lambda",
+        "default": "1.050700987f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Shrink",
+    "header": "shrink.h",
+    "source": "shrink.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "bias",
+        "default": "0.0f",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "lambd",
+        "default": "0.5f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "ShuffleChannel",
+    "header": "shufflechannel.h",
+    "source": "shufflechannel.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "group",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "reverse",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 1,
+        "name": "reverse"
+      }
+    ]
+  },
+  {
+    "name": "Sigmoid",
+    "header": "sigmoid.h",
+    "source": "sigmoid.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Slice",
+    "header": "slice.h",
+    "source": "slice.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "slices",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "indices",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 2,
+        "name": "indices"
+      }
+    ]
+  },
+  {
+    "name": "Softmax",
+    "header": "softmax.h",
+    "source": "softmax.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "fixbug0",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 1,
+        "name": "fixbug0"
+      }
+    ]
+  },
+  {
+    "name": "Softplus",
+    "header": "softplus.h",
+    "source": "softplus.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Spectrogram",
+    "header": "spectrogram.h",
+    "source": "spectrogram.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "n_fft",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "power",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "hoplen",
+        "default": "n_fft / 4",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "winlen",
+        "default": "n_fft",
+        "default_is_var": true
+      },
+      {
+        "id": 4,
+        "name": "window_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "center",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "pad_type",
+        "default": "2",
+        "default_is_var": false
+      },
+      {
+        "id": 7,
+        "name": "normalized",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 8,
+        "name": "onesided",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "Split",
+    "header": "split.h",
+    "source": "split.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "SPP",
+    "header": "spp.h",
+    "source": "spp.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "pooling_type",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "pyramid_height",
+        "default": "1",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Squeeze",
+    "header": "squeeze.h",
+    "source": "squeeze.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "squeeze_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "squeeze_h",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "squeeze_c",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "axes",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "squeeze_d",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "src_only",
+        "id": 11,
+        "name": "squeeze_d"
+      }
+    ]
+  },
+  {
+    "name": "StatisticsPooling",
+    "header": "statisticspooling.h",
+    "source": "statisticspooling.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "include_stddev",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Swish",
+    "header": "swish.h",
+    "source": "swish.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "TanH",
+    "header": "tanh.h",
+    "source": "tanh.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Threshold",
+    "header": "threshold.h",
+    "source": "threshold.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "threshold",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Tile",
+    "header": "tile.h",
+    "source": "tile.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "axis",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "tiles",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "repeats",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 0,
+        "doc": "dim",
+        "src": "axis"
+      },
+      {
+        "type": "src_only",
+        "id": 2,
+        "name": "repeats"
+      }
+    ]
+  },
+  {
+    "name": "UnaryOp",
+    "header": "unaryop.h",
+    "source": "unaryop.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(Mat& bottom_top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "op_type",
+        "default": "0",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": []
+  },
+  {
+    "name": "Unfold",
+    "header": "unfold.h",
+    "source": "unfold.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const"
+    ],
+    "one_blob_only_default": true,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 1,
+        "name": "kernel_w",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "dilation_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "stride_w",
+        "default": "1",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "pad_left",
+        "default": "0",
+        "default_is_var": false
+      },
+      {
+        "id": 11,
+        "name": "kernel_h",
+        "default": "kernel_w",
+        "default_is_var": true
+      },
+      {
+        "id": 12,
+        "name": "dilation_h",
+        "default": "dilation_w",
+        "default_is_var": true
+      },
+      {
+        "id": 13,
+        "name": "stride_h",
+        "default": "stride_w",
+        "default_is_var": true
+      },
+      {
+        "id": 14,
+        "name": "pad_top",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 15,
+        "name": "pad_right",
+        "default": "pad_left",
+        "default_is_var": true
+      },
+      {
+        "id": 16,
+        "name": "pad_bottom",
+        "default": "pad_top",
+        "default_is_var": true
+      },
+      {
+        "id": 18,
+        "name": "pad_value",
+        "default": "0.f",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": false,
+    "mismatches": []
+  },
+  {
+    "name": "YoloDetectionOutput",
+    "header": "yolodetectionoutput.h",
+    "source": "yolodetectionoutput.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward_inplace(std::vector<Mat>& bottom_top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": true,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_class",
+        "default": "20",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "num_box",
+        "default": "5",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "confidence_threshold",
+        "default": "0.01f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "nms_threshold",
+        "default": "0.45f",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "biases",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 3,
+        "doc": "num_threshold",
+        "src": "nms_threshold"
+      }
+    ]
+  },
+  {
+    "name": "Yolov3DetectionOutput",
+    "header": "yolov3detectionoutput.h",
+    "source": "yolov3detectionoutput.cpp",
+    "base_class": "Layer",
+    "forward_signatures": [
+      "int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const"
+    ],
+    "one_blob_only_default": false,
+    "support_inplace_default": false,
+    "params": [
+      {
+        "id": 0,
+        "name": "num_class",
+        "default": "20",
+        "default_is_var": false
+      },
+      {
+        "id": 1,
+        "name": "num_box",
+        "default": "5",
+        "default_is_var": false
+      },
+      {
+        "id": 2,
+        "name": "confidence_threshold",
+        "default": "0.01f",
+        "default_is_var": false
+      },
+      {
+        "id": 3,
+        "name": "nms_threshold",
+        "default": "0.45f",
+        "default_is_var": false
+      },
+      {
+        "id": 4,
+        "name": "biases",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 5,
+        "name": "mask",
+        "default": "Mat()",
+        "default_is_var": false
+      },
+      {
+        "id": 6,
+        "name": "anchors_scale",
+        "default": "Mat()",
+        "default_is_var": false
+      }
+    ],
+    "weights_load_order": [],
+    "parse_warnings": [],
+    "doc_table_present": true,
+    "mismatches": [
+      {
+        "type": "name_diff",
+        "id": 3,
+        "doc": "num_threshold",
+        "src": "nms_threshold"
+      }
+    ]
+  }
+]

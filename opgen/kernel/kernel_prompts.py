@@ -251,7 +251,36 @@ def _introspect(intro: dict | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+def _interface_reference_block(task_name: str) -> str:
+    """Inject the ncnn built-in layer interface for this task, when known.
+
+    Returns an empty string for tasks whose analog ncnn layer can't be guessed,
+    or whose layer isn't in the dictionary. The KernelAgent stays free to make
+    its own decisions in that case (no regression on novel ops).
+    """
+    # late import keeps this lookup optional: tests / standalone callers that
+    # don't bootstrap_paths still work, they just won't get the reference block.
+    try:
+        from lookup import guess_layer_from_task, render_for_prompt
+    except ImportError:
+        return ""
+    layer = guess_layer_from_task(task_name)
+    if not layer:
+        return ""
+    block = render_for_prompt(layer, role="kernel")
+    if not block:
+        return ""
+    return (
+        f"\n{block}\n"
+        f"NOTE: the above is the EXACT interface of the corresponding ncnn "
+        f"built-in layer. Your `params` keys and `weight_keys` order MUST follow it. "
+        f"If your op truly needs a different interface, set `analog_layer` to "
+        f"something other than `{layer}` to opt out.\n"
+    )
+
+
 def analyzer_prompt(task_name: str, model_code: str, intro: dict | None) -> str:
+    ref = _interface_reference_block(task_name)
     return f"""Analyze a PyTorch operator and plan a from-scratch ncnn base kernel.
 
 Task: {task_name}
@@ -264,7 +293,7 @@ Model introspection (ground truth):
 {_introspect(intro)}
 
 {NCNN_LAYER_BACKGROUND}
-
+{ref}
 Return ONLY a JSON object (no prose):
 {{
   "class_name": "Cand_{task_name}",

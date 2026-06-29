@@ -144,120 +144,52 @@ class KernelAgent:
             write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
 
     def _infer_params(self, profile: KernelProfile) -> None:
-        """Infer ncnn param values from the actual model state_dict + input shapes.
+        """Infer ncnn param values from the model state_dict, driven by the
+        ncnn layer interface dictionary.
 
-        LLMs cannot reliably map PyTorch semantics to ncnn param IDs (e.g.
-        they confuse ``num_output`` with ``alpha``). Since all the necessary
-        information is already in the introspected model, we compute params
-        mechanically and merge them into the profile, overriding any LLM
-        guesses.
+        LLMs cannot reliably map PyTorch semantics to ncnn param IDs. Rather
+        than hand-coding the mapping per op family (the prior approach, which
+        covered only ~5 of ~110 layers and mis-mapped LayerNorm), we:
+
+          1. look up the analog ncnn layer in the interface dictionary
+             (produced by `opgen/ncnn_interface/extract_layer_interfaces.py`),
+          2. for each param the layer declares, resolve a value from the
+             state_dict using a small set of well-known var-name patterns
+             (`num_output`, `weight_data_size`, `bias_term`, `affine_size`,
+             `channels`, `num_slope`, `hidden_size`, ...).
+
+        Resolved values override LLM guesses (same policy as the old code).
+        When the dictionary is missing the layer, or a pattern isn't
+        registered for a var name, we leave that param alone — the LLM's
+        value (or the ncnn default) is used.
         """
+        # late-import keeps this independent of test setups that may not have
+        # bootstrap_paths called
+        try:
+            from lookup import derive_params_from_dict, get_interface
+        except ImportError:
+            return
+
         sd = (self.intro or {}).get("state_dict") or {}
-        input_shapes = (self.intro or {}).get("input_shapes") or []
-        analog = (profile.analog_layer or "").lower()
-        params: dict[str, Any] = {}
+        analog = profile.analog_layer or ""
 
-        # --- helpers ----------------------------------------------------------
-        def _find_weight(*candidates: str):
-            """Return (key, shape) for the first matching weight in sd."""
-            for c in candidates:
-                for k, s in sd.items():
-                    if c in k.lower():
-                        return k, s
-            return None, None
+        iface = get_interface(analog)
+        if not iface:
+            return                                # unknown analog → free pass
 
-        def _has_bias():
-            return any("bias" in k.lower() for k in sd)
+        computed = derive_params_from_dict(analog, sd)
+        if not computed:
+            return
 
-        # --- per-analog inference --------------------------------------------
-        if analog in ("innerproduct", "gemm"):
-            # nn.Linear(in_features, out_features, bias=...)
-            # ncnn params: 0=num_output, 1=bias_term, 2=weight_data_size
-            _, wshape = _find_weight("weight")
-            if wshape and len(wshape) == 2:
-                out_features, in_features = wshape[0], wshape[1]
-                params["0"] = out_features
-                params["1"] = 1 if _has_bias() else 0
-                params["2"] = out_features * in_features
-                print(f"[analyze] inferred innerproduct params: num_output={out_features}, "
-                      f"bias_term={params['1']}, weight_size={params['2']}")
-
-        elif analog in ("batchnorm", "instancenorm", "layernorm"):
-            # ncnn params: 0=channels, (optional) 1=eps
-            _, wshape = _find_weight("weight")
-            if wshape and len(wshape) == 1:
-                params["0"] = wshape[0]
-                # eps is usually 1e-5; keep LLM value if present, else default
-                if "1" not in profile.params:
-                    params["1"] = 1e-5
-                print(f"[analyze] inferred {analog} params: channels={params['0']}")
-
-        elif analog == "convolution":
-            # nn.Conv2d(in, out, kernel, stride, pad, dilation, bias)
-            # ncnn params: 0=num_output, 1=kernel_w, 2=dilation_w,
-            #              3=stride_w, 4=pad_left, 5=bias_term, 6=weight_data_size
-            # We can get num_output / bias_term / weight_size from state_dict.
-            # kernel/stride/pad/dilation need model source — keep LLM values.
-            _, wshape = _find_weight("weight")
-            if wshape and len(wshape) == 4:
-                out_ch = wshape[0]
-                in_ch, kh, kw = wshape[1], wshape[2], wshape[3]
-                params["0"] = out_ch
-                params["5"] = 1 if _has_bias() else 0
-                params["6"] = out_ch * in_ch * kh * kw
-                print(f"[analyze] inferred convolution params: num_output={out_ch}, "
-                      f"bias_term={params['5']}, weight_size={params['6']}")
-
-        elif analog in ("deconvolution", "deconvolutiondepthwise",
-                        "convolutiondepthwise"):
-            _, wshape = _find_weight("weight")
-            if wshape and len(wshape) == 4:
-                out_ch = wshape[0]
-                in_ch, kh, kw = wshape[1], wshape[2], wshape[3]
-                params["0"] = out_ch
-                params["5"] = 1 if _has_bias() else 0
-                params["6"] = out_ch * in_ch * kh * kw
-                print(f"[analyze] inferred {analog} params from state_dict")
-
-        elif analog == "prelu":
-            # ncnn params: 0=num_slope
-            _, wshape = _find_weight("weight")
-            if wshape:
-                params["0"] = wshape[0] if len(wshape) == 1 else 1
-                print(f"[analyze] inferred prelu params: num_slope={params['0']}")
-
-        elif analog == "embed":
-            # nn.Embedding(num_emb, emb_dim)
-            # ncnn params: 0=num_output(emb_dim), 1=input_dim(num_emb),
-            #              2=bias_term, 3=weight_data_size
-            _, wshape = _find_weight("weight")
-            if wshape and len(wshape) == 2:
-                num_emb, emb_dim = wshape[0], wshape[1]
-                params["0"] = emb_dim
-                params["1"] = num_emb
-                params["2"] = 1 if _has_bias() else 0
-                params["3"] = num_emb * emb_dim
-
-        elif analog == "scale":
-            # ncnn params: 0=scale_data_size, 1=bias_term
-            _, wshape = _find_weight("weight")
-            if wshape:
-                prod = 1
-                for d in wshape:
-                    prod *= d
-                params["0"] = wshape[0] if len(wshape) == 1 else prod
-                params["1"] = 1 if _has_bias() else 0
-
-        # --- merge: computed params take precedence over LLM -----------------
-        if params:
-            # log corrections
-            for pid, computed in params.items():
-                llm_val = profile.params.get(pid)
-                if llm_val is not None and llm_val != computed:
-                    print(f"[analyze] param {pid} corrected: LLM={llm_val} -> "
-                          f"inferred={computed}")
-            profile.params = {**profile.params, **params}
-            write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
+        # log corrections that disagree with the LLM
+        for pid, val in computed.items():
+            llm_val = profile.params.get(pid)
+            if llm_val is not None and str(llm_val) != str(val):
+                print(f"[analyze] param {pid} corrected: LLM={llm_val} -> "
+                      f"dict-derived={val}")
+        profile.params = {**profile.params, **computed}
+        print(f"[analyze] dict-driven params for analog={iface['name']}: {computed}")
+        write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
 
     # ------------------------------------------------------------------ memory
     def _format_memory(self) -> str:
