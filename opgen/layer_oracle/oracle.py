@@ -87,10 +87,70 @@ def torch_to_ncnn_input(arr: np.ndarray) -> np.ndarray:
 
     PyTorch (N,C,H,W)->(C,H,W); (N,C,L)->(C,L); (N,C)->(C,); (N,)->(,) scalar-ish.
     NCNN works on a single sample; batch is not represented in ncnn::Mat.
+
+    NOTE: This is the OLD heuristic. It assumes every input has a leading batch
+    dim — wrong when inputs include weights/biases (Conv has in1=[16,3,3,3] as
+    a weight, not a batched tensor). Prefer pnnx_driven_ncnn_inputs() when the
+    pnnx-emitted _ncnn.py is available; that mirrors pnnx's per-blob squeeze
+    decision exactly.
     """
     if arr.ndim >= 2:
         return np.ascontiguousarray(arr[0])
     return np.ascontiguousarray(arr)
+
+
+_EX_INPUT_RE = re.compile(
+    r'ex\.input\(\s*"([^"]+)"\s*,\s*ncnn\.Mat\(\s*([a-zA-Z_]\w*)\s*'
+    r'(?:\.squeeze\((\d+)\))?\s*\.numpy\(\)\s*\)\s*\.clone\(\)\s*\)'
+)
+
+
+def parse_pnnx_input_squeeze(ncnn_py_path: str | Path) -> dict[str, int | None]:
+    """Return {blob_name: squeeze_axis or None} parsed from pnnx-emitted _ncnn.py.
+
+    pnnx WRITES this file alongside .ncnn.param/.ncnn.bin — it is the
+    authoritative source for how each input should be reshaped before being
+    fed to ncnn (None = feed raw, int = squeeze that axis). Mirroring this
+    eliminates all per-op driver heuristics (Conv weight vs batched data,
+    Gemm constants, etc.).
+
+    Returns an empty dict if the file is missing or contains no ex.input lines.
+    """
+    p = Path(ncnn_py_path)
+    if not p.exists():
+        return {}
+    out: dict[str, int | None] = {}
+    for m in _EX_INPUT_RE.finditer(p.read_text("utf-8", errors="replace")):
+        blob, _var, ax = m.group(1), m.group(2), m.group(3)
+        out[blob] = int(ax) if ax is not None else None
+    return out
+
+
+def pnnx_driven_ncnn_inputs(torch_inputs, in_names: list[str],
+                            ncnn_py_path: str | Path | None) -> list[np.ndarray]:
+    """Build the ncnn feed array list from torch inputs using pnnx's own policy.
+
+    For each (blob_name, torch_tensor) pair, look up the squeeze axis in the
+    pnnx-emitted _ncnn.py: None → feed as-is; int N → squeeze axis N (only if
+    that axis is size 1, else leave raw). When no policy is available for a
+    blob (rare: name missing from _ncnn.py, or the file absent entirely) we
+    fall back to torch_to_ncnn_input's "drop axis 0 if rank>=2" heuristic —
+    matches the old behavior for legacy cases.
+
+    `torch_inputs` may be torch tensors or numpy arrays; either works.
+    """
+    policy = parse_pnnx_input_squeeze(ncnn_py_path) if ncnn_py_path else {}
+    out: list[np.ndarray] = []
+    for name, t in zip(in_names, torch_inputs):
+        arr = t.detach().numpy() if hasattr(t, "detach") else np.asarray(t)
+        if name in policy:
+            ax = policy[name]
+            if ax is not None and arr.ndim > ax and arr.shape[ax] == 1:
+                arr = arr.squeeze(ax)
+        else:
+            arr = torch_to_ncnn_input(arr)
+        out.append(np.ascontiguousarray(arr))
+    return out
 
 
 # ---------------------------------------------------------------------------

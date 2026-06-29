@@ -77,7 +77,8 @@ def main() -> None:
     p = argparse.ArgumentParser(description="M1 kernel optimizer (CPU, LLM proposer + inner search).")
     p.add_argument("--task", required=True)
     p.add_argument("--model", default=None, help="PyTorch reference .py (else dataset lookup)")
-    p.add_argument("--model-name", default="z-ai/glm-5.1", help="OpenRouter model for the proposer")
+    p.add_argument("--model-name", default="deepseek-v4-pro",
+                   help="LLM model id for the proposer (DeepSeek by default; OpenRouter ids also work)")
     p.add_argument("--kernel-dir", default=None, help="dir with baseline cand_*.h/.cpp")
     p.add_argument("--ncnn-root", default=None)
     p.add_argument("--dataset-root", default=None)

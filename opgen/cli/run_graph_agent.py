@@ -37,7 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model-code", default=None, help="Inline PyTorch model source (overrides --model).")
     p.add_argument("--ncnn-root", default=None, help="Path to the ncnn source tree.")
     p.add_argument("--dataset-root", default=None, help="Path to the PyTorch reference dataset root.")
-    p.add_argument("--model-name", default="anthropic/claude-sonnet-4.5", help="LLM model id (OpenRouter).")
+    p.add_argument("--model-name", default="deepseek-v4-pro",
+                   help="LLM model id (DeepSeek by default; OpenRouter ids like 'anthropic/...' also work).")
     p.add_argument("--max-rounds", type=int, default=8)
     p.add_argument("--build-jobs", type=int, default=8)
     p.add_argument("--torch-install-dir", default=None, help="Optional libtorch install dir for pnnx cmake.")

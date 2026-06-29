@@ -146,7 +146,7 @@ def _write_report(results: list[dict]) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description="Batch arm-backend author+verify+optimize over the dataset.")
     p.add_argument("--dataset-root", default=None)
-    p.add_argument("--model-name", default="z-ai/glm-5.2")
+    p.add_argument("--model-name", default="deepseek-v4-pro")
     p.add_argument("--category", default=None, help="comma list of categories to include")
     p.add_argument("--ops", default=None, help="comma list of explicit op names")
     p.add_argument("--limit", type=int, default=0, help="cap number of ops (0 = all)")

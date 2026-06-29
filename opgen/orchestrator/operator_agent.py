@@ -34,7 +34,8 @@ from graph_agent import GraphAgent
 from graph_pipeline import probe_pnnx_ir
 from graph_schemas import write_json
 from kernel_agent import KernelAgent
-from layer_oracle import NetOracle, parse_ncnn_io, torch_to_ncnn_input
+from layer_oracle import NetOracle, parse_ncnn_io, pnnx_driven_ncnn_inputs
+from ncnn_tree_guard import arm_guard
 from optimize_agent import OptimizeAgent
 
 
@@ -44,7 +45,7 @@ class OperatorAgent:
         *,
         task_name: str,
         model_py: str | Path | None = None,
-        model: str = "z-ai/glm-5.1",
+        model: str = "deepseek-v4-pro",
         max_rounds: int = 8,                  # KernelAgent default rounds
         graph_max_rounds: int = 15,           # GraphAgent rounds (raised from 8)
         ncnn_root: str | Path | None = None,
@@ -66,6 +67,8 @@ class OperatorAgent:
         experience_pool_path: str | Path | None = None,   # 兵器谱 warm-start + persist
         backends: list[str] | None = None,    # subset of ["base","arm"]; default ["base"]
         allow_backend_fallback: bool = False, # if a target backend (arm) fails: off=abort, on=base-only
+        auto_cleanup_ncnn: bool = False,      # ncnn-tree guard: True => silently clean a dirty tree on startup;
+                                              # False (default) => refuse to run on a dirty tree (safer)
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -93,6 +96,9 @@ class OperatorAgent:
         self.want_arm = "arm" in self.backends
         self.allow_backend_fallback = allow_backend_fallback
         self.llm_query = llm_query
+        self.auto_cleanup_ncnn = bool(auto_cleanup_ncnn)
+        # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
+        self._ncnn_guard = None
 
     # ------------------------------------------------------------------ paths
     @property
@@ -117,6 +123,14 @@ class OperatorAgent:
     def run(self) -> dict:
         self.run_dir.mkdir(parents=True, exist_ok=True)
         summary: dict = {"task_name": self.task_name, "phases": {}}
+
+        # ---------------- [0] ncnn-tree guard (A+C) ----------------
+        # (C) refuse to run on a dirty ncnn tree (or auto-clean if asked);
+        # (A) take a snapshot SHA + register atexit/SIGTERM/SIGINT restore so any
+        #     crash / kill chain still brings the tree back. Except --install,
+        #     which intentionally keeps the injected pass permanent.
+        if not self.install:
+            self._ncnn_guard = arm_guard(self.ncnn_root, auto_cleanup=self.auto_cleanup_ncnn)
 
         # ---------------- [1] Kernel ----------------
         print("\n===== [1] KernelAgent (kernel, numeric vs PyTorch) =====")
@@ -290,6 +304,15 @@ class OperatorAgent:
                 netoc.restore(handle)
                 if arm_handle is not None: netoc.restore(arm_handle)
                 netoc.rebuild_libncnn()
+
+            # Belt-and-suspenders: even if any of the above teardown branches missed
+            # something (or crashed), the guard's atexit/SIGTERM handler will catch
+            # it. Calling it explicitly here surfaces any leftover IMMEDIATELY, in
+            # the orchestrator log instead of at interpreter exit.
+            if self._ncnn_guard is not None:
+                try: self._ncnn_guard.restore()
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[orchestrator] ncnn-guard restore failed: {exc}")
 
         summary["status"] = "success" if all_ok else summary.get("status", "fail")
         if self.install and all_ok:
@@ -527,10 +550,13 @@ class OperatorAgent:
             ref = ref[0]
         ref_np = ref.detach().numpy()
         reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
-        ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
         in_names, out_name = parse_ncnn_io(Path(param).read_text(encoding="utf-8"))
-        if len(in_names) != len(ncnn_inputs):
-            in_names = [f"in{i}" for i in range(len(ncnn_inputs))]
+        if len(in_names) != len(inputs):
+            in_names = [f"in{i}" for i in range(len(inputs))]
+        # pnnx-driven per-blob squeeze policy (falls back to drop-axis-0 when
+        # _ncnn.py is missing or a blob name has no recorded policy).
+        ncnn_py = art.get("_ncnn.py")
+        ncnn_inputs = pnnx_driven_ncnn_inputs(inputs[:len(in_names)], in_names, ncnn_py)
         feed = {n: x for n, x in zip(in_names, ncnn_inputs)}
         out, log = netoc.run_net(param, binf, feed, out_name)
         (self.run_dir / "net_numeric.log").write_text(log, encoding="utf-8")

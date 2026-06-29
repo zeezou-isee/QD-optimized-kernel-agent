@@ -6,6 +6,8 @@ from .oracle import (
     read_bin,
     write_bin,
     torch_to_ncnn_input,
+    parse_pnnx_input_squeeze,
+    pnnx_driven_ncnn_inputs,
 )
 from .net_oracle import (
     NetOracle,
@@ -26,6 +28,8 @@ __all__ = [
     "read_bin",
     "write_bin",
     "torch_to_ncnn_input",
+    "parse_pnnx_input_squeeze",
+    "pnnx_driven_ncnn_inputs",
     "NetOracle",
     "InstallHandle",
     "parse_ncnn_io",

@@ -117,7 +117,7 @@ class LLMProposer:
         baseline_kernel: dict[str, str],
         hardware: dict[str, Any],
         llm_query: Callable[[str, str], str],
-        model: str = "z-ai/glm-5.1",
+        model: str = "deepseek-v4-pro",
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel = dict(baseline_kernel)

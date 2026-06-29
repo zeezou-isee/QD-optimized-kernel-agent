@@ -1,0 +1,2972 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-06-29 00:28:07",
+  "source_dataset": "dataset/Mobilekernelbench/ (183 ops, 12 categories)",
+  "pnnx_binary": "/Users/xingze/Documents/project/kernelgen/ncnn/tools/pnnx/build/src/pnnx (built 2026-06-28 23:21:24)",
+  "ncnn_head_sha": "b16501a65edf03828dae55b4d20ccc6a6bf4a3b4",
+  "ncnn_real_layers_count": 111,
+  "tool": "ONLY the ncnn-provided pnnx binary (no project code, no numeric oracle)",
+  "method": "For each <Op>.py: 1) torch.jit.trace -> .pt; 2) pnnx with optlevel=2; 3) SUPPORTED iff returncode==0 AND .ncnn.param has >=1 non-{Input,Output,Split} layer AND NO aten::*/prim::* residual AND every emitted layer name appears in ncnn/src/layer/*.h (or is one of Input/Output/Split/MemoryData). The last clause catches PNNX-only layer names like 'torch.gt' / 'torch.logical_and' / 'F.max_pool2d' which pnnx emits but ncnn's runtime rejects with 'layer X not exists or registered' (verified via pyncnn).",
+  "totals": {
+    "total": 183,
+    "supported": 142,
+    "unsupported": 38,
+    "audit_tool_bug": 3,
+    "support_rate": 0.776,
+    "elapsed_total_s": 36.2
+  },
+  "totals_by_category": {
+    "Activation": {
+      "SUPPORTED": 12
+    },
+    "Binary": {
+      "SUPPORTED": 8
+    },
+    "Convolution": {
+      "SUPPORTED": 21
+    },
+    "Logic": {
+      "UNSUPPORTED": 13
+    },
+    "Matrix": {
+      "UNSUPPORTED": 3,
+      "SUPPORTED": 17
+    },
+    "Normalization": {
+      "SUPPORTED": 11,
+      "UNSUPPORTED": 1
+    },
+    "Others": {
+      "UNSUPPORTED": 2,
+      "SUPPORTED": 1,
+      "AUDIT_TOOL_BUG": 1
+    },
+    "Pooling": {
+      "SUPPORTED": 13,
+      "UNSUPPORTED": 2
+    },
+    "Reduction": {
+      "SUPPORTED": 27
+    },
+    "Tensor": {
+      "AUDIT_TOOL_BUG": 2,
+      "SUPPORTED": 9,
+      "UNSUPPORTED": 17
+    },
+    "Trigonometry": {
+      "SUPPORTED": 12
+    },
+    "Unary": {
+      "SUPPORTED": 11
+    }
+  },
+  "unsupported_op_families": {
+    "torch.logical_and": [
+      "And"
+    ],
+    "torch.bitwise_or": [
+      "BitWiseOr"
+    ],
+    "torch.bitwise_xor": [
+      "BitWiseXor"
+    ],
+    "torch.bitwise_and": [
+      "BitwiseAnd"
+    ],
+    "torch.eq": [
+      "Equal"
+    ],
+    "torch.gt": [
+      "Greater"
+    ],
+    "torch.ge": [
+      "GreaterEqual"
+    ],
+    "torch.lt": [
+      "Less"
+    ],
+    "torch.le": [
+      "LessEqual"
+    ],
+    "torch.logical_xor": [
+      "LogicalXor",
+      "LogicalXor3d",
+      "LogicalXor_2d"
+    ],
+    "torch.logical_not": [
+      "Not"
+    ],
+    "aten::linalg_det": [
+      "Det",
+      "Det_2d",
+      "Det_3d"
+    ],
+    "nn.InstanceNorm1d": [
+      "InstanceNormalization_1d"
+    ],
+    "FAIL_residual_aten": [
+      "LSTM"
+    ],
+    "torch.stft": [
+      "Stft"
+    ],
+    "F.max_pool2d": [
+      "MaxPool_2d_dilations"
+    ],
+    "aten::max_pool2d": [
+      "MaxPool_2d_same_lower"
+    ],
+    "torch.index_select": [
+      "Gather"
+    ],
+    "torch.gather": [
+      "GatherElements"
+    ],
+    "aten::one_hot": [
+      "OneHot"
+    ],
+    "torch.arange": [
+      "Range"
+    ],
+    "aten::scatter": [
+      "ScatterElements"
+    ],
+    "torch.topk": [
+      "TopK",
+      "TopK_3d",
+      "TopK_dim0",
+      "TopK_indices",
+      "TopK_sorted"
+    ],
+    "aten::tril": [
+      "Trilu_lower"
+    ],
+    "aten::triu": [
+      "Trilu_uppper"
+    ],
+    "aten::unique_dim": [
+      "Unique",
+      "Unique_sorted_with_axis",
+      "Unique_sorted_with_axis_3d"
+    ],
+    "torch.where": [
+      "Where",
+      "Where_broadcast"
+    ]
+  },
+  "ops": {
+    "ATan": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,128,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08
+    },
+    "Abs": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.28,
+      "inputshape_arg": "inputshape=[16,8,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Acos": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[16,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "Acosh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07
+    },
+    "Add": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[4,3,64,64]f32,[1,3,1,1]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "And": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.logical_and"
+      ],
+      "unknown_layers": [
+        "torch.logical_and"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_and']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[4,32,32]bool,[4,32,32]bool",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Asin": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[16,512,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.00048828125
+    },
+    "Asinh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.384185791015625e-07
+    },
+    "Atanh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07
+    },
+    "AveragePool": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 3.5762786865234375e-07
+    },
+    "AveragePool_2d_ceil": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 0.08969871699810028
+    },
+    "AveragePool_2d_strides": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.7881393432617188e-07
+    },
+    "BatchNormalization": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BatchNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "BatchNormalization_epsilon": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BatchNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "BatchNormalization_momentum": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BatchNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "BitWiseOr": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.bitwise_or"
+      ],
+      "unknown_layers": [
+        "torch.bitwise_or"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_or']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,256]i32,[8,128,256]i32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "BitWiseXor": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.bitwise_xor"
+      ],
+      "unknown_layers": [
+        "torch.bitwise_xor"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_xor']",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[8,128,512]i32,[8,128,512]i32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "BitwiseAnd": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.bitwise_and"
+      ],
+      "unknown_layers": [
+        "torch.bitwise_and"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_and']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,32,64]i32,[8,32,64]i32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Cast": {
+      "category": "Tensor",
+      "status": "AUDIT_TOOL_BUG",
+      "ncnn_layers": [],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "is an identity op (correctly produces no compute layers)",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[8,512,256]f32",
+      "audit_verdict": "FAIL_only_io_layers"
+    },
+    "Ceil": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Celu": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "CELU"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 1.39,
+      "inputshape_arg": "inputshape=[128,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Clip": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Clip"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.65,
+      "inputshape_arg": "inputshape=[16,32,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Concat": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Concat"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[16,128,64]f32,[16,128,64]f32,[16,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=24576 torch=270336"
+    },
+    "Conv": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,3,32,32]f32,[16,3,3,3]f32,[16]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.00017261505126953125,
+      "numeric_fail_reason": "size ncnn=3072 torch=16384"
+    },
+    "Conv3D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution3D"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,8,16,16]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 3.4251208305358887
+    },
+    "ConvTranspose_2D__asymmetric_input__asymmetric_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Deconvolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,16,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ConvTranspose_dilations": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Deconvolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[1,16,32,32]f32,[16,4,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=8836 torch=35344"
+    },
+    "Conv_with_strides_no_padding": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[1,8,64,64]f32,[4,8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_skip_reason": "runner returned no output; tail=/tmp/neto_verify_work/net_runner --param /tmp/pnnx_native_support_work/Conv_with_strides_no_padding/Conv_with_strides_no_padding.ncnn.param --bin /tmp/pnnx_native_support_work/Conv_with_strides_no_padding/Conv_with_strides_no_padding.ncnn.bin --out out0 --outfile /tmp/neto_verify_work/io/out.bin --in in0=/tmp/neto_verify_work/io/in0.bin --in in1=/tmp/neto_verify_work/io/in1.bin",
+      "numeric_max_diff": 0.00079345703125
+    },
+    "Conv_with_strides_padding": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32,[4,16,3,3]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.52587890625e-05,
+      "numeric_fail_reason": "size ncnn=16384 torch=4096"
+    },
+    "ConvolutionDepthwise": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "ConvolutionDepthWise",
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.980232238769531e-07
+    },
+    "Cos": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08
+    },
+    "Cosh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 3.814697265625e-06
+    },
+    "CumSum": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "CumulativeSum"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.9073486328125e-06
+    },
+    "DeconvolutionDepthwise_2D_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "DeconvolutionDepthWise"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,48,48]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.278595924377441
+    },
+    "DeconvolutionDepthwise_2D_stride": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "DeconvolutionDepthWise"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[1,64,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 3.294889450073242
+    },
+    "Deconvolution_1D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Deconvolution1D"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,64,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.7716076374053955
+    },
+    "Deconvolution_2D__asymmetric_input__asymmetric_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Deconvolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 0.9216232299804688
+    },
+    "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Deconvolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[1,16,32,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 0.5148240327835083
+    },
+    "Dense_Convolution_1D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution1D"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,64,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.7206730842590332
+    },
+    "Dense_Convolution_2D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 3.674553394317627
+    },
+    "Dense_Convolution_2D__asymmetric_input__square_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.9008392095565796
+    },
+    "Dense_Convolution_2D_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.21,
+      "inputshape_arg": "inputshape=[1,3,224,224]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.4149041175842285
+    },
+    "DepthToSpace": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "PixelShuffle"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[4,128,16,16]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "SKIP",
+      "numeric_max_diff": 0.0,
+      "numeric_skip_reason": "runner returned no output; tail=/tmp/neto_verify_work/net_runner --param /tmp/pnnx_native_support_work/DepthToSpace/DepthToSpace.ncnn.param --bin /tmp/pnnx_native_support_work/DepthToSpace/DepthToSpace.ncnn.bin --out out0 --outfile /tmp/neto_verify_work/io/out.bin --in in0=/tmp/neto_verify_work/io/in0.bin | extract 'out0' failed"
+    },
+    "Det": {
+      "category": "Matrix",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[512,512]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Det_2d": {
+      "category": "Matrix",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "pnnx_elapsed_s": 0.41,
+      "inputshape_arg": "inputshape=[64,512,512]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Det_3d": {
+      "category": "Matrix",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "pnnx_elapsed_s": 0.21,
+      "inputshape_arg": "inputshape=[4,128,64,64]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Div": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[4,3,64,64]f32,[1,3,1,1]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07
+    },
+    "ELU": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "ELU"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 7.450580596923828e-09
+    },
+    "Einsum": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Einsum"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[32,64]f32,[64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.7220458984375e-06,
+      "numeric_fail_reason": "size ncnn=64 torch=128"
+    },
+    "Einsum_diagonal": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Einsum"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1024,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_skip_reason": "torch ref failed: RuntimeError: einsum(): subscript i is repeated for operand 0 but the sizes don't match, 1024 != 1",
+      "numeric_max_diff": 0.0
+    },
+    "Einsum_elementwise": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Einsum"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[256,256]f32,[256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=256 torch=65536"
+    },
+    "Einsum_reduce_dim": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Einsum"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[64,1,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=1 torch=256"
+    },
+    "Einsum_sum_all": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Einsum_transpose": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Permute"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Equal": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.eq"
+      ],
+      "unknown_layers": [
+        "torch.eq"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.eq']",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[4,3,64,128]f32,[4,3,64,128]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Erf": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Erf"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[1,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 3.8743019104003906e-07
+    },
+    "Exp": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.22,
+      "inputshape_arg": "inputshape=[16,512,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.52587890625e-05
+    },
+    "Floor": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[8,256,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Gather": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.index_select"
+      ],
+      "unknown_layers": [
+        "torch.index_select"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.index_select']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,64,64]f32,[3]i64",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "GatherElements": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.gather"
+      ],
+      "unknown_layers": [
+        "torch.gather"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.gather']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,64]f32,[16,64,64]i64",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Gemm": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Gemm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[32,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.7823201417922974
+    },
+    "Gemm_alpha": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Gemm",
+        "BinaryOp",
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,64]f32,[64,128]f32,[1,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Gemm_beta": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Gemm",
+        "BinaryOp",
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,64]f32,[64,64]f32,[1,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Gemm_no_bias": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Gemm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[16,128]f32,[128,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Gemm_scalar_bias": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Gemm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[32,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.910902500152588
+    },
+    "Gemm_transposed": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Permute",
+        "Gemm",
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[128,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_skip_reason": "torch ref failed: RuntimeError: mat1 and mat2 shapes cannot be multiplied (32x1 and 128x256)",
+      "numeric_max_diff": 5.022252082824707
+    },
+    "GlobalAveragePool": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 3.725290298461914e-09
+    },
+    "GlobalAveragePool_2d": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.190951585769653e-09
+    },
+    "GlobalAveragePool_2d_single_channel": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,3,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 7.450580596923828e-09
+    },
+    "GlobalAveragePool_3d": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling3D",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.6566128730773926e-09
+    },
+    "GlobalMaxPool": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "GlobalMaxPool_2d_single_channel": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "GlobalMaxPool_3d": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling3D",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,256,16,8,8]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Greater": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.gt"
+      ],
+      "unknown_layers": [
+        "torch.gt"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.gt']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,512]f32,[8,128,512]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "GreaterEqual": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.ge"
+      ],
+      "unknown_layers": [
+        "torch.ge"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.ge']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,256,256]f32,[8,256,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "GridSample": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "GridSample"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,32,64]f32,[1,4,4,2]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08
+    },
+    "Group_Convolution_2D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "ConvolutionDepthWise"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 3.832923173904419
+    },
+    "Group_Convolution_2D_kernel": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "ConvolutionDepthWise"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,24,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 3.9820799827575684
+    },
+    "HardSigmoid": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "HardSigmoid"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[128,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08
+    },
+    "InstanceNormalization": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "InstanceNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.430511474609375e-06
+    },
+    "InstanceNormalization_1d": {
+      "category": "Normalization",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "nn.InstanceNorm1d"
+      ],
+      "unknown_layers": [
+        "nn.InstanceNorm1d"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['nn.InstanceNorm1d']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,32,128]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "InstanceNormalization_3d": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "InstanceNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,1,8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.384185791015625e-07
+    },
+    "LSTM": {
+      "category": "Others",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "LSTM"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "prim::TupleConstruct"
+      ],
+      "reason": "no pnnx pass; residual=['prim::TupleConstruct']",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[1,1,16]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "LayerNorm": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 7.152557373046875e-07
+    },
+    "LayerNorm_1d": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,128,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LayerNorm_3d": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,8,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LayerNorm_eps": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LayerNorm_no_affine": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,256,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 9.5367431640625e-07
+    },
+    "LayerNorm_vision": {
+      "category": "Normalization",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "LayerNorm"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,196,768]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 9.5367431640625e-07
+    },
+    "Less": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.lt"
+      ],
+      "unknown_layers": [
+        "torch.lt"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.lt']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,256,256]f32,[8,256,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "LessEqual": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.le"
+      ],
+      "unknown_layers": [
+        "torch.le"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.le']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,256,256]f32,[8,256,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Log": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,64,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.384185791015625e-07
+    },
+    "LogSoftmax": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softmax",
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.27,
+      "inputshape_arg": "inputshape=[32,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LogSoftmax_axis_0": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softmax",
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.71,
+      "inputshape_arg": "inputshape=[8,32,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LogSoftmax_axis_1": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softmax",
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,32,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LogSoftmax_axis_2": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softmax",
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,32,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "LogicalXor": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.logical_xor"
+      ],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,128]f32,[8,128,128]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "LogicalXor3d": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.logical_xor"
+      ],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[16,128,64]bool,[16,128,64]bool",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "LogicalXor_2d": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.logical_xor"
+      ],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,512]bool,[64,512]bool",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "MatMul": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "MatMul"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[256,128]f32,[128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=1 torch=256"
+    },
+    "MatMul_1d_3d": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "MatMul"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[16]f32,[32,16,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.86102294921875e-06,
+      "numeric_fail_reason": "size ncnn=64 torch=2048"
+    },
+    "MatMul_3d": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "MatMul"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[8,16,32]f32,[8,32,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=1024 torch=8192"
+    },
+    "MatMul_bcast": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "MatMul"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[8,1,16,32]f32,[1,8,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "MatMul_square": {
+      "category": "Matrix",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "MatMul"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[128,128]f32,[128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=1 torch=128"
+    },
+    "MaxPool": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "MaxPool_2d_ceil": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,3,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "MaxPool_2d_dilations": {
+      "category": "Pooling",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "F.max_pool2d"
+      ],
+      "unknown_layers": [
+        "F.max_pool2d"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['F.max_pool2d']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,32,32]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "MaxPool_2d_same_lower": {
+      "category": "Pooling",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "aten::max_pool2d"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::max_pool2d"
+      ],
+      "reason": "no pnnx pass; residual=['aten::max_pool2d']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,32,32]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "MaxPool_2d_strides": {
+      "category": "Pooling",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Pooling"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,3,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Min": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,512]f32,[16,64,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=32768 torch=524288"
+    },
+    "Mod": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,256,128]f32,[8,256,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.297325134277344,
+      "numeric_fail_reason": "size ncnn=32768 torch=262144"
+    },
+    "Mul": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,256,256]f32,[8,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=65536 torch=524288"
+    },
+    "Mul_bcast": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reshape",
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[8,64,64]f32,[64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=262144 torch=4096"
+    },
+    "Neg": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Not": {
+      "category": "Logic",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.logical_not"
+      ],
+      "unknown_layers": [
+        "torch.logical_not"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_not']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,64,64]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "OneHot": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "aten::one_hot"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::one_hot"
+      ],
+      "reason": "no pnnx pass; residual=['aten::one_hot']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,128]i64",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "PRelu": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "PReLU"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[64,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Pow": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.21,
+      "inputshape_arg": "inputshape=[8,256,256]f32,[8,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.340576171875e-05,
+      "numeric_fail_reason": "size ncnn=65536 torch=524288"
+    },
+    "RNN": {
+      "category": "Others",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "RNN"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,1,10]f32,[1,1,20]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 1.3225505352020264
+    },
+    "ROIAlign": {
+      "category": "Others",
+      "status": "AUDIT_TOOL_BUG",
+      "ncnn_layers": [],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "needs torchvision (audit env limitation, not ncnn limitation)",
+      "pnnx_elapsed_s": 0.0,
+      "inputshape_arg": "",
+      "audit_verdict": "FAIL_trace"
+    },
+    "Range": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.arange"
+      ],
+      "unknown_layers": [
+        "torch.arange"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.arange']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[]f32,[]f32,[]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Reciprocal": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[2,64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 7.078051567077637e-07
+    },
+    "ReduceL1": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction",
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceL1_2d_input": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 6.103515625e-05
+    },
+    "ReduceL1_multiple_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 9.5367431640625e-07,
+      "numeric_fail_reason": "size ncnn=4 torch=3"
+    },
+    "ReduceL1_negative_axes_keepdims": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.288818359375e-05
+    },
+    "ReduceL2": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=3 torch=4"
+    },
+    "ReduceL2_2d_input": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 9.5367431640625e-07
+    },
+    "ReduceL2_keepdims": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=3 torch=4"
+    },
+    "ReduceL2_multiple_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=4 torch=3"
+    },
+    "ReduceLogSumExp": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.384185791015625e-07,
+      "numeric_fail_reason": "size ncnn=4 torch=3"
+    },
+    "ReduceLogSumExp_2d_input": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[64,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.76837158203125e-07
+    },
+    "ReduceLogSumExp_keepdims": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08,
+      "numeric_fail_reason": "size ncnn=3 torch=4"
+    },
+    "ReduceLogSumExp_multiple_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[2,3,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.384185791015625e-07,
+      "numeric_fail_reason": "size ncnn=4 torch=3"
+    },
+    "ReduceMax": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.3,
+      "inputshape_arg": "inputshape=[16,128,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceMax_empty_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction",
+        "ExpandDims"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.23,
+      "inputshape_arg": "inputshape=[16,128,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceMax_with_negative_values": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.37,
+      "inputshape_arg": "inputshape=[16,128,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceMean": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.24,
+      "inputshape_arg": "inputshape=[16,128,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 3.5762786865234375e-07
+    },
+    "ReduceMean_keepdims": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.33,
+      "inputshape_arg": "inputshape=[8,64,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 2.980232238769531e-07,
+      "numeric_fail_reason": "size ncnn=16384 torch=65536"
+    },
+    "ReduceMean_multiple_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07,
+      "numeric_fail_reason": "size ncnn=8192 torch=128"
+    },
+    "ReduceMin": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[8,64,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceMin_empty_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction",
+        "ExpandDims"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,64,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceMin_with_negative_values": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.28,
+      "inputshape_arg": "inputshape=[16,128,128,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceProd": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,64,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=2048 torch=1024"
+    },
+    "ReduceProd_1d": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction",
+        "ExpandDims"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[4096]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceProd_keepdims": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,64,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ReduceSum": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,64,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 4.57763671875e-05,
+      "numeric_fail_reason": "size ncnn=4096 torch=2048"
+    },
+    "ReduceSum_empty_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction",
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,64,32,8]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=64 torch=1"
+    },
+    "ReduceSum_multiple_axes": {
+      "category": "Reduction",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reduction"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[1,128,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.00048828125,
+      "numeric_fail_reason": "size ncnn=8192 torch=128"
+    },
+    "Relu": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "ReLU"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[64,1024]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Reshape": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Reshape"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=524288 torch=32768"
+    },
+    "Round": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[8,512,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "ScatterElements": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "aten::scatter"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::scatter"
+      ],
+      "reason": "no pnnx pass; residual=['aten::scatter']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,64,64]f32,[8,64,64]i64,[8,64,64]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Sign": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Sin": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[16,32,32]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 5.960464477539063e-08
+    },
+    "Sinh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.21,
+      "inputshape_arg": "inputshape=[8,512,512]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 7.62939453125e-06
+    },
+    "Slice": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Crop"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[2,10,4,4]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=40 torch=48"
+    },
+    "Softmax": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softmax"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[64,2048]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.7462298274040222e-10
+    },
+    "Softplus_2d": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softplus"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[8,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07
+    },
+    "Softplus_3d": {
+      "category": "Activation",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Softplus"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,128,128]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.1920928955078125e-07
+    },
+    "Sqrt": {
+      "category": "Unary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.16,
+      "inputshape_arg": "inputshape=[8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "Stft": {
+      "category": "Others",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "MemoryData",
+        "torch.stft"
+      ],
+      "unknown_layers": [
+        "torch.stft"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.stft']",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[4,16000]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Strassen_Convolution_2D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,64,56,56]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.021790027618408
+    },
+    "StridedSlice": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Crop"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[32,8,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=1536 torch=12288"
+    },
+    "Sub": {
+      "category": "Binary",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "BinaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,128,256]f32,[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0,
+      "numeric_fail_reason": "size ncnn=32768 torch=262144"
+    },
+    "Tan": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "UnaryOp"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[16,256,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.00390625
+    },
+    "Tanh": {
+      "category": "Trigonometry",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "TanH"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[8,128,256]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 1.7881393432617188e-07
+    },
+    "Tile": {
+      "category": "Tensor",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Tile"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "PASS",
+      "numeric_max_diff": 0.0
+    },
+    "TopK": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.topk"
+      ],
+      "unknown_layers": [
+        "torch.topk"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[64,1024]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "TopK_3d": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.topk"
+      ],
+      "unknown_layers": [
+        "torch.topk"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,128]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "TopK_dim0": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.topk"
+      ],
+      "unknown_layers": [
+        "torch.topk"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[32,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "TopK_indices": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.topk"
+      ],
+      "unknown_layers": [
+        "torch.topk"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[32,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "TopK_sorted": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.topk"
+      ],
+      "unknown_layers": [
+        "torch.topk"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[32,256]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Trilu_lower": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "aten::tril"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::tril"
+      ],
+      "reason": "no pnnx pass; residual=['aten::tril']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[32,64]i64",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Trilu_uppper": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "aten::triu"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::triu"
+      ],
+      "reason": "no pnnx pass; residual=['aten::triu']",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[32,64]i64",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Unique": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "aten::unique_dim"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "pnnx_elapsed_s": 0.33,
+      "inputshape_arg": "inputshape=[32,512,512]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Unique_sorted_with_axis": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "aten::unique_dim"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "pnnx_elapsed_s": 0.19,
+      "inputshape_arg": "inputshape=[64,512]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Unique_sorted_with_axis_3d": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "pnnx.Expression",
+        "pnnx.Expression",
+        "aten::unique_dim"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[16,64,128]f32",
+      "audit_verdict": "FAIL_residual_aten"
+    },
+    "Where": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.where"
+      ],
+      "unknown_layers": [
+        "torch.where"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.where']",
+      "pnnx_elapsed_s": 0.37,
+      "inputshape_arg": "inputshape=[32,512,512]bool,[32,512,512]f32,[32,512,512]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Where_broadcast": {
+      "category": "Tensor",
+      "status": "UNSUPPORTED",
+      "ncnn_layers": [
+        "torch.where"
+      ],
+      "unknown_layers": [
+        "torch.where"
+      ],
+      "residual_aten": [],
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.where']",
+      "pnnx_elapsed_s": 0.18,
+      "inputshape_arg": "inputshape=[8,1,1]bool,[8,64,512]f32,[8,64,512]f32",
+      "audit_verdict": "FAIL_unknown_ncnn_layer"
+    },
+    "Where_scalar": {
+      "category": "Tensor",
+      "status": "AUDIT_TOOL_BUG",
+      "ncnn_layers": [],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "scalar inputs not supported by the audit harness's shape format",
+      "pnnx_elapsed_s": 0.14,
+      "inputshape_arg": "inputshape=[4,128,128]bool,[]f32,[]f32",
+      "audit_verdict": "FAIL_pnnx_error"
+    },
+    "Winograd_Convolution_2D": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.2,
+      "inputshape_arg": "inputshape=[1,16,224,224]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.253335952758789
+    },
+    "Winograd_Convolution_2D_padding": {
+      "category": "Convolution",
+      "status": "SUPPORTED",
+      "ncnn_layers": [
+        "Convolution"
+      ],
+      "unknown_layers": [],
+      "residual_aten": [],
+      "reason": "",
+      "pnnx_elapsed_s": 0.17,
+      "inputshape_arg": "inputshape=[1,16,64,64]f32",
+      "audit_verdict": "SUPPORTED",
+      "numeric_verified": "FAIL",
+      "numeric_max_diff": 4.210086822509766
+    }
+  }
+}

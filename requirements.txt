@@ -1,0 +1,25 @@
+# QD-optimized-kernel-agent runtime dependencies.
+#
+# Build/run order:
+#   python3 -m venv .venv
+#   . .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# Notes:
+#   - cmake is a real runtime dep: the layer oracle / vulkan oracle invoke `cmake`
+#     to build candidate kernels against libncnn. We use the pip-distributed
+#     cmake (provides the CLI on PATH) to avoid forcing a system install.
+#   - torch is large (~150 MB). On non-CUDA macOS the CPU wheel from PyPI is
+#     fine; for Linux you may prefer the official CPU-only index URL.
+#   - ncnn (= pyncnn) is required by graph_pipeline.baseline_numeric: it runs
+#     the converted .ncnn.{param,bin} in-process to do an allclose vs torch.
+#     Without it, the existence-check falls back to "structural only" and
+#     reports a lot of false negatives.
+#   - openai is used by llm_api.py for BOTH DeepSeek and OpenRouter (both
+#     expose OpenAI-compatible endpoints).
+
+numpy>=1.26
+torch>=2.2
+openai>=1.0
+ncnn>=1.0.0
+cmake>=3.20
