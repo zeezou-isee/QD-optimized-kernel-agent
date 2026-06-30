@@ -149,6 +149,110 @@ Conventions (CRITICAL):
 """
 
 
+ARM_FUNCTIONAL_STRATEGY = """\
+=== ARM STRATEGY FOR FUNCTIONAL OPS (THIS OP — read this carefully) ===
+This is a FUNCTIONAL op (weight is bottom_blobs[1..], not pre-loaded). Standard
+ncnn arm layers (Convolution_arm etc.) DO ZERO arm optimization in this case —
+they `create_layer_cpu(LayerType::Convolution)` and dispatch to base CPU. That
+behavior is the BASELINE you must beat. You CAN do better, because most arm
+gains DO survive — weight-prep amortisation does not. Here is the rulebook:
+
+CRITICAL FACTS THE HARNESS GUARANTEES (read these BEFORE writing any code):
+
+  G1) ALL bottom_blobs have elempack == 1.
+      The harness forces `_packing=0` for arm+functional. The runner does NOT
+      call `convert_packing(...)` on any of your inputs. So:
+        - `bottom_blob.elempack == 1` (activation, weight, bias — all of them)
+        - DO NOT branch on elempack; DO NOT preserve `out_elempack = elempack`.
+        - Allocate top_blob with `elempack=1` and `elemsize=sizeof(float)`:
+            top_blob.create(out_w, out_h, num_output, sizeof(float), opt.blob_allocator);
+        - Your NEON `vld1q_f32 / vst1q_f32` still works — you are 4-wide
+          vectorising over OUTPUT WIDTH (the contiguous w axis), NOT over
+          interleaved elempack lanes.
+
+  G2) Weight Mat layout — ncnn axis order is REVERSED from PyTorch.
+      The harness writes weight to a .bin in PyTorch order [out, in, kh, kw],
+      then `Mat::create(dims[3], dims[2], dims[1], dims[0])` rebuilds it as
+      a 4D ncnn Mat with **the REVERSE of that on each axis**:
+        ncnn Mat axes after create:  w=kw,  h=kh,  d=in_ch,  c=out_ch
+        So weight_blob.c == num_output, weight_blob.d == in_channels_per_group,
+        weight_blob.h == kernel_h, weight_blob.w == kernel_w.
+      Correct element access for `weight[out_ch][in_ch][kh][kw]` is:
+        const float* p = weight_blob.channel(out_ch)   // 3D Mat (d=in, h=kh, w=kw)
+                                    .depth(in_ch)       // 2D Mat (h=kh, w=kw)
+                                    .row(kh);           // float* of length kw
+        float v = p[kw];
+      Hoist the .channel(out_ch).depth(in_ch) Mats OUTSIDE the spatial loop —
+      re-resolving per element kills cache. NEVER cast weight to a flat
+      `(const float*)weight_blob` then index it as `weight_ptr[oc*in*kh*kw + ...]`
+      — `cstep` may be padded; channel-by-channel access is the only safe way.
+
+  G3) Bias Mat layout — 1D, NOT a channel slice.
+      bias_blob has dims=1, w=num_output, h=1, d=1, c=1. So:
+        - `bias_blob.channel(0)` is WRONG (returns a 0-dim sub-Mat; bias[c] is OOB)
+        - Correct: `const float* bias = (const float*)bias_blob;` (or `bias_blob.row(0)`)
+        - Then `bias[oc]` indexes the per-output-channel bias scalar.
+
+  G4) Activation Mat layout — 3D, ncnn's standard NCHW-minus-batch.
+      bottom_blobs[0] has dims=3 (because the harness already dropped the
+      torch batch axis): c=in_channels, h=H, w=W. Use channel(in_ch).row(y)[x]
+      for activation pixels.
+
+      (Param ID rules — see "PARAM IDs ARE NCNN, NOT ONNX" section below; it
+      applies to BOTH base and arm functional kernels, not just arm.)
+
+YOU MUST DO (these win net, even with single-forward amortisation):
+  1) NEON 4-wide vector inner loop. The innermost contiguous dimension (usually
+     output width W) is the loop to vectorize. Use `float32x4_t`, `vmlaq_f32`,
+     `vld1q_f32`, `vst1q_f32`, etc. Scalar tail handler for `W % 4 != 0`.
+  2) `#pragma omp parallel for num_threads(opt.num_threads)` over the OUTERMOST
+     loop you can without false sharing — channel-out for conv, row for matmul.
+  3) Kernel-size SPECIALIZATION via `if` ladder when possible:
+       if (kernel_w == 1 && kernel_h == 1) {{ /* 1x1 fast path */ }}
+       else if (kernel_w == 3 && kernel_h == 3 && stride_w == 1) {{ /* 3x3s1 */ }}
+       else {{ /* generic */ }}
+     The params are already in ParamDict at load_param time — branch is FREE.
+  4) Hoist `bottom_blobs[1].channel(...)` pointers out of the inner loop —
+     re-resolving the Mat indexer per element kills cache locality.
+  5) `__builtin_prefetch(weight_ptr + 64)` before inner loop iterations on long
+     reductions (conv channel-in sum). Free on ARM.
+
+YOU MUST NOT DO (these need weight pre-processing → fail to amortise in a
+single forward, will make you SLOWER than the base CPU baseline):
+  ✗ Winograd input/weight transform (`conv3x3s1_winograd23/43/63`). The weight
+    transform alone is O(num_output*num_input*36) and only pays off across
+    many forwards. Do NOT call any helper named `*_winograd_*`.
+  ✗ NC4HW4 weight pre-pack (`convolution_transform_kernel_packed_neon` and
+    cousins). The repack cost is not amortised; just iterate weight in its
+    raw PyTorch layout [out, in, kh, kw] inside the loop.
+  ✗ im2col → cblas GEMM. The im2col buffer setup + memcpy overshoot single-
+    forward break-even for small models.
+  ✗ int8 / fp16 quantization of weight at runtime. The scale-calibration
+    cost dwarfs anything you save.
+  ✗ Touching the runtime weight tensor's elempack/elemsize. The
+    `_packing=0` setting in the harness keeps it raw — KEEP IT THAT WAY.
+
+FORWARD SIGNATURE (functional → multi-input layer, see profile.one_blob_only):
+    int {arm_class}::forward(const std::vector<Mat>& bottom_blobs,
+                              std::vector<Mat>& top_blobs,
+                              const Option& opt) const
+- bottom_blobs[0] is the activation; bottom_blobs[1..] are the runtime weights
+  (the per-slot semantics are in `_functional_routing_note`).
+- load_model is EMPTY (`return 0;`) — there is no pre-loaded weight to find.
+- create_pipeline / destroy_pipeline do NOTHING (do not override them).
+
+WHY THIS DESIGN (so you can judge edge cases):
+- Static-weight conv pays the weight transform cost ONCE at load_model, then
+  reuses the transformed weight across thousands of forwards. Net win.
+- Functional conv would pay the transform on EVERY forward — the math says
+  break-even is typically 5-50 forwards depending on conv shape. For our
+  single-forward benchmark scenario the math says skip the transform.
+- But the inner-loop arm gains (NEON 4-wide MAC, omp channel parallelism,
+  branch-free kernel-size specialization) have ZERO per-forward setup cost.
+  Those are pure wins. That is the gap you are filling that ncnn left open.
+"""
+
+
 BROADCASTING_PRIMER = """\
 === ncnn BROADCASTING RULES (this op takes MULTIPLE inputs — read this) ===
 ncnn's broadcasting is INNER-AXIS-FIRST and goes in the OPPOSITE direction of
@@ -279,6 +383,11 @@ def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
     if backend == "arm":
         addendum = ARM_LAYER_BACKGROUND.format(
             base_header=base_header, base_class=base_class, arm_class=sub_class)
+        # Functional ops on arm need a separate playbook: most weight-prep arm
+        # optimizations don't amortise, but NEON vector inner loop / omp / kernel
+        # specialisation do. See ARM_FUNCTIONAL_STRATEGY for the dos and don'ts.
+        if profile and profile.is_functional:
+            addendum += "\n" + ARM_FUNCTIONAL_STRATEGY.format(arm_class=sub_class)
     else:  # vulkan
         shader_file = (profile.shader if profile and profile.shader else "cand_x.comp")
         addendum = VULKAN_LAYER_BACKGROUND.format(
@@ -391,26 +500,44 @@ Symptoms in the introspection above:
   - `state_dict: (none — weightless op)`  AND  `input shapes` shows MORE than one
     tensor (the first is the activation; the rest are weight-like tensors).
 
-For these ops, your kernel's INPUTS to the ncnn forward are still ONLY the
-activation(s) — the weight tensors are routed to your `load_model(ModelBin&)`
-exactly as for a normal nn.Module-backed layer. The harness handles the
-splitting automatically when you tell it via `weights_from_inputs`:
+For these ops the kernel is a MULTI-INPUT LAYER. The weight tensors arrive as
+EXTRA bottom_blobs at every forward() call — NOT via load_model. This is
+mandatory because pnnx writes an empty .ncnn.bin for functional ops; if your
+kernel calls `mb.load(...)` it WILL CRASH with
+"ModelBin read flag_struct failed 0" at NetOracle / production time. The
+LayerOracle is permissive and won't catch the bug, but the end-to-end check
+will. Avoid this by simply NOT calling mb.load for functional ops.
 
-  - `weights_from_inputs: []`                — no functional weights (the default)
-  - `weights_from_inputs: [1, 2]`            — input[1] and input[2] are weights;
-    they will be removed from the bottom_blobs list and passed to mb.load in
-    THIS order. input[0] (and any other indices not listed) stay as activations.
-  - `weight_keys` should be `[]` in this case (state_dict is empty — there are no
-    keys to name). Don't write `["weight","bias"]` here, that will only error.
+How to declare a functional op in the profile:
+  - `weights_from_inputs: [1, 2]`   — input[1] and input[2] are weights
+                                       (in that order); input[0] is activation
+  - `weight_keys: []`                — leave empty (no state_dict path)
+  - `one_blob_only: false`           — REQUIRED (multi-input layer)
+  - `support_inplace: false`         — REQUIRED (different shapes, can't be inplace)
 
-Concrete mapping for `F.conv2d(x, w, b)` with inputs `[x, w, b]`:
-  - weights_from_inputs: [1, 2]   (w then b → mb.load order = [w, b])
+Concrete mapping for `F.conv2d(x, w, b)` with introspect inputs `[x, w, b]`:
+  - weights_from_inputs: [1, 2]
   - weight_keys:         []
-  - load_model: `weight = mb.load(weight_data_size, 0); bias = mb.load(num_output, 1);`
-  - forward sees ONE bottom blob (the activation x) and uses self.weight / self.bias.
+  - one_blob_only:       false
+  - load_model:          MUST be empty (`return 0;`)  — DO NOT call mb.load
+  - forward signature:   `int forward(const std::vector<Mat>& bottom_blobs,
+                                       std::vector<Mat>& top_blobs,
+                                       const Option& opt) const`
+  - inside forward:      `const Mat& x = bottom_blobs[0];
+                          const Mat& w = bottom_blobs[1];
+                          const Mat& b = bottom_blobs[2];  // optional`
 
-When `state_dict` is non-empty and the model is an nn.Module wrapper, stick with
-`weight_keys` (the existing path). Don't set `weights_from_inputs` in that case.
+Why multi-input instead of mb.load:
+  - pnnx-emitted `.ncnn.param` for a functional Conv has THREE Input lines and
+    one Convolution line wired as `3 1 in0 in1 in2 out0`. The bin file is empty.
+  - When NetOracle calls `Net.load_model(empty_bin)`, ncnn's standard layer
+    `Convolution::load_model` reads a 4-byte flag header from the bin and dies.
+  - Our retarget step renames the layer to `Cand_<Op>` but keeps the 3-input
+    wiring. So `Cand_<Op>` must accept those weights as bottom_blobs.
+
+When `state_dict` is non-empty and the model is an nn.Module wrapper, stick
+with `weight_keys` + `one_blob_only=true` + non-empty `load_model`. Do not set
+`weights_from_inputs` in that case.
 """
 
 
@@ -477,7 +604,11 @@ def _files_instruction(profile: KernelProfile) -> str:
 
 def _functional_routing_note(profile: KernelProfile, intro: dict | None) -> str:
     """If the op's weights come from forward INPUTS (functional style), tell the
-    coder exactly which bottom_blob index becomes which mb.load slot.
+    coder exactly which bottom_blob index is the activation and which are weights.
+
+    Important: weights stay as bottom_blobs (NOT as mb.load slots). pnnx writes
+    an empty .ncnn.bin for functional ops, so any mb.load call crashes at
+    NetOracle / production time.
     """
     wfi = getattr(profile, "weights_from_inputs", None) or []
     if not wfi:
@@ -485,18 +616,58 @@ def _functional_routing_note(profile: KernelProfile, intro: dict | None) -> str:
     in_shapes = (intro or {}).get("input_shapes") or []
     activation_idx = [i for i in range(len(in_shapes)) if i not in wfi]
     parts = [
-        "=== FUNCTIONAL OP — input-vs-weight routing ===",
-        f"This op's weights are routed from forward inputs at indices {wfi} "
-        "(in load_model order). The harness will:",
-        f"  - pass input[{activation_idx}] to your forward as bottom blobs",
-        f"  - pass input[{wfi}] to your load_model via mb.load(..., flag=k)",
+        "=== FUNCTIONAL OP — MULTI-INPUT LAYER (this op has weights in inputs) ===",
+        f"This op is FUNCTIONAL. one_blob_only is FORCED to False; your forward "
+        f"signature MUST be `int forward(const std::vector<Mat>& bottom_blobs, "
+        f"std::vector<Mat>& top_blobs, const Option& opt) const`.",
+        f"load_model() MUST be empty — `return 0;` only. DO NOT call mb.load. "
+        f"The pnnx-emitted .ncnn.bin for this op is EMPTY (0 bytes); any "
+        f"mb.load call reads from a 0-byte stream and crashes NetOracle with "
+        f"\"ModelBin read flag_struct failed 0\".",
+        f"bottom_blobs layout (order matches the .ncnn.param input wiring):",
     ]
-    for k, src_idx in enumerate(wfi):
-        if src_idx < len(in_shapes):
-            parts.append(f"      slot {k}  ← input[{src_idx}], shape={in_shapes[src_idx]}")
-    parts.append("Your kernel should: declare Mat members for these weights, "
-                 "mb.load them in order in load_model, and reference them in "
-                 "forward — NEVER expect them as bottom_blobs.")
+    for i in range(len(in_shapes)):
+        if i in activation_idx:
+            parts.append(f"  bottom_blobs[{i}] = ACTIVATION,  shape={in_shapes[i]}")
+        else:
+            slot = wfi.index(i)
+            label = ("weight", "bias", "running_mean", "running_var")[slot] \
+                    if slot < 4 else f"weight#{slot}"
+            parts.append(f"  bottom_blobs[{i}] = WEIGHT ({label}), shape={in_shapes[i]}")
+    parts.append("Inside forward(): read the activation from bottom_blobs[0] and "
+                 "the weights from bottom_blobs[1..N]. Index into the weight Mats "
+                 "using PyTorch's layout (e.g. conv weight is [out][in][kh][kw]). "
+                 "Allocate top_blobs[0] for the output.")
+    parts.append("")
+    parts.append("=== PARAM IDs ARE NCNN, NOT ONNX (CRITICAL for end-to-end correctness) ===")
+    parts.append(
+        "The PyTorch model file's docstring may list hyper-params in ONNX style "
+        "(group, pads, kernel_shape, strides, auto_pad, dilations). IGNORE THAT "
+        "ORDER inside load_param. Use the EXACT ncnn LAYER PARAM IDs from the "
+        "interface dictionary block above. pnnx writes the .ncnn.param using "
+        "those same ncnn IDs, so the NetOracle / production end-to-end run will "
+        "feed your load_param with that schema. Using ONNX order will pass the "
+        "per-op LayerOracle (it derives kernel/in/out from the weight tensor "
+        "shape) but FAIL end-to-end (wrong output shape, e.g. (3, 11, 32) vs "
+        "(16, 32, 32) because stride/dilation read from wrong IDs).")
+    parts.append(
+        "For Convolution specifically the ncnn IDs are:\n"
+        "    num_output    = pd.get( 0, 0);        // NOT 'group'!\n"
+        "    kernel_w      = pd.get( 1, 0);\n"
+        "    kernel_h      = pd.get(11, kernel_w);\n"
+        "    dilation_w    = pd.get( 2, 1);\n"
+        "    dilation_h    = pd.get(12, dilation_w);\n"
+        "    stride_w      = pd.get( 3, 1);\n"
+        "    stride_h      = pd.get(13, stride_w);\n"
+        "    pad_left      = pd.get( 4, 0);\n"
+        "    pad_right     = pd.get(15, pad_left);\n"
+        "    pad_top       = pd.get(14, pad_left);\n"
+        "    pad_bottom    = pd.get(16, pad_top);\n"
+        "    bias_term     = pd.get( 5, 0);\n"
+        "    weight_data_size = pd.get( 6, 0);\n"
+        "    group         = pd.get( 7, 1);        // only for DepthWise\n"
+        "    dynamic_weight= pd.get(19, 0);\n"
+        "For other layers use the param table at the top of this prompt verbatim.")
     return "\n".join(parts) + "\n"
 
 

@@ -391,30 +391,32 @@ def verify_kernel(
     ref_np = ref.detach().numpy()
     reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
 
-    # Functional ops (F.conv2d / F.linear / ...) ship weights as forward inputs,
-    # not state_dict. profile.weights_from_inputs lists those input indices in
-    # mb.load order; we pull them out HERE so the runner sees only activations
-    # in --input and the weight tensors in --weight.
+    # Functional ops (F.conv2d / F.linear / ...): weights ride in as ADDITIONAL
+    # bottom_blobs, NOT via mb.load. This matches what pnnx writes to .ncnn.param
+    # (multi-input wiring + empty .ncnn.bin) and avoids the "ModelBin read
+    # flag_struct failed 0" crash at NetOracle time. So every input — activation
+    # AND weight — goes through ncnn_inputs; oracle.verify gets weights=[].
     wfi = list(getattr(profile, "weights_from_inputs", None) or [])
+    if wfi and any(i < 0 or i >= len(inputs) for i in wfi):
+        res.compile_ok = False
+        res.compile_error = (f"weights_from_inputs={wfi} out of range for "
+                             f"{len(inputs)} inputs")
+        res.messages.append("bad weights_from_inputs")
+        return res
+    # Per-input layout: activation inputs drop the batch dim (ncnn Mat is per-
+    # sample), weight inputs are passed verbatim (their shape is already the
+    # ncnn-side shape — e.g. conv weight [16,3,3,3] is the actual Mat layout).
+    ncnn_inputs = []
+    for i, t in enumerate(inputs):
+        arr = t.detach().numpy()
+        if i in wfi:
+            ncnn_inputs.append(np.ascontiguousarray(arr))   # weight: keep raw shape
+        else:
+            ncnn_inputs.append(torch_to_ncnn_input(arr))    # activation: drop batch
+
+    # Standard nn.Module path: state_dict-backed weights. Mutually exclusive
+    # with wfi (KernelProfile.from_llm clears weight_keys when wfi is set).
     weights: list = []
-    bottom_inputs = inputs
-    if wfi:
-        if any(i < 0 or i >= len(inputs) for i in wfi):
-            res.compile_ok = False
-            res.compile_error = (f"weights_from_inputs={wfi} out of range for "
-                                 f"{len(inputs)} inputs")
-            res.messages.append("bad weights_from_inputs")
-            return res
-        # weights = flattened input tensors at those indices, in given order
-        for i in wfi:
-            weights.append(inputs[i].detach().numpy().reshape(-1))
-        # bottom blobs = inputs at the remaining indices, preserving order
-        bottom_inputs = [inputs[i] for i in range(len(inputs)) if i not in wfi]
-
-    ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in bottom_inputs]
-
-    # weights from state_dict in profile order (nn.Module path — disjoint from
-    # the functional path above; weight_keys should be empty when wfi is set)
     sd = model.state_dict()
     for k in profile.weight_keys:
         if k not in sd:

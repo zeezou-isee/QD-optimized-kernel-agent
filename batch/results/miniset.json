@@ -113,7 +113,7 @@
   },
   "Conv": {
     "category": "Convolution",
-    "elapsed_s": 764.9,
+    "elapsed_s": 627.1,
     "returncode": 0,
     "timed_out": false,
     "status": "fail",

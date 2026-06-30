@@ -105,7 +105,34 @@ class KernelProfile:
             prof.file = f"{base_stem}{suffix}.cpp"
         # normalize params keys to str
         prof.params = {str(k): v for k, v in (prof.params or {}).items()}
+        # Functional ops carry weights as runtime inputs — they MUST be a
+        # multi-input layer (one_blob_only=False) so the LayerOracle / NetOracle
+        # / production net all feed weights via std::vector<Mat> bottom_blobs
+        # instead of ModelBin. NetOracle compatibility hinges on this: pnnx
+        # emits an empty .ncnn.bin for functional ops, so a Cand_X that calls
+        # mb.load(...) crashes with "ModelBin read flag_struct failed 0".
+        if prof.weights_from_inputs:
+            if prof.one_blob_only:
+                print(f"[profile] functional op (weights_from_inputs={prof.weights_from_inputs}) "
+                      f"→ forcing one_blob_only=False (was True)")
+                prof.one_blob_only = False
+            if prof.weight_keys:
+                print(f"[profile] WARNING: both weights_from_inputs and weight_keys set; "
+                      f"clearing weight_keys (functional ops have no state_dict path)")
+                prof.weight_keys = []
         return prof
+
+    @property
+    def is_multi_input(self) -> bool:
+        """True when the op takes multiple bottom_blobs (NOT one_blob_only),
+        regardless of whether those extra blobs are weights or activations."""
+        return not self.one_blob_only
+
+    @property
+    def is_functional(self) -> bool:
+        """True for functional ops (F.conv2d / F.linear / ...) where weights
+        ride in as forward inputs. Implies is_multi_input."""
+        return bool(self.weights_from_inputs)
 
     def as_backend(self, backend: str) -> "KernelProfile":
         """Derive a same-op profile for another backend (e.g. base -> arm),

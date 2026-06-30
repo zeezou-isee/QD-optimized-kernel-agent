@@ -57,6 +57,10 @@ class KernelAgent:
         else:
             self.oracle = LayerOracle(ncnn_root=self.cfg.ncnn_root, workdir=RUNS_ROOT / "_oracle")
         # arm: compile the candidate against src/layer/arm helpers + NC4HW4 packing.
+        # `_packing` defaults to elempack=4 on arm, BUT for functional ops (weights
+        # arriving as bottom_blobs) we keep elempack=1 — the runner's
+        # convert_packing() would otherwise repack the weight tensor too and
+        # destroy its PyTorch layout. Finalised in run() once the profile is known.
         self._extra_includes = ([str(self.cfg.ncnn_root / "src" / "layer" / "arm")]
                                 if backend == "arm" else [])
         self._packing = 4 if backend == "arm" else 0
@@ -271,6 +275,14 @@ class KernelAgent:
             self.profile = self.analyze()
         example = retrieve_layer_example(self.cfg.ncnn_root, self.profile.analog_layer,
                                          backend=self.backend)
+        # Functional ops + arm: keep elempack=1 (the runner's convert_packing()
+        # would otherwise pack the weight bottom_blob too and break its PyTorch
+        # layout). LLM still uses NEON intrinsics inside forward — just over
+        # unpacked inputs. See _functional_routing_note for the kernel-side rules.
+        if self.backend == "arm" and self.profile.is_functional:
+            print(f"[kernel] arm + functional op detected → forcing packing=0 "
+                  f"(elempack=1) to keep weight bottom_blobs in PyTorch layout")
+            self._packing = 0
         print(f"[kernel] backend={self.backend} profile: class={self.profile.class_name} "
               f"analog={self.profile.analog_layer} weight_keys={self.profile.weight_keys} "
               f"params={self.profile.params}")
