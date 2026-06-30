@@ -1,0 +1,26 @@
+{
+  "Conv": {
+    "category": "",
+    "elapsed_s": 110.0,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "backend": "base",
+    "rounds": 1,
+    "compile": true,
+    "numeric": "passed",
+    "max_diff": 0.0
+  },
+  "And": {
+    "category": "",
+    "elapsed_s": 109.4,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "backend": "base",
+    "rounds": 1,
+    "compile": true,
+    "numeric": "passed",
+    "max_diff": 0.0
+  }
+}

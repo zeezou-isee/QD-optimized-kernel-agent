@@ -388,6 +388,17 @@ class LayerOracle:
 
     @staticmethod
     def _fmt_param(key: int, value: Any) -> str:
+        # ncnn array params use the "negative key" trick: -23310=N,v1,v2,...
+        # where 23300 is added to the real key id and the count comes first.
+        # We pass arrays through verbatim so layers like Convolution `10=pads_array`
+        # work; layers expecting a SCALAR but handed a list would crash here, so
+        # the typical use is when the dictionary's default for that param is itself
+        # an array. Caller (KernelAgent) is responsible for matching the layer.
+        if isinstance(value, (list, tuple)):
+            arr_key = -(23300 + int(key))
+            elems = ",".join(f"{int(v)}" if not isinstance(v, float)
+                             else (f"{v:.8g}" if v == v else "0") for v in value)
+            return f"{arr_key}={len(value)},{elems}"
         if isinstance(value, float):
             return f"{key}={value:.8g}" if value == value else f"{key}=0"
         return f"{key}={int(value)}"

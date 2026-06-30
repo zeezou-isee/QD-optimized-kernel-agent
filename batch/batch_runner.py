@@ -36,7 +36,8 @@ ROOT          = Path(__file__).resolve().parents[1]
 BATCH_DIR     = Path(__file__).resolve().parent
 SETS_PKG      = "batch.sets"
 RESULTS_DIR   = BATCH_DIR / "results"
-CLI           = ROOT / "opgen" / "cli" / "run_operator_agent.py"
+CLI_OPERATOR  = ROOT / "opgen" / "cli" / "run_operator_agent.py"
+CLI_KERNEL    = ROOT / "opgen" / "cli" / "run_kernel_agent.py"
 RUNS          = ROOT / "opgen" / "runs"
 VENV_BIN      = ROOT / ".venv" / "bin"
 
@@ -146,6 +147,34 @@ def summarize(op: str) -> dict:
     }
 
 
+def summarize_kernel(op: str, backend: str) -> dict:
+    """Read the KernelAgent's standalone summary.json for `op` (base or arm)."""
+    sub = "kernel" if backend == "base" else f"kernel_{backend}"
+    sj = RUNS / op / sub / "summary.json"
+    if not sj.exists():
+        return {}
+    try:
+        s = json.loads(sj.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    fr = s.get("final_result") or {}
+    if fr.get("numeric_skipped"):
+        numeric = "skipped"
+    elif fr.get("numeric_ok"):
+        numeric = "passed"
+    else:
+        numeric = "failed"
+    return {
+        "status":     s.get("status"),
+        "backend":    s.get("backend"),
+        "rounds":     s.get("rounds"),
+        "compile":    fr.get("compile_ok"),
+        "numeric":    numeric,
+        "max_diff":   fr.get("max_diff"),
+        "category":   fr.get("failure_category"),
+    }
+
+
 def child_env() -> dict:
     """Inherit parent env, but ensure .venv/bin is on PATH so cmake is findable.
 
@@ -159,18 +188,35 @@ def child_env() -> dict:
     return env
 
 
-def run_one(category: str, op: str, cfg: ModuleType) -> dict:
-    cmd = [
-        sys.executable, str(CLI),
-        "--task", op,
-        "--dataset-root", str(cfg.DATASET),
-        "--model-name", cfg.MODEL,
-        "--max-rounds", cfg.MAX_ROUNDS,
-        "--graph-max-rounds", cfg.GRAPH_MAX_ROUNDS,
-        "--backends", cfg.BACKENDS,
-        "--compile-mode", cfg.COMPILE_MODE,
-        "--auto-cleanup",
-    ]
+def run_one(category: str, op: str, cfg: ModuleType,
+            mode: str = "operator", backend: str = "base") -> dict:
+    """Spawn one agent (operator | kernel) for `op` and capture its summary.
+
+    mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
+    mode="kernel"   — just KernelAgent standalone (no ncnn tree mutation;
+                       --backend base by default, or arm via `backend` arg)
+    """
+    if mode == "kernel":
+        cmd = [
+            sys.executable, str(CLI_KERNEL),
+            "--task", op,
+            "--dataset-root", str(cfg.DATASET),
+            "--model-name", cfg.MODEL,
+            "--max-rounds", cfg.MAX_ROUNDS,
+            "--backend", backend,
+        ]
+    else:
+        cmd = [
+            sys.executable, str(CLI_OPERATOR),
+            "--task", op,
+            "--dataset-root", str(cfg.DATASET),
+            "--model-name", cfg.MODEL,
+            "--max-rounds", cfg.MAX_ROUNDS,
+            "--graph-max-rounds", cfg.GRAPH_MAX_ROUNDS,
+            "--backends", cfg.BACKENDS,
+            "--compile-mode", cfg.COMPILE_MODE,
+            "--auto-cleanup",
+        ]
     timed_out = False
     t0 = time.time()
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -196,7 +242,7 @@ def run_one(category: str, op: str, cfg: ModuleType) -> dict:
 
     row = {"category": category, "elapsed_s": dt, "returncode": rc,
            "timed_out": timed_out}
-    row.update(summarize(op))
+    row.update(summarize_kernel(op, backend) if mode == "kernel" else summarize(op))
     if not row.get("status"):
         row["status"] = "crash" if not timed_out else "timeout"
         row["tail"] = tail[-600:]
@@ -211,16 +257,32 @@ def main() -> None:
     p.add_argument("--ops", default=None,
                    help="comma-separated op names; only these will run (debug)")
     p.add_argument("--results",
-                   help="override result JSON path (default batch/results/<set>.json)")
+                   help="override result JSON path (default batch/results/<set>.json "
+                        "or batch/results/<set>_kernel_<backend>.json in kernel-only mode)")
+    p.add_argument("--kernel-only", action="store_true",
+                   help="run KernelAgent standalone (no ncnn tree mutation, no GraphAgent). "
+                        "Use this to test kernel-prompt changes in isolation.")
+    p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
+                   help="--kernel-only: which backend to verify (default base)")
     args = p.parse_args()
 
     cfg = load_set(args.set_name)
-    results_path = (Path(args.results) if args.results
-                    else RESULTS_DIR / f"{args.set_name}.json")
+    if args.results:
+        results_path = Path(args.results)
+    elif args.kernel_only:
+        results_path = RESULTS_DIR / f"{args.set_name}_kernel_{args.backend}.json"
+    else:
+        results_path = RESULTS_DIR / f"{args.set_name}.json"
     only = {s.strip() for s in args.ops.split(",")} if args.ops else None
 
     # second layer of safety: refuse to run on a dirty ncnn tree
-    preflight_ncnn_clean()
+    # (kernel-only mode never touches the ncnn tree → skip)
+    if not args.kernel_only:
+        preflight_ncnn_clean()
+    else:
+        print(f"[batch:{args.set_name}] kernel-only mode (backend={args.backend}) — "
+              f"ncnn tree preflight skipped (KernelAgent does not mutate the tree)",
+              flush=True)
 
     ops = discover_ops(cfg.DATASET)
     if only:
@@ -240,13 +302,21 @@ def main() -> None:
             print(f"[{i}/{total}] {cat}/{op}: SKIP (already {prev})", flush=True)
             continue
         print(f"[{i}/{total}] {cat}/{op}: running...", flush=True)
-        row = run_one(cat, op, cfg)
+        mode = "kernel" if args.kernel_only else "operator"
+        row = run_one(cat, op, cfg, mode=mode, backend=args.backend)
         results[op] = row
         save_results(results_path, results)
-        print(f"[{i}/{total}] {cat}/{op}: {row['status']} "
-              f"(kernel={row.get('kernel')} graph={row.get('graph')} "
-              f"e2e={row.get('e2e')} prod={row.get('production')} {row['elapsed_s']}s)",
-              flush=True)
+        if args.kernel_only:
+            print(f"[{i}/{total}] {cat}/{op}: {row['status']} "
+                  f"(rounds={row.get('rounds')} compile={row.get('compile')} "
+                  f"numeric={row.get('numeric')} max_diff={row.get('max_diff')} "
+                  f"{row['elapsed_s']}s)",
+                  flush=True)
+        else:
+            print(f"[{i}/{total}] {cat}/{op}: {row['status']} "
+                  f"(kernel={row.get('kernel')} graph={row.get('graph')} "
+                  f"e2e={row.get('e2e')} prod={row.get('production')} {row['elapsed_s']}s)",
+                  flush=True)
 
     ok = sum(1 for r in results.values() if r.get("status") == "success")
     print(f"\n[batch:{args.set_name}] DONE: {ok}/{len(results)} success "

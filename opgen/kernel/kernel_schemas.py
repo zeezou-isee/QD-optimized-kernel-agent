@@ -18,6 +18,12 @@ class KernelProfile:
     support_inplace: bool = False
     params: dict[str, Any] = field(default_factory=dict)   # {param_id(str): value}
     weight_keys: list[str] = field(default_factory=list)   # state_dict keys, in load_model order
+    # Functional ops (F.conv2d / F.linear / ...) carry weights as forward INPUTS,
+    # not as nn.Parameter in state_dict. weights_from_inputs gives the 0-based
+    # input indices that are actually weights (in load_model order). When this
+    # is non-empty the verify pipeline pulls those inputs out and routes them to
+    # the runner's `--weight` slot (mb.load), leaving the rest as bottom_blobs.
+    weights_from_inputs: list[int] = field(default_factory=list)
     analog_layer: str = ""         # nearest existing ncnn base layer to imitate (file stem)
     backend: str = "base"          # "base" | "arm" | "vulkan"
     base_class: str = ""           # for arm/vulkan: the base layer class it subclasses (Cand_Abs)
@@ -30,6 +36,45 @@ class KernelProfile:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    # Identifier-shaped values only — LLMs occasionally splat .h/.cpp source bodies
+    # into these fields (we've seen it for And/Logic ops); a single bad value
+    # cascades into 15 rounds of compile_repair because the field is plumbed into
+    # `-DCANDIDATE_HEADER=<source body>` and `new <code>()` at the runner level.
+    _FIELD_MAX_LEN = {"class_name": 80, "header": 80, "file": 80}
+    # any of these characters in an identifier field → LLM put code there
+    _FIELD_BAD_CHARS = ("\n", "\r", "#", "{", "}", ";", " ", "\t", '"', "'", "(", ")")
+
+    @classmethod
+    def _sanitize_identifier_field(cls, name: str, value: str) -> str:
+        """Reject values that obviously aren't simple identifiers / filenames.
+
+        Returns "" when the value is bad — caller then fills in the default
+        (Cand_<Task> / cand_<task>.h / cand_<task>.cpp) so the kernel can
+        still compile. Prints a clear warning so the bug is visible.
+        """
+        if not isinstance(value, str):
+            return ""
+        v = value.strip()
+        if not v:
+            return ""
+        if len(v) > cls._FIELD_MAX_LEN[name]:
+            print(f"[profile] WARNING: `{name}` looks like injected code "
+                  f"({len(v)} chars, max {cls._FIELD_MAX_LEN[name]}); "
+                  f"falling back to default")
+            return ""
+        if any(c in v for c in cls._FIELD_BAD_CHARS):
+            print(f"[profile] WARNING: `{name}` contains code characters "
+                  f"(first 60 chars: {v[:60]!r}); falling back to default")
+            return ""
+        # extension check for header/file
+        if name == "header" and not v.endswith((".h", ".hpp")):
+            print(f"[profile] WARNING: `header={v!r}` lacks .h/.hpp; falling back")
+            return ""
+        if name == "file" and not v.endswith((".cpp", ".cc", ".cxx")):
+            print(f"[profile] WARNING: `file={v!r}` lacks .cpp/.cc/.cxx; falling back")
+            return ""
+        return v
+
     @classmethod
     def from_llm(cls, task_name: str, payload: dict[str, Any],
                  backend: str = "base") -> "KernelProfile":
@@ -37,6 +82,12 @@ class KernelProfile:
         clean = {k: v for k, v in (payload or {}).items() if k in allowed}
         clean["task_name"] = task_name
         clean["backend"] = backend
+        # sanitize identifier-shaped fields BEFORE construction — these are the
+        # ones that get plumbed straight into the build system, where a bad
+        # value silently corrupts every subsequent round (see Fix A).
+        for fld in ("class_name", "header", "file"):
+            if fld in clean:
+                clean[fld] = cls._sanitize_identifier_field(fld, clean[fld])
         prof = cls(**clean)
         # backend-aware default naming: base -> Cand_Abs / cand_abs.{h,cpp}
         #                                arm  -> Cand_Abs_arm / cand_abs_arm.{h,cpp}

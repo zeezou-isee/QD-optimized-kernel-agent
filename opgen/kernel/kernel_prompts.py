@@ -75,6 +75,41 @@ WEIGHTS: the harness passes weights as flat float arrays in the EXACT order of
 profile.weight_keys (each = a PyTorch state_dict tensor flattened). Your load_model
 must `mb.load(...)` them in the SAME order; index them in forward consistently with
 PyTorch's tensor layout (e.g. conv weight is [out][in][kh][kw] row-major).
+
+=== ncnn::Mat MEMORY MODEL — cstep / channel gap (READ THIS, IT IS THE #1 BUG SOURCE) ===
+- `mat.cstep` is the stride between consecutive channels in floats, NOT necessarily
+  `w*h*d`. ncnn pads each channel slice up to an alignment boundary so that
+  `cstep >= w*h*d`, with the gap zero-filled. Concretely: when packing is OFF
+  (elempack=1), cstep is `w*h*d` rounded up to a multiple of 4 — if `w*h*d` is not
+  divisible by 4 there is a per-channel gap of unused floats between channels.
+- THEREFORE: NEVER cast a Mat to a flat float* and iterate `w*h*d*c` elements:
+      const float* p = (const float*)bottom;  // WRONG — will read gap garbage / write past
+      for (int i = 0; i < w*h*d*c; i++) p[i] = ...;
+  This silently corrupts channel boundaries whenever cstep != w*h*d. ALWAYS iterate
+  per-channel via `mat.channel(q)`, processing `w*h*d` elements inside each channel:
+      for (int q = 0; q < c; q++) {
+          const float* pin  = bottom.channel(q);
+          float*       pout = top.channel(q);
+          for (int i = 0; i < w*h*d; i++) pout[i] = f(pin[i]);
+      }
+- 1D/2D Mats have no channel dim. Use `.dims` to branch (dims==1 → just w; dims==2 →
+  w*h; dims==3 → loop over c using channel(q); dims==4 → loop over c, each channel
+  holds w*h*d). Do NOT assume 4D.
+
+=== PACKED LAYOUT — what changes when packing is ON (elempack > 1) ===
+The base kernel itself runs at elempack=1 (no packing). But ncnn's packing path is
+ALSO exercised against your kernel in regression checks, and an arm subclass WILL
+run packed. Internal mental model so you don't write code that breaks under packing:
+- When elempack=N, each "channel slot" stores N original channels interleaved at the
+  innermost layout. `mat.c` becomes `original_c / elempack` (the number of channel
+  *groups*), and `mat.elempack = N`. Each `channel(q)` then holds
+  `w*h*d*elempack` contiguous floats: N values per spatial position, lane-interleaved.
+- `mat.cstep` (in floats) still includes the per-channel-group alignment gap. If you
+  write per-channel loops correctly (per the section above), the packed path "just
+  works" for pure elementwise ops — process `w*h*d*elempack` floats per channel slot.
+- Reductions across channels, broadcasting along channel, or anything that mixes lanes
+  must explicitly handle elempack: either unpack first, or iterate
+  `(q, lane)` with the right stride.
 """
 
 ARM_LAYER_BACKGROUND = """\
@@ -111,6 +146,51 @@ Conventions (CRITICAL):
   do not reallocate.
 - Parallelize channels: `#pragma omp parallel for num_threads(opt.num_threads)`.
 - Do NOT write DEFINE_LAYER_CREATOR — arm registration is automatic via cmake.
+"""
+
+
+BROADCASTING_PRIMER = """\
+=== ncnn BROADCASTING RULES (this op takes MULTIPLE inputs — read this) ===
+ncnn's broadcasting is INNER-AXIS-FIRST and goes in the OPPOSITE direction of
+numpy / PyTorch (which right-aligns shapes). Get this wrong and your shape
+contract silently picks the wrong axis.
+
+Notation: shapes are written innermost-first as [w], [w,h], [w,h,c], [w,h,d,c]
+(matching how Mat stores them: dims=1→w, dims=2→w+h, dims=3→w+h+c, dims=4→w+h+d+c).
+
+1) SCALAR / SCALAR-LIKE — B is a singleton:
+     A=[2,3,4]   B=scalar or [1] or [1,1] or [1,1,1]   → C=[2,3,4]
+   Apply B's single value to every element of A.
+
+2) SAME-SHAPE — straight element-wise, no broadcast:
+     A=[2,3,4]   B=[2,3,4]   → C=[2,3,4]
+
+3) EXPLICIT BROADCAST — B has matching rank but some axes are 1:
+     A=[2,3,4,5]  B=[2,3,1,5]  → C=[2,3,4,5]   (B repeats along d=4)
+     A=[2,3,4]    B=[1,3,1]    → C=[2,3,4]     (B repeats along w and c)
+   For every axis where B==1, repeat B along that axis. Where B>1, axes must equal A.
+
+4) IMPLICIT BROADCAST — B has LOWER rank than A. **Inner axis first**, opposite numpy:
+     A=[2,3]      B=[3]        → C=[2,3]   (B is broadcast as [1,3], i.e. INNER w aligns)
+     A=[2,3,4]    B=[4]        → C=[2,3,4] (B aligns to innermost w)
+     A=[2,3,4]    B=[3,4]      → C=[2,3,4] (B aligns to [w,h], NOT [h,c])
+     A=[2,3,4,5]  B=[3,4,5]    → C=[2,3,4,5] (B aligns to [w,h,d])
+   Mental check: numpy would right-align as [3]→[1,1,3] for A=[2,3,4], broadcasting on
+   the LAST axis. ncnn does the OPPOSITE: [3] aligns to A's [w], expanding outwards.
+
+5) LEGACY 1-D OUTER-AXIS (only when (4) does NOT apply because sizes don't match
+   the inner axis): B=[2] against A=[2,3] → C=[2,3]. If inner-axis match is possible
+   it ALWAYS wins (see B=[2] vs A=[2,2] → inner-axis broadcast).
+
+Implementation hints for your forward:
+- Read `a.dims, a.w, a.h, a.d, a.c` and `b.dims, b.w, ...` first; branch on the
+  combination instead of assuming a single shape. Most BinaryOp-style kernels need
+  a small dispatch table over (a.dims, b.dims, equal/1-along-axis).
+- If the model only ever feeds you one shape combo, you may special-case it — but at
+  minimum print a clear error for unhandled combos (return -100) rather than read
+  out-of-bounds.
+- pnnx often inserts a `Reshape` upstream to convert implicit→explicit. Do not rely
+  on that — your kernel still must handle implicit when the IR doesn't reshape.
 """
 
 
@@ -182,8 +262,11 @@ ops add more `layout(binding=k) readonly buffer ...` and more bindings in the .c
 
 
 def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
+    # multi-input ops (one_blob_only == False) need the broadcasting primer,
+    # regardless of backend
+    bcast = (BROADCASTING_PRIMER if profile and not profile.one_blob_only else "")
     if backend not in ("arm", "vulkan"):
-        return NCNN_LAYER_BACKGROUND
+        return NCNN_LAYER_BACKGROUND + ("\n" + bcast if bcast else "")
     base_class = (profile.base_class if profile else "") or "BaseLayer"
     suffix = "_" + backend
     sub_class = (profile.class_name if profile else "") or (base_class + suffix)
@@ -203,7 +286,7 @@ def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
             vulkan_header=(profile.header if profile else "cand_x_vulkan.h"),
             vulkan_file=(profile.file if profile else "cand_x_vulkan.cpp"),
             shader_file=shader_file)
-    return NCNN_LAYER_BACKGROUND + "\n" + addendum
+    return NCNN_LAYER_BACKGROUND + "\n" + addendum + ("\n" + bcast if bcast else "")
 
 
 OUTPUT_CONTRACT = """\
@@ -230,7 +313,16 @@ def _examples(examples: dict[str, str]) -> str:
 def _introspect(intro: dict | None) -> str:
     if not intro:
         return "(model introspection unavailable)"
-    parts = [f"input shapes (torch, with batch): {intro.get('input_shapes')}"]
+    inp = intro.get("input_shapes") or []
+    parts = [f"input shapes (torch, with batch): {inp}"]
+    # If there are multiple inputs AND state_dict is empty, flag it as a
+    # functional-op candidate (helps the LLM fill in weights_from_inputs).
+    sd = intro.get("state_dict") or {}
+    if len(inp) >= 2 and not sd:
+        parts.append(f"  → NOTE: {len(inp)} inputs + empty state_dict suggests a "
+                     "FUNCTIONAL op (weights arrive as forward inputs, not nn.Parameter). "
+                     "See the FUNCTIONAL OPS section above and set weights_from_inputs "
+                     "to the input indices that are actually weights.")
     if intro.get("output_shape"):
         nsh = intro.get("ncnn_output_shape") or []
         nelem = 1
@@ -251,12 +343,20 @@ def _introspect(intro: dict | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+_MULTI_INPUT_ANALOGS = {"BinaryOp", "Eltwise", "Concat", "MatMul", "Gemm"}
+
+
 def _interface_reference_block(task_name: str) -> str:
     """Inject the ncnn built-in layer interface for this task, when known.
 
     Returns an empty string for tasks whose analog ncnn layer can't be guessed,
     or whose layer isn't in the dictionary. The KernelAgent stays free to make
     its own decisions in that case (no regression on novel ops).
+
+    For multi-input analogs (BinaryOp/Eltwise/Concat/MatMul/Gemm) the
+    broadcasting primer is also appended so the ANALYZER prompt itself sees
+    ncnn's inner-axis-first rules — important because the analyzer is what
+    decides one_blob_only=false and rank_coverage.
     """
     # late import keeps this lookup optional: tests / standalone callers that
     # don't bootstrap_paths still work, they just won't get the reference block.
@@ -270,13 +370,48 @@ def _interface_reference_block(task_name: str) -> str:
     block = render_for_prompt(layer, role="kernel")
     if not block:
         return ""
-    return (
+    suffix = (
         f"\n{block}\n"
         f"NOTE: the above is the EXACT interface of the corresponding ncnn "
         f"built-in layer. Your `params` keys and `weight_keys` order MUST follow it. "
         f"If your op truly needs a different interface, set `analog_layer` to "
         f"something other than `{layer}` to opt out.\n"
     )
+    if layer in _MULTI_INPUT_ANALOGS:
+        suffix += "\n" + BROADCASTING_PRIMER
+    return suffix
+
+
+_FUNCTIONAL_OP_GUIDE = """\
+=== FUNCTIONAL OPS — when weights arrive as INPUTS, not state_dict ===
+Some operators are implemented with `torch.nn.functional` (F.conv2d, F.linear,
+F.layer_norm, F.batch_norm, ...) where the weight/bias tensors are passed in via
+`forward(x, weight, bias)` rather than stored as `nn.Parameter` on the module.
+Symptoms in the introspection above:
+  - `state_dict: (none — weightless op)`  AND  `input shapes` shows MORE than one
+    tensor (the first is the activation; the rest are weight-like tensors).
+
+For these ops, your kernel's INPUTS to the ncnn forward are still ONLY the
+activation(s) — the weight tensors are routed to your `load_model(ModelBin&)`
+exactly as for a normal nn.Module-backed layer. The harness handles the
+splitting automatically when you tell it via `weights_from_inputs`:
+
+  - `weights_from_inputs: []`                — no functional weights (the default)
+  - `weights_from_inputs: [1, 2]`            — input[1] and input[2] are weights;
+    they will be removed from the bottom_blobs list and passed to mb.load in
+    THIS order. input[0] (and any other indices not listed) stay as activations.
+  - `weight_keys` should be `[]` in this case (state_dict is empty — there are no
+    keys to name). Don't write `["weight","bias"]` here, that will only error.
+
+Concrete mapping for `F.conv2d(x, w, b)` with inputs `[x, w, b]`:
+  - weights_from_inputs: [1, 2]   (w then b → mb.load order = [w, b])
+  - weight_keys:         []
+  - load_model: `weight = mb.load(weight_data_size, 0); bias = mb.load(num_output, 1);`
+  - forward sees ONE bottom blob (the activation x) and uses self.weight / self.bias.
+
+When `state_dict` is non-empty and the model is an nn.Module wrapper, stick with
+`weight_keys` (the existing path). Don't set `weights_from_inputs` in that case.
+"""
 
 
 def analyzer_prompt(task_name: str, model_code: str, intro: dict | None) -> str:
@@ -293,8 +428,14 @@ Model introspection (ground truth):
 {_introspect(intro)}
 
 {NCNN_LAYER_BACKGROUND}
+
+{_FUNCTIONAL_OP_GUIDE}
 {ref}
-Return ONLY a JSON object (no prose):
+Return ONLY a JSON object (no prose). FIELDS MUST BE SIMPLE VALUES:
+- `class_name`, `header`, `file`: short identifiers / filenames ONLY (no code,
+  no `#include`, no braces, no newlines). e.g. `Cand_Abs` / `cand_abs.h`.
+- The actual .h/.cpp source code is emitted later in the coder phase — NOT here.
+
 {{
   "class_name": "Cand_{task_name}",
   "header": "cand_{task_name.lower()}.h",
@@ -302,7 +443,8 @@ Return ONLY a JSON object (no prose):
   "one_blob_only": true,
   "support_inplace": false,
   "params": {{}},                      // {{param_id: concrete value for THIS model}}, e.g. {{"0": 1.0}}
-  "weight_keys": [],                   // state_dict keys in load_model order (e.g. ["weight","bias"]); [] if weightless
+  "weight_keys": [],                   // state_dict keys in load_model order (e.g. ["weight","bias"]); [] if weightless OR functional (use weights_from_inputs instead)
+  "weights_from_inputs": [],           // input indices that are weights (e.g. [1, 2] for F.conv2d(x, w, b)); [] for nn.Module-backed ops
   "analog_layer": "<nearest existing ncnn base layer file stem, e.g. absval / elu / convolution>",
   "notes": "<op math + how the forward should index the Mat / weights>"
 }}"""
@@ -333,11 +475,37 @@ def _files_instruction(profile: KernelProfile) -> str:
             f"`{profile.class_name}` and end the .cpp with DEFINE_LAYER_CREATOR({profile.class_name}).")
 
 
+def _functional_routing_note(profile: KernelProfile, intro: dict | None) -> str:
+    """If the op's weights come from forward INPUTS (functional style), tell the
+    coder exactly which bottom_blob index becomes which mb.load slot.
+    """
+    wfi = getattr(profile, "weights_from_inputs", None) or []
+    if not wfi:
+        return ""
+    in_shapes = (intro or {}).get("input_shapes") or []
+    activation_idx = [i for i in range(len(in_shapes)) if i not in wfi]
+    parts = [
+        "=== FUNCTIONAL OP — input-vs-weight routing ===",
+        f"This op's weights are routed from forward inputs at indices {wfi} "
+        "(in load_model order). The harness will:",
+        f"  - pass input[{activation_idx}] to your forward as bottom blobs",
+        f"  - pass input[{wfi}] to your load_model via mb.load(..., flag=k)",
+    ]
+    for k, src_idx in enumerate(wfi):
+        if src_idx < len(in_shapes):
+            parts.append(f"      slot {k}  ← input[{src_idx}], shape={in_shapes[src_idx]}")
+    parts.append("Your kernel should: declare Mat members for these weights, "
+                 "mb.load them in order in load_model, and reference them in "
+                 "forward — NEVER expect them as bottom_blobs.")
+    return "\n".join(parts) + "\n"
+
+
 def coder_prompt(profile: KernelProfile, examples: dict[str, str], model_code: str, intro: dict | None) -> str:
     return f"""Write the from-scratch ncnn {profile.backend} kernel for this operator.
 
 {_background(profile.backend, profile)}
 
+{_functional_routing_note(profile, intro)}
 Kernel profile (follow it exactly — class name, params ids, weight order):
 {json.dumps(profile.to_dict(), ensure_ascii=False, indent=2)}
 
@@ -391,6 +559,7 @@ Situation: {framing}{extra}
 
 {_background(profile.backend, profile)}
 
+{_functional_routing_note(profile, intro)}
 Profile:
 {json.dumps(profile.to_dict(), ensure_ascii=False, indent=2)}
 

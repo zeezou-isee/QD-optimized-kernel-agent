@@ -169,8 +169,18 @@ def retrieve_layer_example(ncnn_root: Path, analog: str, max_files: int = 1,
 def _size_variants(inputs):
     """Same-rank, smaller-size variants of the model inputs, made by SLICING (keeps
     values in the op's valid domain — random tensors would break log/sqrt/det etc.).
-    Halves the last two non-batch axes. Returns [] if nothing could be varied."""
-    variant = []
+
+    Yields up to two variants:
+      1. HALVED — last two non-batch axes halved (general shape scrutiny)
+      2. CHANNEL-GAP — last spatial axis trimmed so `prod(spatial) % 4 != 0`
+         (forces ncnn cstep > w*h*d → channel gap, exposes flat-cast bugs
+          where the kernel casts Mat to a flat float* across channels)
+
+    Returns [] if no variant could be constructed.
+    """
+    out = []
+    # --- 1) halved variant ---
+    halved = []
     changed = False
     for t in inputs:
         s = list(t.shape)
@@ -179,18 +189,87 @@ def _size_variants(inputs):
             if ax >= 1 and s[ax] >= 2:        # keep axis 0 (batch) fixed
                 idx[ax] = slice(0, s[ax] // 2)
                 changed = True
-        variant.append(t[tuple(idx)].contiguous())
-    return [tuple(variant)] if changed else []
+        halved.append(t[tuple(idx)].contiguous())
+    if changed:
+        out.append(tuple(halved))
+
+    # --- 2) channel-gap variant ---
+    # Pick a slice where w*h*d % 4 != 0 (when packing=elempack=1 the per-channel
+    # stride is rounded up to a multiple of 4 floats, so a non-mod-4 spatial product
+    # creates a gap between channels that any (float*)mat flat-cast will trip over).
+    # ncnn Mat layout: dims=3→w+h+c, dims=4→w+h+d+c.
+    gap = []
+    forced = False
+    odd_choices = (3, 5, 7, 9, 11, 13)
+    for t in inputs:
+        s = list(t.shape)
+        if len(s) < 3:
+            # 1D/2D ncnn Mat has no channel dim → no cstep gap mechanism
+            gap.append(t)
+            continue
+        spatial_axes = list(range(2, len(s)))
+        # try the smallest pair/triple of odd lengths whose product is not div by 4
+        chosen = None
+        if len(spatial_axes) == 1:
+            for w in odd_choices:
+                if w < s[spatial_axes[0]] and w % 4 != 0:
+                    chosen = [w]; break
+        elif len(spatial_axes) == 2:
+            for a in odd_choices:
+                if a >= s[spatial_axes[0]]:
+                    continue
+                for b in odd_choices:
+                    if b >= s[spatial_axes[1]]:
+                        continue
+                    if (a * b) % 4 != 0:
+                        chosen = [a, b]; break
+                if chosen:
+                    break
+        else:  # 3 spatial axes (5D torch → 4D ncnn) — trim all three
+            for a in odd_choices:
+                if a >= s[spatial_axes[0]]:
+                    continue
+                for b in odd_choices:
+                    if b >= s[spatial_axes[1]]:
+                        continue
+                    for c in odd_choices:
+                        if c >= s[spatial_axes[2]]:
+                            continue
+                        if (a * b * c) % 4 != 0:
+                            chosen = [a, b, c]; break
+                    if chosen:
+                        break
+                if chosen:
+                    break
+        if chosen is not None:
+            idx = [slice(None)] * len(s)
+            for ax, w in zip(spatial_axes, chosen):
+                idx[ax] = slice(0, w)
+            gap.append(t[tuple(idx)].contiguous())
+            forced = True
+        else:
+            gap.append(t)
+    # skip if the gap variant would be a duplicate of the halved variant
+    halved_shapes = tuple(h.shape for h in halved) if changed else None
+    if forced and tuple(g.shape for g in gap) != halved_shapes:
+        out.append(tuple(gap))
+    return out
 
 
 def _multishape_check(oracle, profile, cpp_path, params, model_py,
                       extra_sources, extra_includes, backend_kwargs, tol):
     """Re-verify a weightless kernel on size variants (8.2). Returns (category, detail)
-    of the first failing variant, or None if all pass / the op rejects them."""
+    of the first failing variant, or None if all pass / the op rejects them.
+
+    _size_variants yields variants in order: (1) halved, (2) channel-gap. The
+    channel-gap variant specifically catches the cstep flat-cast bug — when it's
+    what fails, the message points the LLM at the right root cause.
+    """
     import torch
     mod = _load_module(model_py)
     model, _ = _build_model(mod)
-    for vin in _size_variants(mod.get_inputs()):
+    variants = _size_variants(mod.get_inputs())
+    for vidx, vin in enumerate(variants):
         try:
             with torch.no_grad():
                 ref = model(*vin)
@@ -210,8 +289,21 @@ def _multishape_check(oracle, profile, cpp_path, params, model_py,
         if not (v.ok and v.passed):
             shp = tuple(int(x) for x in vin[0].shape)
             cat = getattr(v, "failure_category", "") or "E6_VALUE_NUMERICAL"
-            return (cat, f"MULTI-SHAPE: passed the model's shape but FAILED a size variant "
-                         f"(input {shp}) — your indexing is hardcoded to one shape. {v.detail}")
+            # vidx==1 is the channel-gap variant (cstep > w*h*d → flat-cast bug)
+            is_gap = (vidx == 1) or (len(shp) >= 2 and (shp[-1] * (shp[-2] if len(shp) >= 3 else 1)) % 4 != 0)
+            if is_gap:
+                hint = (f"MULTI-SHAPE / CHANNEL-GAP: this variant (input {shp}) has "
+                        f"spatial w*h*d NOT divisible by 4, so ncnn pads `mat.cstep` "
+                        f"per-channel with unused floats. Your forward most likely casts "
+                        f"the Mat to a flat float* and walks w*h*c contiguously — that "
+                        f"reads/writes the gap, corrupting channel boundaries. Fix: iterate "
+                        f"per-channel via `mat.channel(q)` and process w*h*d elements "
+                        f"inside each channel; NEVER `const float* p = (const float*)mat;` "
+                        f"across channels. {v.detail}")
+            else:
+                hint = (f"MULTI-SHAPE: passed the model's shape but FAILED a size variant "
+                        f"(input {shp}) — your indexing is hardcoded to one shape. {v.detail}")
+            return (cat, hint)
     return None
 
 
@@ -298,11 +390,32 @@ def verify_kernel(
         ref = ref[0]
     ref_np = ref.detach().numpy()
     reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
-    ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
 
-    # weights from state_dict in profile order
+    # Functional ops (F.conv2d / F.linear / ...) ship weights as forward inputs,
+    # not state_dict. profile.weights_from_inputs lists those input indices in
+    # mb.load order; we pull them out HERE so the runner sees only activations
+    # in --input and the weight tensors in --weight.
+    wfi = list(getattr(profile, "weights_from_inputs", None) or [])
+    weights: list = []
+    bottom_inputs = inputs
+    if wfi:
+        if any(i < 0 or i >= len(inputs) for i in wfi):
+            res.compile_ok = False
+            res.compile_error = (f"weights_from_inputs={wfi} out of range for "
+                                 f"{len(inputs)} inputs")
+            res.messages.append("bad weights_from_inputs")
+            return res
+        # weights = flattened input tensors at those indices, in given order
+        for i in wfi:
+            weights.append(inputs[i].detach().numpy().reshape(-1))
+        # bottom blobs = inputs at the remaining indices, preserving order
+        bottom_inputs = [inputs[i] for i in range(len(inputs)) if i not in wfi]
+
+    ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in bottom_inputs]
+
+    # weights from state_dict in profile order (nn.Module path — disjoint from
+    # the functional path above; weight_keys should be empty when wfi is set)
     sd = model.state_dict()
-    weights = []
     for k in profile.weight_keys:
         if k not in sd:
             res.compile_ok = False
@@ -378,7 +491,10 @@ def verify_kernel(
     # 8.2 multi-shape scrutiny: a numeric PASS on the single model shape can still hide a
     # shape-specific indexing bug. For weightless ops (input dims not tied to weights),
     # re-verify on a couple of same-rank size variants; any failure flips the verdict.
-    if res.numeric_ok and run_numeric and not profile.weight_keys:
+    # Skip when the op has ANY weights (either nn.Module state_dict keys OR functional
+    # weights routed from inputs) — slicing only the activation breaks the math.
+    has_weights = bool(profile.weight_keys) or bool(getattr(profile, "weights_from_inputs", None))
+    if res.numeric_ok and run_numeric and not has_weights:
         bad = _multishape_check(oracle, profile, cpp_path, params, model_py,
                                 extra_sources, extra_includes, backend_kwargs, tol)
         if bad is not None:

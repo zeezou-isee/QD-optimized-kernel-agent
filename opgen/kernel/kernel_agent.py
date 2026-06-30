@@ -177,6 +177,23 @@ class KernelAgent:
         if not iface:
             return                                # unknown analog → free pass
 
+        # Functional ops (F.conv2d, F.linear, ...) have an empty state_dict but
+        # their weights ride in on forward inputs. Synthesize a state_dict from
+        # the weights-from-inputs shapes so the dict-driven param resolver can
+        # still compute num_output / weight_data_size / bias_term / etc.
+        # Convention: the first weight-input is "weight", the second is "bias".
+        wfi = list(profile.weights_from_inputs or [])
+        if not sd and wfi:
+            shapes = (self.intro or {}).get("input_shapes") or []
+            tags = ("weight", "bias", "running_mean", "running_var")
+            sd = {}
+            for k, src_idx in enumerate(wfi):
+                if src_idx < len(shapes) and k < len(tags):
+                    sd[tags[k]] = list(shapes[src_idx])
+            if sd:
+                print(f"[analyze] functional op detected — synthesized state_dict "
+                      f"from input shapes: {sd}")
+
         computed = derive_params_from_dict(analog, sd)
         if not computed:
             return
