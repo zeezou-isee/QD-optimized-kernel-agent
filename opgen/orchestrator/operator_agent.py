@@ -69,6 +69,8 @@ class OperatorAgent:
         allow_backend_fallback: bool = False, # if a target backend (arm) fails: off=abort, on=base-only
         auto_cleanup_ncnn: bool = False,      # ncnn-tree guard: True => silently clean a dirty tree on startup;
                                               # False (default) => refuse to run on a dirty tree (safer)
+        e2e_repair_max_attempts: int = 2,     # how many KernelAgent rounds to spend on e2e_repair after
+                                              # a LayerOracle-passed kernel fails end-to-end NetOracle
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -97,6 +99,7 @@ class OperatorAgent:
         self.allow_backend_fallback = allow_backend_fallback
         self.llm_query = llm_query
         self.auto_cleanup_ncnn = bool(auto_cleanup_ncnn)
+        self.e2e_repair_max_attempts = max(0, int(e2e_repair_max_attempts))
         # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
         self._ncnn_guard = None
 
@@ -261,6 +264,58 @@ class OperatorAgent:
                       f"{num.get('detail')}")
                 e2e_ok = bool(num.get("passed"))
 
+                # ------------- [4b] e2e_repair: feed the e2e failure back to ---
+                #                    a fresh KernelAgent round and reinstall.
+                # Without this loop, KernelAgent has no visibility into bugs that
+                # LayerOracle passes but NetOracle catches (multi-input wiring,
+                # post-install Net behavior, pnnx-specific input policy, ...).
+                # Capped at e2e_repair_max_attempts to prevent runaway cost.
+                attempt = 0
+                while (not e2e_ok) and attempt < self.e2e_repair_max_attempts:
+                    attempt += 1
+                    print(f"\n===== [4b] e2e_repair (attempt {attempt}/"
+                          f"{self.e2e_repair_max_attempts}) =====")
+                    print(f"[orchestrator] feeding e2e detail back to KernelAgent: "
+                          f"{num.get('detail')}")
+                    seed_fb = (f"end-to-end shape/value mismatch: {num.get('detail')}\n"
+                               f"Notes: the kernel's per-op LayerOracle is GREEN — the bug "
+                               f"is in how the kernel behaves when wired into the full "
+                               f"ncnn::Net (post-install). Likely causes: top_blob.create "
+                               f"shape wrong under multi-input dispatch, weight Mat axis "
+                               f"interpretation differs from per-op runner, or a forward "
+                               f"branch that LayerOracle's shape didn't exercise.")
+                    repair_sum = KernelAgent(
+                        task_name=self.task_name, model_py=self.model_py,
+                        cfg=self._cfg(run_numeric=True), llm_query=self.llm_query,
+                        backend="base",
+                        seed_code=kcode, seed_profile=kprof,
+                        seed_feedback=seed_fb,
+                        run_subdir_suffix=f"_e2e_repair_{attempt}",
+                    ).run()
+                    if repair_sum.get("status") != "success":
+                        print(f"[orchestrator] e2e_repair attempt {attempt} did not converge "
+                              f"on LayerOracle; aborting repair loop")
+                        break
+                    new_kcode = (repair_sum.get("final_result") or {}).get("response_code") or {}
+                    if not new_kcode:
+                        break
+                    # reinstall the repaired base layer, keep arm install as-is
+                    if handle is not None:
+                        netoc.restore(handle)
+                    handle = netoc.install_layer(new_kcode, cls)
+                    netoc.rebuild_libncnn()
+                    kcode = new_kcode
+                    summary["phases"][f"kernel_e2e_repair_{attempt}"] = {
+                        "status": repair_sum.get("status"),
+                        "rounds": repair_sum.get("rounds"),
+                        "max_diff": (repair_sum.get("final_result") or {}).get("max_diff"),
+                    }
+                    num = self._net_numeric(netoc, graph_sum, op_class=cls)
+                    summary["phases"]["end_to_end_numeric"] = num
+                    print(f"[orchestrator] e2e after repair attempt {attempt}: "
+                          f"passed={num.get('passed')} {num.get('detail')}")
+                    e2e_ok = bool(num.get("passed"))
+
             # ------------- [5] Production validation -------------
             if self.end_to_end and (e2e_ok is not False):
                 prod_ok = self._production_validation(graph_sum, summary, op_class=cls)
@@ -355,8 +410,13 @@ class OperatorAgent:
             return False, {"_baseline_op_types": op_types, "_residual_aten": residual}
 
         # build a graph_sum-like dict with the baseline-converted artifacts
+        # Must include `_ncnn.py` — it's the pnnx-emitted per-blob squeeze policy
+        # for ex.input() that NetOracle uses to feed inputs correctly. Without it
+        # the squeeze policy degrades to torch_to_ncnn_input's blanket "drop axis 0",
+        # which corrupts non-batched inputs like Conv weight tensors (16,3,3,3)
+        # → (3,3,3) and silently produces wrong-channel outputs at e2e time.
         artifacts = {}
-        for stem_suffix in (".pnnx.param", ".ncnn.param", ".ncnn.bin"):
+        for stem_suffix in (".pnnx.param", ".ncnn.param", ".ncnn.bin", "_ncnn.py"):
             for p in rd.rglob(f"*{stem_suffix}"):
                 artifacts[stem_suffix] = str(p); break
         return True, {

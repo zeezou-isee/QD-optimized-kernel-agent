@@ -503,15 +503,70 @@ def _load_error_locator():
         return None
 
 
+_NCNN_COMPILE_HINTS = [
+    # (regex pattern, hint line)
+    (re.compile(r"invalid operands.*'const Mat'.*'int'"),
+     "ncnn-specific: 'const Mat + int' usually means you treated a Mat as float* "
+     "and added an integer offset. Use `(const float*)mat`, `mat.channel(q)`, or "
+     "`mat.row(y)` to get a typed pointer, then index it."),
+    (re.compile(r"'mb' was not declared|no member named '.*?' in 'const ncnn::ModelBin'"),
+     "ncnn-specific: ModelBin only exposes `load(w, type)`, `load(w, h, type)`, "
+     "`load(w, h, c, type)`, `load(w, h, d, c, type)`. There is no .at()/.size() etc."),
+    (re.compile(r"no matching function for call to '.*?::flatten\("),
+     "ncnn-specific: `flatten(src, dst, opt)` is a free function in `namespace ncnn`. "
+     "Include <mat.h>, do NOT call it as `bottom_blob.flatten(...)`."),
+    (re.compile(r"'forward_inplace' marked 'override' but does not override"),
+     "ncnn-specific: forward_inplace signature for a multi-input layer is "
+     "`int forward_inplace(std::vector<Mat>& bottom_top_blobs, const Option& opt) const`. "
+     "For one_blob_only=true, it is `int forward_inplace(Mat&, const Option&) const`. "
+     "Match the signature of your base class exactly."),
+    (re.compile(r"undefined reference to .*Layer::create_pipeline"),
+     "ncnn-specific: create_pipeline / destroy_pipeline are NOT pure virtual — "
+     "the base Layer provides a default. You only need to override them when "
+     "you allocate runtime state (e.g. Pipeline*). For pure CPU layers, don't "
+     "declare them at all."),
+    (re.compile(r"layer .* not exists or registered"),
+     "ncnn-specific (runtime): the .ncnn.param references a layer type that "
+     "ncnn doesn't know. Either install your Cand_X via netoc.install_layer, "
+     "or check the retargeted .param doesn't contain orphan pnnx.Expression "
+     "nodes (the imperative pass forgot to erase a node)."),
+    (re.compile(r"DEFINE_LAYER_CREATOR.*multiple definition|multiple definition.*DEFINE_LAYER_CREATOR"),
+     "ncnn-specific: built-in layers must NOT call DEFINE_LAYER_CREATOR — the "
+     "ncnn_add_layer cmake macro generates it. Remove the line."),
+    (re.compile(r"'support_packing' was not declared|no member named 'support_packing'"),
+     "ncnn-specific: the support_* flags (support_packing, support_inplace, "
+     "support_vulkan, support_fp16_storage, ...) are Layer base-class members. "
+     "Set them in the constructor body, not in the class body."),
+]
+
+
+def _ncnn_compile_translations(raw: str) -> str:
+    """Spot common cryptic compile errors and prefix a ncnn-specific explanation.
+    Returns the hints joined; empty string if nothing matched."""
+    seen = set()
+    hints = []
+    for pat, hint in _NCNN_COMPILE_HINTS:
+        if pat.search(raw) and hint not in seen:
+            hints.append(hint)
+            seen.add(hint)
+    if not hints:
+        return ""
+    return "[ncnn compile hints]\n" + "\n".join(f"  - {h}" for h in hints)
+
+
 def locate_build_errors(log: str, opname: str) -> str:
     """Rich compile-error feedback via the error-location script (with fallback)."""
     fn = _load_error_locator()
     if fn is None:
-        return extract_build_errors(log, opname)
+        text = extract_build_errors(log, opname)
+        ncnn_hints = _ncnn_compile_translations(text)
+        return f"{ncnn_hints}\n\n{text}" if ncnn_hints else text
     try:
         d = fn(log, opname)
     except Exception:
-        return extract_build_errors(log, opname)
+        text = extract_build_errors(log, opname)
+        ncnn_hints = _ncnn_compile_translations(text)
+        return f"{ncnn_hints}\n\n{text}" if ncnn_hints else text
 
     blocks: list[str] = []
 
@@ -532,8 +587,12 @@ def locate_build_errors(log: str, opname: str) -> str:
         blocks.append("[linker/make/cmake]\n" + "\n".join(f"  {o['type']}: {o['message']}" for o in others))
 
     text = "\n\n".join(b for b in blocks if b.strip())
-    # If the locator found nothing parseable, fall back to the raw tail.
-    return text if text.strip() else extract_build_errors(log, opname)
+    if not text.strip():
+        # If the locator found nothing parseable, fall back to the raw tail.
+        text = extract_build_errors(log, opname)
+    # Prepend ncnn-specific translation for common cryptic patterns.
+    ncnn_hints = _ncnn_compile_translations(log)
+    return f"{ncnn_hints}\n\n{text}" if ncnn_hints else text
 
 
 def extract_build_errors(log: str, focus: str | None = None) -> str:

@@ -46,7 +46,11 @@ def classify_failure(out, ref, tol: float = 2e-3, *,
         return ("E6_NUMERICAL_INSTABILITY",
                 f"output has {nbad}/{out.size} non-finite (NaN/Inf) values -> numerical "
                 f"instability (overflow / divide-by-zero / uninitialized memory). Check the "
-                f"algorithm's numeric stability and that EVERY output element is written.")
+                f"algorithm's numeric stability and that EVERY output element is written. "
+                f"Per ncnn FAQ-produce-wrong-result: production-time default "
+                f"`opt.use_fp16_packed=true` can overflow even when the LayerOracle baseline "
+                f"(fp16 OFF) is clean — accumulate sums in fp32 inside your forward, even "
+                f"on the arm/fp16 path, then cast to the output dtype only at write time.")
 
     # E3 — wrong number of elements
     if out.size != ref.size:
@@ -184,4 +188,21 @@ def _localize(out_r: np.ndarray, ref: np.ndarray, diff: np.ndarray, tol: float,
     idx = np.argsort(fl)[::-1][:topk]
     lines.append("worst elements (flat idx: got vs expected): "
                  + ", ".join(f"{int(i)}: {of[i]:.4g} vs {rf[i]:.4g}" for i in idx))
+    # ncnn-specific suspicion: if wrong_frac is very high and the output spatial
+    # size (w*h*d, excluding channel) is NOT divisible by 4, the layer probably
+    # cast the Mat to flat float* across channels and stepped through the
+    # channel-gap (per FAQ-produce-wrong-result: "blob may have channel gap").
+    if wrong > 0.5 and ref.ndim >= 3:
+        spatial = 1
+        for s in ref.shape[1:]:
+            spatial *= int(s)
+        if spatial % 4 != 0:
+            lines.append(f"SUSPICION (channel gap): output spatial size "
+                         f"{'*'.join(str(s) for s in ref.shape[1:])}={spatial} "
+                         f"is NOT divisible by 4. ncnn pads `mat.cstep` per channel; "
+                         f"if your forward casts the Mat to a flat float* and walks "
+                         f"all c*h*w elements contiguously, it reads/writes the gap "
+                         f"and corrupts channel boundaries. Use `mat.channel(q)` and "
+                         f"iterate w*h*d elements PER channel; do NOT compute "
+                         f"`(const float*)bottom_blob + offset` across channels.")
     return "\n".join(lines)

@@ -43,6 +43,10 @@ class KernelAgent:
         backend: str = "base",                      # "base" | "arm" | "vulkan"
         base_kernel_code: dict[str, str] | None = None,   # arm/vulkan: verified base files
         base_profile: dict | None = None,           # arm/vulkan: the base KernelProfile dict
+        seed_code: dict[str, str] | None = None,    # e2e_repair: previously-LayerOracle-passed code
+        seed_feedback: str | None = None,           # e2e_repair: failure detail from end-to-end stage
+        seed_profile: dict | None = None,           # e2e_repair: re-use the analyzer's profile
+        run_subdir_suffix: str = "",                # e2e_repair: write to runs/<task>/kernel<suffix>/
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
@@ -50,6 +54,15 @@ class KernelAgent:
         self.backend = backend
         self.base_kernel_code = base_kernel_code or {}
         self.base_profile_dict = base_profile or {}
+        # e2e_repair seeding: when set, KernelAgent skips analyzer + round-0
+        # coder and starts at round 0 with a debugger prompt that carries the
+        # provided seed_code + seed_feedback. LayerOracle still validates the
+        # repaired code, so the loop converges on something that BOTH oracles
+        # accept (per-op + end-to-end).
+        self.seed_code = dict(seed_code) if seed_code else None
+        self.seed_feedback = seed_feedback
+        self.seed_profile = dict(seed_profile) if seed_profile else None
+        self.run_subdir_suffix = run_subdir_suffix
         # vulkan verifies on the GPU via VulkanLayerOracle (isolated instantiation,
         # runtime-compiled shader); base/arm use the CPU LayerOracle.
         if backend == "vulkan":
@@ -76,7 +89,7 @@ class KernelAgent:
     @property
     def run_dir(self) -> Path:
         sub = "kernel" if self.backend == "base" else f"kernel_{self.backend}"
-        return RUNS_ROOT / self.task_name / sub
+        return RUNS_ROOT / self.task_name / f"{sub}{self.run_subdir_suffix}"
 
     def _resolve_model(self, model_py, model_code) -> tuple[str, str]:
         if model_py:
@@ -217,8 +230,25 @@ class KernelAgent:
         if not self.memory:
             return "(none)"
         out = []
+        # numeric_repair convergence trend: a flat or oscillating max_diff over
+        # multiple rounds means the LLM is chasing the wrong cause. Give it the
+        # numbers up front so it can recognise a plateau and switch strategy.
+        diffs = [m.get("max_diff") for m in self.memory[-4:] if m.get("max_diff") is not None]
+        if len(diffs) >= 2:
+            arrow = " → ".join(f"{d:.4g}" for d in diffs)
+            trend = "decreasing" if diffs[-1] < diffs[0] * 0.5 else (
+                    "plateau"    if abs(diffs[-1] - diffs[0]) < 0.1 * diffs[0] else
+                    "oscillating")
+            out.append(f"numeric max_diff trend ({len(diffs)} recent rounds): "
+                       f"{arrow}  [{trend}]")
+            if trend in ("plateau", "oscillating"):
+                out.append("  → your current line of fixes is NOT converging. "
+                           "Consider a different root-cause hypothesis instead of "
+                           "iterating on the same change.")
         for m in self.memory[-4:]:
-            out.append(f"round {m['round']} phase={m['phase']} -> {m['stages']}")
+            md = m.get("max_diff")
+            md_str = f" max_diff={md:.4g}" if isinstance(md, (int, float)) else ""
+            out.append(f"round {m['round']} phase={m['phase']} -> {m['stages']}{md_str}")
             if m.get("feedback"):
                 out.append(f"  feedback: {m['feedback'][:500]}")
         return "\n".join(out)
@@ -227,6 +257,7 @@ class KernelAgent:
         self.memory.append({
             "round": idx, "phase": phase,
             "stages": {"compile": result.compile_ok, "numeric": result.numeric_status},
+            "max_diff": result.max_diff,
             "feedback": result.feedback(result.first_failure() or ""),
         })
         write_json(self.run_dir / "memory.json", {"memory": self.memory})
@@ -266,7 +297,13 @@ class KernelAgent:
             "run_numeric": self.cfg.run_numeric,
         })
 
-        if self._subclasses_base:
+        if self.seed_profile is not None:
+            # e2e_repair: re-use the profile that LayerOracle already accepted —
+            # we are not re-analyzing, we are repairing the code on top of it.
+            self.profile = KernelProfile.from_llm(self.task_name, self.seed_profile,
+                                                  backend=self.backend)
+            write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
+        elif self._subclasses_base:
             # derive the arm/vulkan profile from the verified base (no 2nd analyzer call)
             base_prof = KernelProfile.from_llm(self.task_name, self.base_profile_dict, backend="base")
             self.profile = base_prof.as_backend(self.backend)
@@ -288,11 +325,26 @@ class KernelAgent:
               f"params={self.profile.params}")
 
         result: KernelResult | None = None
-        code_book: dict[str, str] = {}
+        # e2e_repair: prefill code_book with the seeded code so the first round's
+        # debugger prompt shows the LLM what it previously wrote (and what e2e
+        # then rejected). The loop's first iteration emits a debugger prompt,
+        # not the cold-start coder prompt.
+        code_book: dict[str, str] = dict(self.seed_code) if self.seed_code else {}
         for idx in range(self.cfg.max_rounds):
-            if idx == 0:
+            if idx == 0 and self.seed_code is None:
                 phase = "identify_and_generate"
                 prompt = coder_prompt(self.profile, example, self.model_code, self.intro)
+            elif idx == 0 and self.seed_code is not None:
+                # e2e_repair entry: jump straight to numeric_repair with the
+                # provided seed_feedback. Label it so the LLM and the saved
+                # round/memory clearly show this is end-to-end driven.
+                phase = "numeric_repair"
+                feedback = ("[E2E_REPAIR] The kernel below passes the per-op "
+                            "LayerOracle (numeric == PyTorch in isolation), but "
+                            "the end-to-end NetOracle run reports:\n"
+                            + (self.seed_feedback or "(no detail provided)"))
+                prompt = debugger_prompt(phase, self.profile, code_book, feedback,
+                                         self._format_memory(), self.intro)
             else:
                 assert result is not None
                 phase = result.first_failure() or "identify_and_generate"

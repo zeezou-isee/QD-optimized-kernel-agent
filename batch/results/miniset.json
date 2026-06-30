@@ -113,16 +113,16 @@
   },
   "Conv": {
     "category": "Convolution",
-    "elapsed_s": 627.1,
+    "elapsed_s": 2756.4,
     "returncode": 0,
     "timed_out": false,
-    "status": "fail",
+    "status": "success",
     "kernel": "success",
     "kernel_arm": "success",
     "graph": "skipped (already supported by ncnn)",
     "already_in_ncnn": true,
-    "e2e": false,
-    "production": null,
+    "e2e": true,
+    "production": true,
     "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
   }
 }
