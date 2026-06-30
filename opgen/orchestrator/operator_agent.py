@@ -30,6 +30,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import KERNELGEN_ROOT, RUNS_ROOT, GraphConfig
+from adapter_agent import AdapterAgent
 from graph_agent import GraphAgent
 from graph_pipeline import probe_pnnx_ir
 from graph_schemas import write_json
@@ -69,8 +70,10 @@ class OperatorAgent:
         allow_backend_fallback: bool = False, # if a target backend (arm) fails: off=abort, on=base-only
         auto_cleanup_ncnn: bool = False,      # ncnn-tree guard: True => silently clean a dirty tree on startup;
                                               # False (default) => refuse to run on a dirty tree (safer)
-        e2e_repair_max_attempts: int = 2,     # how many KernelAgent rounds to spend on e2e_repair after
+        e2e_repair_max_attempts: int = 2,     # how many repair rounds to spend on e2e_repair after
                                               # a LayerOracle-passed kernel fails end-to-end NetOracle
+        adapt_e2e: bool = True,               # use the contract-driven AdapterAgent for e2e_repair
+                                              # (vs. the legacy guess-driven KernelAgent reseed)
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -100,6 +103,7 @@ class OperatorAgent:
         self.llm_query = llm_query
         self.auto_cleanup_ncnn = bool(auto_cleanup_ncnn)
         self.e2e_repair_max_attempts = max(0, int(e2e_repair_max_attempts))
+        self.adapt_e2e = bool(adapt_e2e)
         # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
         self._ncnn_guard = None
         # baseline probe cache populated by _early_baseline_probe()
@@ -287,47 +291,91 @@ class OperatorAgent:
                 # LayerOracle passes but NetOracle catches (multi-input wiring,
                 # post-install Net behavior, pnnx-specific input policy, ...).
                 # Capped at e2e_repair_max_attempts to prevent runaway cost.
+                adapter = None
+                if self.adapt_e2e:
+                    adapter = AdapterAgent(
+                        task_name=self.task_name,
+                        target_layer=(force_analog or kprof.get("analog_layer") or ""),
+                        class_name=cls,
+                        ncnn_root=self.ncnn_root,
+                        llm_query=self.llm_query,
+                        model=self.model,
+                        run_dir=self.run_dir.parent / "adapter",
+                    )
                 attempt = 0
                 while (not e2e_ok) and attempt < self.e2e_repair_max_attempts:
                     attempt += 1
                     print(f"\n===== [4b] e2e_repair (attempt {attempt}/"
-                          f"{self.e2e_repair_max_attempts}) =====")
-                    print(f"[orchestrator] feeding e2e detail back to KernelAgent: "
-                          f"{num.get('detail')}")
-                    seed_fb = (f"end-to-end shape/value mismatch: {num.get('detail')}\n"
-                               f"Notes: the kernel's per-op LayerOracle is GREEN — the bug "
-                               f"is in how the kernel behaves when wired into the full "
-                               f"ncnn::Net (post-install). Likely causes: top_blob.create "
-                               f"shape wrong under multi-input dispatch, weight Mat axis "
-                               f"interpretation differs from per-op runner, or a forward "
-                               f"branch that LayerOracle's shape didn't exercise.")
-                    repair_sum = KernelAgent(
-                        task_name=self.task_name, model_py=self.model_py,
-                        cfg=self._cfg(run_numeric=True), llm_query=self.llm_query,
-                        backend="base",
-                        seed_code=kcode, seed_profile=kprof,
-                        seed_feedback=seed_fb,
-                        run_subdir_suffix=f"_e2e_repair_{attempt}",
-                        force_analog_layer=force_analog,  # pin to baseline truth
-                    ).run()
-                    if repair_sum.get("status") != "success":
-                        print(f"[orchestrator] e2e_repair attempt {attempt} did not converge "
-                              f"on LayerOracle; aborting repair loop")
-                        break
-                    new_kcode = (repair_sum.get("final_result") or {}).get("response_code") or {}
-                    if not new_kcode:
-                        break
+                          f"{self.e2e_repair_max_attempts}, "
+                          f"engine={'adapter' if adapter else 'kernel'}) =====")
+                    print(f"[orchestrator] e2e detail: {num.get('detail')}")
+
+                    if adapter is not None:
+                        # contract-driven repair: AdapterAgent rewrites the
+                        # already-correct algorithm to satisfy the ncnn
+                        # Layer-Net contract, armed with the real .ncnn.param,
+                        # the built-in reference impl, and the contract spec.
+                        info = self._introspect_lite()
+                        new_kcode = adapter.adapt(
+                            kcode,
+                            ncnn_param_text=self._e2e_param_text(graph_sum),
+                            e2e_detail=str(num.get("detail")),
+                            input_shapes=info.get("input_shapes"),
+                            expected_out_shape=info.get("ncnn_output_shape"),
+                            attempt=attempt,
+                        )
+                        if not new_kcode or new_kcode == kcode:
+                            print(f"[orchestrator] adapter made no change on attempt "
+                                  f"{attempt}; aborting repair loop")
+                            break
+                        summary["phases"][f"adapter_e2e_repair_{attempt}"] = {
+                            "engine": "adapter",
+                            "files": sorted(new_kcode.keys()),
+                        }
+                    else:
+                        # legacy guess-driven repair (kept as a fallback path).
+                        seed_fb = (f"end-to-end shape/value mismatch: {num.get('detail')}\n"
+                                   f"Notes: the kernel's per-op LayerOracle is GREEN — the bug "
+                                   f"is in how the kernel behaves when wired into the full "
+                                   f"ncnn::Net (post-install).")
+                        repair_sum = KernelAgent(
+                            task_name=self.task_name, model_py=self.model_py,
+                            cfg=self._cfg(run_numeric=True), llm_query=self.llm_query,
+                            backend="base",
+                            seed_code=kcode, seed_profile=kprof,
+                            seed_feedback=seed_fb,
+                            run_subdir_suffix=f"_e2e_repair_{attempt}",
+                            force_analog_layer=force_analog,
+                        ).run()
+                        if repair_sum.get("status") != "success":
+                            print(f"[orchestrator] e2e_repair attempt {attempt} did not "
+                                  f"converge on LayerOracle; aborting repair loop")
+                            break
+                        new_kcode = (repair_sum.get("final_result") or {}).get("response_code") or {}
+                        if not new_kcode:
+                            break
+                        summary["phases"][f"kernel_e2e_repair_{attempt}"] = {
+                            "engine": "kernel",
+                            "status": repair_sum.get("status"),
+                            "rounds": repair_sum.get("rounds"),
+                            "max_diff": (repair_sum.get("final_result") or {}).get("max_diff"),
+                        }
+
                     # reinstall the repaired base layer, keep arm install as-is
                     if handle is not None:
                         netoc.restore(handle)
                     handle = netoc.install_layer(new_kcode, cls)
-                    netoc.rebuild_libncnn()
+                    ok_rb, _ = netoc.rebuild_libncnn()
                     kcode = new_kcode
-                    summary["phases"][f"kernel_e2e_repair_{attempt}"] = {
-                        "status": repair_sum.get("status"),
-                        "rounds": repair_sum.get("rounds"),
-                        "max_diff": (repair_sum.get("final_result") or {}).get("max_diff"),
-                    }
+                    if not ok_rb:
+                        print(f"[orchestrator] rebuild failed after repair attempt "
+                              f"{attempt}; the repaired layer does not compile")
+                        summary["phases"].setdefault(
+                            f"adapter_e2e_repair_{attempt}" if adapter
+                            else f"kernel_e2e_repair_{attempt}", {})["compiled"] = False
+                        num = {"passed": False, "detail": "repaired layer failed to compile"}
+                        summary["phases"]["end_to_end_numeric"] = num
+                        continue
                     num = self._net_numeric(netoc, graph_sum, op_class=cls)
                     summary["phases"]["end_to_end_numeric"] = num
                     print(f"[orchestrator] e2e after repair attempt {attempt}: "
@@ -632,6 +680,38 @@ class OperatorAgent:
             return {"passed": False,
                     "detail": f"net numeric raised: {type(exc).__name__}: {exc}"}
 
+    def _e2e_param_text(self, graph_sum: dict) -> str:
+        """The exact .ncnn.param the layer is fed at e2e time. Prefer the
+        retargeted param (output layer re-pointed to our class) written by the
+        last _net_numeric run; fall back to the graph's raw .ncnn.param."""
+        rp = self.run_dir / "net_numeric_retargeted.param"
+        if rp.exists():
+            try:
+                return rp.read_text(encoding="utf-8")
+            except OSError:
+                pass
+        art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
+        p = art.get(".ncnn.param")
+        if p and Path(p).exists():
+            try:
+                return Path(p).read_text(encoding="utf-8")
+            except OSError:
+                pass
+        return ""
+
+    def _introspect_lite(self) -> dict:
+        """Cached input shapes + expected output shape for adapter prompts."""
+        if getattr(self, "_cached_introspect", None) is not None:
+            return self._cached_introspect
+        info: dict = {}
+        try:
+            from kernel_pipeline import introspect_model
+            info = introspect_model(self._resolve_model_py())
+        except Exception:  # noqa: BLE001
+            info = {}
+        self._cached_introspect = info
+        return info
+
     def _net_numeric_impl(self, netoc: NetOracle, graph_sum: dict,
                           op_class: str | None = None) -> dict:
         import torch
@@ -654,6 +734,10 @@ class OperatorAgent:
         spec = importlib.util.spec_from_file_location("ds_model", mp)
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
         init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+        # Same fixed seed as the exported bin (graph_pipeline make_pt). Without
+        # this, a weight-bearing op's reference model has different random weights
+        # than the .ncnn.bin and e2e fails even when the kernel is correct.
+        torch.manual_seed(0)
         model = (mod.Model(*init) if init else mod.Model()).eval()
         inputs = mod.get_inputs()
         with torch.no_grad():
@@ -661,7 +745,6 @@ class OperatorAgent:
         if isinstance(ref, (tuple, list)):
             ref = ref[0]
         ref_np = ref.detach().numpy()
-        reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
         in_names, out_name = parse_ncnn_io(Path(param).read_text(encoding="utf-8"))
         if len(in_names) != len(inputs):
             in_names = [f"in{i}" for i in range(len(inputs))]
@@ -669,6 +752,18 @@ class OperatorAgent:
         # _ncnn.py is missing or a blob name has no recorded policy).
         ncnn_py = art.get("_ncnn.py")
         ncnn_inputs = pnnx_driven_ncnn_inputs(inputs[:len(in_names)], in_names, ncnn_py)
+        # Reference shape MUST match what ncnn produces. Mirror the squeeze policy
+        # pnnx applied to in0: if axis 0 was squeezed (typical nn.Module ops where
+        # axis 0 is the batch dim), drop it from the reference too. Otherwise
+        # (e.g. ncnn Gemm: axis 0 is M, not batch — pnnx writes the .ncnn.py
+        # with no squeeze), keep the full ref shape so the comparison aligns
+        # with ncnn's output.
+        in0_squeezed = (inputs[0].ndim >= 2
+                        and ncnn_inputs[0].ndim == inputs[0].ndim - 1)
+        if in0_squeezed and ref_np.ndim >= 2:
+            reference = ref_np[0]
+        else:
+            reference = ref_np
         feed = {n: x for n, x in zip(in_names, ncnn_inputs)}
         out, log = netoc.run_net(param, binf, feed, out_name)
         (self.run_dir / "net_numeric.log").write_text(log, encoding="utf-8")

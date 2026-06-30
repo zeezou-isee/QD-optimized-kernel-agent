@@ -297,6 +297,7 @@ class LayerOracle:
         params: dict[int, Any] | None = None,
         inputs: Sequence[np.ndarray],
         weights: Sequence[np.ndarray] = (),
+        weight_flags: Sequence[int] = (),
         extra_sources: Sequence[str | Path] = (),
         extra_includes: Sequence[str | Path] = (),
         packing: int = 0,
@@ -321,6 +322,10 @@ class LayerOracle:
             p = wd / f"w{i}.bin"
             write_bin(p, np.asarray(w).reshape(-1))
             argv += ["--weight", str(p)]
+            # per-weight bin layout flag: 0=tagged (type 0), 1=raw (type 1),
+            # matching ncnn modelwriter for this slot. Default 0 when not given.
+            flag = weight_flags[i] if i < len(weight_flags) else 0
+            argv += ["--weight-flag", str(int(flag))]
         out_path = wd / "out.bin"
         argv += ["--out", str(out_path)]
         if packing > 0:
@@ -347,6 +352,7 @@ class LayerOracle:
         inputs: Sequence[np.ndarray],
         reference: np.ndarray,
         weights: Sequence[np.ndarray] = (),
+        weight_flags: Sequence[int] = (),
         tol: float = 1e-3,
         extra_sources: Sequence[str | Path] = (),
         extra_includes: Sequence[str | Path] = (),
@@ -354,7 +360,7 @@ class LayerOracle:
         backend: str = "base",
     ) -> OracleResult:
         res = self.run(candidate_cpp=candidate_cpp, class_name=class_name, header=header,
-                       params=params, inputs=inputs, weights=weights,
+                       params=params, inputs=inputs, weights=weights, weight_flags=weight_flags,
                        extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
         if not res.ok:
             res.passed = False
@@ -367,7 +373,8 @@ class LayerOracle:
         except ValueError:
             # shape/element-count mismatch -> taxonomy (E3 wrong-count / E4 permuted)
             cat, det = classify_failure(out, ref, tol,
-                                        input=(inputs[0] if len(inputs) else None), backend=backend)
+                                        input=(inputs[0] if len(inputs) else None), backend=backend,
+                                        has_weights=bool(len(weights)))
             res.passed = False
             res.failure_category = cat
             res.detail = f"[{cat}] {det}"
@@ -381,7 +388,8 @@ class LayerOracle:
         else:
             # diagnosis-conditioned feedback (E4/E5/E6/E8/instability; backend-aware)
             cat, det = classify_failure(out, ref, tol,
-                                        input=(inputs[0] if len(inputs) else None), backend=backend)
+                                        input=(inputs[0] if len(inputs) else None), backend=backend,
+                                        has_weights=bool(len(weights)))
             res.failure_category = cat
             res.detail = f"[{cat}] {det}"
         return res

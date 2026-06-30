@@ -156,6 +156,7 @@ class ProductionValidator:
         spec = importlib.util.spec_from_file_location("ds_model", str(model_py))
         mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
         init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+        torch.manual_seed(0)  # identical weights to the exported bin (make_pt)
         model = (mod.Model(*init) if init else mod.Model()).eval()
         inputs = mod.get_inputs()
         with torch.no_grad():
@@ -163,7 +164,6 @@ class ProductionValidator:
         if isinstance(ref, (tuple, list)):
             ref = ref[0]
         ref_np = ref.detach().numpy()
-        reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
         in_names, out_name = parse_ncnn_io(Path(param).read_text(encoding="utf-8"))
         if len(in_names) != len(inputs):
             in_names = [f"in{i}" for i in range(len(inputs))]
@@ -172,6 +172,13 @@ class ProductionValidator:
         ncnn_py = art.get("_ncnn.py")
         ncnn_inputs = pnnx_driven_ncnn_inputs(inputs[:len(in_names)], in_names, ncnn_py)
         feed = {n: x for n, x in zip(in_names, ncnn_inputs)}
+        # Reference shape must mirror the squeeze pnnx applied to in0: drop axis 0
+        # only when in0 was actually squeezed (nn.Module batch dim). For ops like
+        # Gemm where axis 0 is M (not batch) pnnx keeps the full rank, so keep the
+        # full reference. (Same logic as operator_agent._net_numeric_impl.)
+        in0_squeezed = (inputs[0].ndim >= 2
+                        and ncnn_inputs[0].ndim == inputs[0].ndim - 1)
+        reference = ref_np[0] if (in0_squeezed and ref_np.ndim >= 2) else ref_np
 
         netoc = NetOracle(ncnn_root=self.ncnn_root, workdir=self.workdir / "_prod_net")
         out, log = netoc.run_net(param, binf, feed, out_name)

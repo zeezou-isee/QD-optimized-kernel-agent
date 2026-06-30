@@ -219,6 +219,12 @@ def run_one(category: str, op: str, cfg: ModuleType,
             "--backends", cfg.BACKENDS,
             "--compile-mode", cfg.COMPILE_MODE,
             "--auto-cleanup",
+            # arm is a perf-optimization backend; its LLM-written NEON kernel is
+            # subject to per-run variance. If it can't converge in MAX_ROUNDS,
+            # degrade to the (correctness-verified) base kernel and still run the
+            # end-to-end + production checks, rather than failing an op whose base
+            # e2e is green. The degradation is recorded in the op summary note.
+            "--allow-backend-fallback",
         ]
     timed_out = False
     t0 = time.time()

@@ -88,6 +88,8 @@ def load_model(py_path: Path):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+    import torch
+    torch.manual_seed(0)  # weights consistent with exported bin (make_pt)
     model = mod.Model(*init) if init else mod.Model()
     model.eval()
     return mod, model, init

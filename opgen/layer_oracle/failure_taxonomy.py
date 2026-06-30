@@ -36,7 +36,8 @@ def _shape(s) -> str:
 
 
 def classify_failure(out, ref, tol: float = 2e-3, *,
-                     input=None, backend: str = "base") -> tuple[str, str]:
+                     input=None, backend: str = "base",
+                     has_weights: bool = False) -> tuple[str, str]:
     out = np.asarray(out, dtype=np.float64)
     ref = np.asarray(ref, dtype=np.float64)
 
@@ -98,6 +99,25 @@ def classify_failure(out, ref, tol: float = 2e-3, *,
         lt = _lane_tail(ref, diff, tol)
         if lt:
             det += "\nNEON pattern: " + lt
+    # Weight-misalignment signature: when the layer HAS bin weights and almost
+    # every element is wrong with frequent sign flips, the usual cause is reading
+    # a weight with the WRONG mb.load type (a primary/tagged weight read as type 1
+    # consumes the 4-byte tag as the first float -> the whole buffer shifts by one
+    # and the result looks like random sign-flipped noise). Surface the ncnn
+    # contract so the repair round fixes the load type instead of guessing.
+    if has_weights and out_r.size:
+        wrong = float((diff > (tol + tol * np.abs(ref))).mean())
+        both = (np.abs(out_r) > 1e-6) & (np.abs(ref) > 1e-6)
+        signflip = float((np.sign(out_r[both]) != np.sign(ref[both])).mean()) if both.any() else 0.0
+        if wrong > 0.8 and signflip > 0.3:
+            det += ("\nWEIGHT-MISALIGNMENT SUSPECT: ~all values wrong with many sign "
+                    "flips on a layer that loads weights. This is the classic "
+                    "mb.load TYPE error — a PRIMARY weight (ncnn flag=0, tagged) "
+                    "MUST be read with mb.load(size, 0); reading it with type 1 "
+                    "eats the 4-byte tag and shifts every value. Check the REFERENCE "
+                    "interface block: read each weight with TYPE = its `flag` "
+                    "(0=primary/tagged, 1=secondary/raw). Mirror the built-in "
+                    "layer's load_model exactly.")
     return ("E6_VALUE_NUMERICAL", det)
 
 

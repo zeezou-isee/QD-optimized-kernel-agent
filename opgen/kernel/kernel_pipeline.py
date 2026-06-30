@@ -22,8 +22,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from layer_oracle import LayerOracle, torch_to_ncnn_input
+from layer_oracle import LayerOracle, pnnx_driven_ncnn_inputs, torch_to_ncnn_input
 from graph_pipeline import locate_build_errors
+from config import RUNS_ROOT
 from kernel_schemas import KernelProfile, KernelResult
 
 
@@ -83,7 +84,11 @@ def _load_module(model_py: str | Path):
 
 
 def _build_model(mod):
+    import torch
     init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+    # Fixed seed so the weights here match the exported .ncnn.bin and every other
+    # numeric-reference model in the pipeline (see graph_pipeline make_pt).
+    torch.manual_seed(0)
     model = mod.Model(*init) if init else mod.Model()
     model.eval()
     return model, init
@@ -389,7 +394,9 @@ def verify_kernel(
     if isinstance(ref, (tuple, list)):
         ref = ref[0]
     ref_np = ref.detach().numpy()
-    reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
+    # `reference` will be finalised AFTER the input pipeline below decides
+    # whether to drop the batch dim — keep the policies symmetric.
+    reference = None
 
     # Functional ops (F.conv2d / F.linear / ...): weights ride in as ADDITIONAL
     # bottom_blobs, NOT via mb.load. This matches what pnnx writes to .ncnn.param
@@ -403,16 +410,62 @@ def verify_kernel(
                              f"{len(inputs)} inputs")
         res.messages.append("bad weights_from_inputs")
         return res
-    # Per-input layout: activation inputs drop the batch dim (ncnn Mat is per-
-    # sample), weight inputs are passed verbatim (their shape is already the
-    # ncnn-side shape — e.g. conv weight [16,3,3,3] is the actual Mat layout).
+    # Per-input layout: use the SAME pnnx-driven squeeze policy that NetOracle
+    # uses, so the LLM sees the same input shapes here that it will see when
+    # the kernel is later wired into ncnn::Net. Otherwise LayerOracle silently
+    # gives a "drop-batch" 1D input that hides 2D-batch handling bugs (the
+    # classic Gemm case: LayerOracle sees (512,), kernel writes a 1D-only
+    # forward, NetOracle then feeds (32,512) and the LLM never had a chance
+    # to write the 2D branch).
+    #
+    # Search for the pnnx-emitted _ncnn.py in the OperatorAgent's baseline
+    # probe dir (always populated before KernelAgent starts). When absent
+    # (kernel-only / standalone), fall back to the old torch_to_ncnn_input
+    # heuristic per input.
+    ncnn_py_path = None
+    probe_glob = (RUNS_ROOT / profile.task_name / "operator"
+                  / "_baseline_probe").rglob("*_ncnn.py")
+    for p in probe_glob:
+        ncnn_py_path = str(p); break
+    activation_inputs = [t for i, t in enumerate(inputs) if i not in wfi]
+    activation_names = [f"in{i}" for i in range(len(activation_inputs))]
+    if ncnn_py_path:
+        # parse_ncnn_io would give us the real blob names, but the file may
+        # use different names. Try the names the .ncnn.py uses verbatim.
+        try:
+            from layer_oracle.oracle import parse_pnnx_input_squeeze
+            policy = parse_pnnx_input_squeeze(ncnn_py_path)
+            if policy:
+                activation_names = list(policy.keys())[:len(activation_inputs)]
+        except Exception:
+            pass
+        activation_ncnn = pnnx_driven_ncnn_inputs(
+            activation_inputs, activation_names, ncnn_py_path)
+    else:
+        activation_ncnn = [torch_to_ncnn_input(t.detach().numpy())
+                           for t in activation_inputs]
+
     ncnn_inputs = []
+    ai = 0
     for i, t in enumerate(inputs):
-        arr = t.detach().numpy()
         if i in wfi:
-            ncnn_inputs.append(np.ascontiguousarray(arr))   # weight: keep raw shape
+            ncnn_inputs.append(np.ascontiguousarray(t.detach().numpy()))  # weight raw
         else:
-            ncnn_inputs.append(torch_to_ncnn_input(arr))    # activation: drop batch
+            ncnn_inputs.append(activation_ncnn[ai]); ai += 1
+
+    # Finalise reference shape symmetrically with the input policy. If the FIRST
+    # activation got its axis 0 squeezed by pnnx (typical batched nn.Module op),
+    # squeeze the reference too. Otherwise (Gemm-like ops where axis 0 is M not
+    # a real batch — pnnx writes _ncnn.py with no squeeze), keep the full ref.
+    first_act_idx = next((i for i in range(len(inputs)) if i not in wfi), 0)
+    first_act_t = inputs[first_act_idx]
+    first_act_ncnn = ncnn_inputs[first_act_idx]
+    in0_squeezed = (first_act_t.ndim >= 2
+                    and first_act_ncnn.ndim == first_act_t.ndim - 1)
+    if in0_squeezed and ref_np.ndim >= 2:
+        reference = ref_np[0]
+    else:
+        reference = ref_np
 
     # Standard nn.Module path: state_dict-backed weights. Mutually exclusive
     # with wfi (KernelProfile.from_llm clears weight_keys when wfi is set).
@@ -426,12 +479,31 @@ def verify_kernel(
             return res
         weights.append(sd[k].detach().numpy().reshape(-1))
 
+    # Per-weight bin layout flags so the LayerOracle bin is byte-identical to the
+    # real .ncnn.bin: 0 = tagged (ncnn fwrite_weight_tag_data, read with type 0),
+    # 1 = raw (fwrite_weight_data, read with type 1). Pulled from the ncnn
+    # interface dict's weights_load_order, aligned positionally to weight_keys.
+    # Defaults to 0 (tagged) for unknown layers / extra slots — preserving prior
+    # behavior. This is what makes BatchNorm-style all-secondary-weight layers
+    # (slope/mean/var/bias, all type 1) validate correctly instead of misreading
+    # a phantom tag as data (var=0 -> 1/sqrt(eps) blowup).
+    weight_flags: list[int] = []
+    try:
+        from lookup import get_interface
+        _iface = get_interface(profile.analog_layer)
+        _wlo = (_iface or {}).get("weights_load_order") or []
+        for i in range(len(weights)):
+            weight_flags.append(int(_wlo[i]["flag"]) if i < len(_wlo) else 0)
+    except Exception:  # noqa: BLE001
+        weight_flags = [0] * len(weights)
+
     params = {int(k): v for k, v in (profile.params or {}).items()}
 
     if not run_numeric:
         # compile-only check via oracle.run (still needs an input)
         out = oracle.run(candidate_cpp=cpp_path, class_name=profile.class_name,
                          header=profile.header, params=params, inputs=ncnn_inputs, weights=weights,
+                         weight_flags=weight_flags,
                          extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
         res.compile_ok = "compile failed" not in (out.error or "")
         if not res.compile_ok:
@@ -447,7 +519,8 @@ def verify_kernel(
 
     verdict = oracle.verify(candidate_cpp=cpp_path, class_name=profile.class_name,
                             header=profile.header, params=params, inputs=ncnn_inputs,
-                            weights=weights, reference=reference, tol=tol, backend=profile.backend,
+                            weights=weights, weight_flags=weight_flags,
+                            reference=reference, tol=tol, backend=profile.backend,
                             extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
 
     # classify

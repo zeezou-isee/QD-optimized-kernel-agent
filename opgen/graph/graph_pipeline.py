@@ -146,6 +146,7 @@ from pathlib import Path
 spec = importlib.util.spec_from_file_location("ref_model", r"{model_py}")
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+torch.manual_seed(0)  # identical weights to the exported bin (see make_pt)
 net = (mod.Model(*init) if init else mod.Model()).eval()
 inputs = mod.get_inputs()
 
@@ -627,6 +628,12 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 init_inputs = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
+# Deterministic weights: the weights baked into this .pt (and thus the .ncnn.bin)
+# MUST be identical to the weights the numeric-reference model rebuilds elsewhere.
+# nn.Linear/Conv use RANDOM init; without a fixed seed the exported bin and the
+# reference model diverge and every weight-bearing op fails e2e. Seed must be set
+# immediately before Model() so the RNG state at weight init is fixed.
+torch.manual_seed(0)
 net = mod.Model(*init_inputs) if init_inputs else mod.Model()
 net = net.eval()
 

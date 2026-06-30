@@ -46,7 +46,7 @@ public:
 namespace ncnn {
 <Class>::<Class>() { one_blob_only = true; support_inplace = false; }
 int <Class>::load_param(const ParamDict& pd) { /* p = pd.get(id, default); */ return 0; }
-int <Class>::load_model(const ModelBin& mb) { weight = mb.load(N, 1); if (weight.empty()) return -100; return 0; }
+int <Class>::load_model(const ModelBin& mb) { weight = mb.load(N, 0); /*primary:type 0*/ bias = mb.load(M, 1); /*secondary:type 1*/ if (weight.empty()) return -100; return 0; }
 int <Class>::forward(const Mat& bottom, Mat& top, const Option& opt) const { /* ... */ return 0; }
 DEFINE_LAYER_CREATOR(<Class>)
 } // namespace ncnn
@@ -75,6 +75,20 @@ WEIGHTS: the harness passes weights as flat float arrays in the EXACT order of
 profile.weight_keys (each = a PyTorch state_dict tensor flattened). Your load_model
 must `mb.load(...)` them in the SAME order; index them in forward consistently with
 PyTorch's tensor layout (e.g. conv weight is [out][in][kh][kw] row-major).
+
+mb.load(size, TYPE) — the TYPE is NOT free choice; it MUST match how ncnn stored
+that weight, or the reader misaligns by 4 bytes and every value is garbage (looks
+like a random sign-flipped result, ~99% wrong). Rule (from the REFERENCE interface
+block below — use its `flag` field as the TYPE):
+  - flag=0  → PRIMARY weight (ncnn fwrite_weight_tag_data: a 4-byte tag precedes
+              the data).  Read with `mb.load(size, 0)`.  This is the layer's main
+              weight: Convolution/InnerProduct/Gemm `weight_data`/`A`/`B`/`C`.
+  - flag=1  → SECONDARY weight (ncnn fwrite_weight_data: raw, NO tag).  Read with
+              `mb.load(size, 1)`.  This is bias_data AND every weight of layers
+              like BatchNorm (slope/mean/var/bias all flag=1), Scale, PReLU.
+If the REFERENCE block lists a weight with flag=0, you MUST use type 0 for it even
+though it feels unusual; using type 1 there is the single most common e2e/oracle
+failure. When in doubt, mirror the built-in layer's own load_model exactly.
 
 === ncnn::Mat MEMORY MODEL — cstep / channel gap (READ THIS, IT IS THE #1 BUG SOURCE) ===
 - `mat.cstep` is the stride between consecutive channels in floats, NOT necessarily

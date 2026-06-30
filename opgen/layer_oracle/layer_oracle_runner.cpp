@@ -93,30 +93,49 @@ static Mat read_weight(const char* path)
 // op->load_model — making the LayerOracle's mb.load() semantics IDENTICAL to
 // what the kernel sees inside ncnn::Net at production / NetOracle time.
 //
-// Layout per weight (matching ncnn modelwriter's fwrite_weight_tag_data for
-// fp32-raw mode, used when fp16 storage is OFF):
-//     [4-byte flag = 0x00000000] [w * sizeof(float) bytes of raw fp32 data]
+// Layout per weight MUST match what ncnn modelwriter emits for THIS weight slot,
+// because the kernel reads each slot with a fixed mb.load(w, type) and the real
+// ModelBinFromDataReader advances the cursor differently per type:
 //
-// This is the "f0==0" raw branch in ModelBinFromDataReader::load(w, type=0).
-// type==1 reads raw bytes only (no flag) — also handled natively by the real
-// ncnn DataReader. Mis-use of type by the kernel (e.g. using type=0 on a slot
-// where bytes are raw, or type=1 on a flagged slot) will misalign the cursor
-// inside the real reader, surface as load_model failure / wrong values — same
-// as production. No more silent slip-throughs.
+//   * PRIMARY weight (modelwriter fwrite_weight_tag_data, e.g. Convolution /
+//     InnerProduct / Gemm weight_data): bin = [4-byte tag=0][raw fp32].
+//     Kernel reads it with type 0 (auto-detect); the reader consumes the tag.
+//     -> we write this layout when wflag==0.
+//
+//   * SECONDARY weight (modelwriter fwrite_weight_data, e.g. bias_data, and ALL
+//     of BatchNorm slope/mean/var/bias, Scale, PReLU slope): bin = [raw fp32]
+//     with NO tag. Kernel reads it with type 1 (raw). -> we write this layout
+//     when wflag==1.
+//
+// The per-weight flag comes from the ncnn interface dict (weights_load_order[i].
+// flag) via --weight-flag, so the LayerOracle bin is byte-identical to the real
+// .ncnn.bin for this layer. A kernel that reads the WRONG type for a slot
+// misaligns the cursor here exactly as it would inside ncnn::Net -> the bug is
+// caught at LayerOracle time, and a correct kernel passes both. (Before this,
+// every slot got a tag, so a correct BatchNorm reading type 1 misread the tag
+// as data and produced var=0 -> 1/sqrt(eps) blowups.)
+//
+// Default (no --weight-flag given) is 0 = tagged, preserving prior behavior for
+// callers that don't pass flags.
 //
 // We use DataReaderFromMemory so no temp file is needed.
-static std::vector<unsigned char> pack_weights_bin(const Mat* weights, int n_weights)
+static std::vector<unsigned char> pack_weights_bin(const Mat* weights,
+                                                   const int* wflags, int n_weights)
 {
     std::vector<unsigned char> bin;
     for (int i = 0; i < n_weights; i++)
     {
         const Mat& m = weights[i];
         int n = m.w * m.h * m.d * m.c;
-        // 4-byte flag header (zero = fp32-raw branch in ModelBinFromDataReader)
-        unsigned int zero_flag = 0;
-        const unsigned char* fp = (const unsigned char*)&zero_flag;
-        bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
-        // raw fp32 data
+        int flag = wflags ? wflags[i] : 0;
+        if (flag == 0)
+        {
+            // PRIMARY/tagged slot: 4-byte tag=0 (fp32-raw branch), then data.
+            unsigned int zero_flag = 0;
+            const unsigned char* fp = (const unsigned char*)&zero_flag;
+            bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
+        }
+        // SECONDARY/raw slot (flag==1): no tag, raw data only.
         const unsigned char* dp = (const unsigned char*)(const float*)m;
         bin.insert(bin.end(), dp, dp + (size_t)n * sizeof(float));
     }
@@ -146,6 +165,7 @@ static void parse_params(const std::string& s, ParamDict& pd)
 int main(int argc, char** argv)
 {
     std::vector<std::string> inputs, weights;
+    std::vector<int> wflags;   // per-weight bin layout: 0=tagged (type 0), 1=raw (type 1)
     std::string out = "out.bin", param_str;
     int packing = 0;   // 0 = off (naive elempack=1); N>0 = pack inputs to elempack N (arm NC4HW4)
     for (int i = 1; i < argc; i++)
@@ -153,10 +173,14 @@ int main(int argc, char** argv)
         std::string a = argv[i];
         if (a == "--input" && i + 1 < argc) inputs.push_back(argv[++i]);
         else if (a == "--weight" && i + 1 < argc) weights.push_back(argv[++i]);
+        else if (a == "--weight-flag" && i + 1 < argc) wflags.push_back(atoi(argv[++i]));
         else if (a == "--param" && i + 1 < argc) param_str = argv[++i];
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
     }
+    // default any unspecified weight flags to 0 (tagged) so the bin layout is
+    // well-defined even when the caller passes fewer --weight-flag than --weight.
+    while (wflags.size() < weights.size()) wflags.push_back(0);
 
     ParamDict pd;
     parse_params(param_str, pd);
@@ -171,7 +195,7 @@ int main(int argc, char** argv)
     // exact same mb.load(w, type) semantics it will see inside ncnn::Net at
     // production / NetOracle time. This way mb.load type misuse is caught
     // here, not silently slipped to NetOracle.
-    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), (int)w.size());
+    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), wflags.data(), (int)w.size());
     const unsigned char* mem_ptr = mb_bin.data();
     DataReaderFromMemory dr(mem_ptr);
     ModelBinFromDataReader mb(dr);
