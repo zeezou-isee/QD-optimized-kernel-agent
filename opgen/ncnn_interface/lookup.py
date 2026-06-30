@@ -165,7 +165,39 @@ _TASK_HINTS: dict[str, str] = {
 }
 
 
-def guess_layer_from_task(task_name: str) -> str | None:
+# When the task name is ambiguous, the PyTorch model's code is a better signal:
+# Gemm.py may use `self.linear = nn.Linear(...)` (→ ncnn InnerProduct, simple
+# Wx+b) or `torch.matmul(A, B)` (→ ncnn Gemm/MatMul, transA/transB matrix mul).
+# These ncnn layers have INCOMPATIBLE param schemas; guessing wrong here makes
+# the dictionary inject the wrong contract and the LLM fabricates an analog.
+# Pattern → ncnn layer name (checked in order; first match wins per task).
+# pnnx-driven layer choice (matters more than nn.* module choice in general):
+#   - nn.Linear with 2D input  → pnnx emits ncnn `Gemm` (M=batch, N=out, K=in)
+#   - nn.Linear with 1D input  → pnnx emits ncnn `InnerProduct` (the sample API)
+#   - nn.Conv2d                → pnnx emits ncnn `Convolution`
+#   - nn.Conv1d                → ncnn `Convolution1D`
+#   - nn.Conv3d                → ncnn `Convolution3D`
+# We do NOT override Gemm/MatMul/InnerProduct from nn.Linear here — empirical
+# evidence (Mobilekernelbench Gemm.py 32x512 input) shows pnnx picks Gemm, not
+# InnerProduct. Let the task name's natural mapping win, and rely on the
+# baseline probe / GraphAgent to confirm the actual ncnn layer type.
+_MODEL_CODE_OVERRIDES = [
+    # (search pattern, candidate layers it applies to, override ncnn name)
+    ("nn.Conv1d",         {"Convolution", "Convolution1D"},   "Convolution1D"),
+    ("nn.Conv2d",         {"Convolution", "Convolution1D"},   "Convolution"),
+    ("nn.Conv3d",         {"Convolution"},                    "Convolution3D"),
+    ("nn.BatchNorm1d",    {"BatchNorm"},                      "BatchNorm"),
+    ("nn.BatchNorm2d",    {"BatchNorm"},                      "BatchNorm"),
+    ("nn.LayerNorm",      {"LayerNorm"},                      "LayerNorm"),
+    ("nn.GroupNorm",      {"GroupNorm"},                      "GroupNorm"),
+    ("nn.LSTM",           {"LSTM", "RNN"},                    "LSTM"),
+    ("nn.GRU",            {"GRU", "RNN"},                     "GRU"),
+    ("nn.RNN",            {"RNN"},                            "RNN"),
+]
+
+
+def guess_layer_from_task(task_name: str,
+                          model_code: str | None = None) -> str | None:
     """Best-effort: ncnn layer name for a Mobilekernelbench-style task name.
 
     Match cascade:
@@ -173,26 +205,36 @@ def guess_layer_from_task(task_name: str) -> str | None:
       2. longest hint key that is a substring of the lowercased task
       3. exact case-insensitive match against any dict layer name
 
+    When `model_code` is provided AND the name-based guess hits a known
+    ambiguity (Gemm/MatMul/Linear/Conv family), the code is scanned for
+    nn.Linear / nn.Conv1d / etc. to pick the correct ncnn layer.
+
     Returns the canonical PascalCase ncnn name when found, else None.
-    Note: returning a name does NOT guarantee the dict has it — caller
-    should still check get_interface(...).
     """
     if not task_name:
         return None
     t = task_name.lower().replace("_", "").replace("-", "")
-    # exact hint
+    candidate: str | None = None
     if t in _TASK_HINTS:
-        return _TASK_HINTS[t]
-    # longest substring match (most specific wins)
-    matches = [(k, v) for k, v in _TASK_HINTS.items() if k in t]
-    if matches:
-        return max(matches, key=lambda kv: len(kv[0]))[1]
-    # dict-side fallback
-    d = load_dict()
-    for layer in d:
-        if layer.lower() == t:
-            return layer
-    return None
+        candidate = _TASK_HINTS[t]
+    if candidate is None:
+        matches = [(k, v) for k, v in _TASK_HINTS.items() if k in t]
+        if matches:
+            candidate = max(matches, key=lambda kv: len(kv[0]))[1]
+    if candidate is None:
+        d = load_dict()
+        for layer in d:
+            if layer.lower() == t:
+                candidate = layer
+                break
+    # apply model-code-driven disambiguation
+    if candidate is not None and model_code:
+        for pat, applies_to, override in _MODEL_CODE_OVERRIDES:
+            if candidate in applies_to and pat in model_code:
+                if override != candidate:
+                    return override
+                break
+    return candidate
 
 
 # ---------------------------------------------------------------------------

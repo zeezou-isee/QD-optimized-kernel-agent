@@ -455,7 +455,7 @@ def _introspect(intro: dict | None) -> str:
 _MULTI_INPUT_ANALOGS = {"BinaryOp", "Eltwise", "Concat", "MatMul", "Gemm"}
 
 
-def _interface_reference_block(task_name: str) -> str:
+def _interface_reference_block(task_name: str, model_code: str | None = None) -> str:
     """Inject the ncnn built-in layer interface for this task, when known.
 
     Returns an empty string for tasks whose analog ncnn layer can't be guessed,
@@ -466,6 +466,11 @@ def _interface_reference_block(task_name: str) -> str:
     broadcasting primer is also appended so the ANALYZER prompt itself sees
     ncnn's inner-axis-first rules — important because the analyzer is what
     decides one_blob_only=false and rank_coverage.
+
+    `model_code` (when provided) disambiguates Gemm/MatMul/Linear/Conv-family
+    task names by scanning for `nn.Linear` / `nn.Conv2d` etc. — matters because
+    ncnn `Gemm` (transA/transB matmul) ≠ ncnn `InnerProduct` (nn.Linear) and
+    using the wrong dictionary entry makes the LLM fabricate analog_layer.
     """
     # late import keeps this lookup optional: tests / standalone callers that
     # don't bootstrap_paths still work, they just won't get the reference block.
@@ -473,7 +478,7 @@ def _interface_reference_block(task_name: str) -> str:
         from lookup import guess_layer_from_task, render_for_prompt
     except ImportError:
         return ""
-    layer = guess_layer_from_task(task_name)
+    layer = guess_layer_from_task(task_name, model_code=model_code)
     if not layer:
         return ""
     block = render_for_prompt(layer, role="kernel")
@@ -542,7 +547,7 @@ with `weight_keys` + `one_blob_only=true` + non-empty `load_model`. Do not set
 
 
 def analyzer_prompt(task_name: str, model_code: str, intro: dict | None) -> str:
-    ref = _interface_reference_block(task_name)
+    ref = _interface_reference_block(task_name, model_code=model_code)
     return f"""Analyze a PyTorch operator and plan a from-scratch ncnn base kernel.
 
 Task: {task_name}

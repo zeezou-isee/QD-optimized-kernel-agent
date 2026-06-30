@@ -394,11 +394,27 @@ class LayerOracle:
         # work; layers expecting a SCALAR but handed a list would crash here, so
         # the typical use is when the dictionary's default for that param is itself
         # an array. Caller (KernelAgent) is responsible for matching the layer.
+        #
+        # CRITICAL: floats MUST keep a decimal point in their string form. The
+        # runner's parse_params() decides int-vs-float by looking for '.'/'e'/'E';
+        # a Python `1.0` formatted as "1" would parse as int, get stored as int
+        # in ParamDict, and any kernel that reads it via `pd.get(id, 1.f)` would
+        # bit-cast 0x00000001 to float -> denormal ~1.4e-45 silently. So we use
+        # `:.8g` for the digits but force a trailing ".0" when needed.
+        def _float_str(v: float) -> str:
+            if v != v:  # NaN
+                return "0"
+            s = f"{v:.8g}"
+            # Anything :.8g rendered without '.', 'e', or 'E' is integer-looking
+            # and will be misread by the runner; pin a ".0" so it parses as float.
+            if "." not in s and "e" not in s and "E" not in s:
+                s += ".0"
+            return s
         if isinstance(value, (list, tuple)):
             arr_key = -(23300 + int(key))
             elems = ",".join(f"{int(v)}" if not isinstance(v, float)
-                             else (f"{v:.8g}" if v == v else "0") for v in value)
+                             else _float_str(v) for v in value)
             return f"{arr_key}={len(value)},{elems}"
         if isinstance(value, float):
-            return f"{key}={value:.8g}" if value == value else f"{key}=0"
+            return f"{key}={_float_str(value)}"
         return f"{key}={int(value)}"

@@ -41,20 +41,6 @@
     "production": true,
     "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
   },
-  "Gemm": {
-    "category": "Matrix",
-    "elapsed_s": 630.0,
-    "returncode": 0,
-    "timed_out": false,
-    "status": "fail",
-    "kernel": "success",
-    "kernel_arm": "success",
-    "graph": "skipped (already supported by ncnn)",
-    "already_in_ncnn": true,
-    "e2e": false,
-    "production": null,
-    "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
-  },
   "BatchNormalization": {
     "category": "Normalization",
     "elapsed_s": 170.2,
