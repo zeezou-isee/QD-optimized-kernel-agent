@@ -189,19 +189,22 @@ def child_env() -> dict:
 
 
 def run_one(category: str, op: str, cfg: ModuleType,
-            mode: str = "operator", backend: str = "base") -> dict:
+            mode: str = "operator", backend: str = "base",
+            model: str | None = None) -> dict:
     """Spawn one agent (operator | kernel) for `op` and capture its summary.
 
     mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
     mode="kernel"   — just KernelAgent standalone (no ncnn tree mutation;
                        --backend base by default, or arm via `backend` arg)
+    model           — override cfg.MODEL (e.g. "claude-opus-4-8"); None=use cfg
     """
+    model_name = model or cfg.MODEL
     if mode == "kernel":
         cmd = [
             sys.executable, str(CLI_KERNEL),
             "--task", op,
             "--dataset-root", str(cfg.DATASET),
-            "--model-name", cfg.MODEL,
+            "--model-name", model_name,
             "--max-rounds", cfg.MAX_ROUNDS,
             "--backend", backend,
         ]
@@ -210,7 +213,7 @@ def run_one(category: str, op: str, cfg: ModuleType,
             sys.executable, str(CLI_OPERATOR),
             "--task", op,
             "--dataset-root", str(cfg.DATASET),
-            "--model-name", cfg.MODEL,
+            "--model-name", model_name,
             "--max-rounds", cfg.MAX_ROUNDS,
             "--graph-max-rounds", cfg.GRAPH_MAX_ROUNDS,
             "--backends", cfg.BACKENDS,
@@ -264,6 +267,9 @@ def main() -> None:
                         "Use this to test kernel-prompt changes in isolation.")
     p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
                    help="--kernel-only: which backend to verify (default base)")
+    p.add_argument("--model", default=None,
+                   help="override cfg.MODEL (e.g. claude-opus-4-8 / deepseek-v4-pro). "
+                        "When omitted, uses the MODEL declared in batch/sets/<set>.py.")
     args = p.parse_args()
 
     cfg = load_set(args.set_name)
@@ -292,8 +298,10 @@ def main() -> None:
 
     results = load_results(results_path)
     total = len(ops)
+    effective_model = args.model or cfg.MODEL
     print(f"[batch:{args.set_name}] {total} operators selected; "
-          f"{sum(1 for op in [o for _,o in ops] if op in results)} already in results",
+          f"{sum(1 for op in [o for _,o in ops] if op in results)} already in results; "
+          f"model={effective_model}",
           flush=True)
 
     for i, (cat, op) in enumerate(ops, 1):
@@ -303,7 +311,7 @@ def main() -> None:
             continue
         print(f"[{i}/{total}] {cat}/{op}: running...", flush=True)
         mode = "kernel" if args.kernel_only else "operator"
-        row = run_one(cat, op, cfg, mode=mode, backend=args.backend)
+        row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model)
         results[op] = row
         save_results(results_path, results)
         if args.kernel_only:

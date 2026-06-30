@@ -546,8 +546,26 @@ with `weight_keys` + `one_blob_only=true` + non-empty `load_model`. Do not set
 """
 
 
-def analyzer_prompt(task_name: str, model_code: str, intro: dict | None) -> str:
-    ref = _interface_reference_block(task_name, model_code=model_code)
+def analyzer_prompt(task_name: str, model_code: str, intro: dict | None,
+                    force_analog_layer: str | None = None) -> str:
+    # Hard constraint from the baseline probe: pnnx's actual ncnn layer choice
+    # for this op. When provided, force the analyzer to USE this layer's
+    # interface (not a "semantically nearer" guess). Prevents the common
+    # nn.Linear-with-2D-input case where the LLM picks InnerProduct but pnnx
+    # emits Gemm — same Python op, different ncnn param schemas, e2e fails.
+    forced_block = ""
+    if force_analog_layer:
+        forced_block = (
+            f"\n=== HARD CONSTRAINT: analog_layer = `{force_analog_layer}` ===\n"
+            f"The pnnx baseline probe converted this PyTorch model and the\n"
+            f"resulting .ncnn.param uses ncnn layer type `{force_analog_layer}`.\n"
+            f"Your `analog_layer` field MUST be exactly `{force_analog_layer}` (case\n"
+            f"sensitive). Your `params` keys MUST follow that layer's ID schema\n"
+            f"(see the interface dictionary block below); pnnx populates the\n"
+            f".ncnn.param using those same IDs, so any mismatch fails end-to-end.\n"
+        )
+    lookup_name = force_analog_layer or task_name
+    ref = _interface_reference_block(lookup_name, model_code=model_code)
     return f"""Analyze a PyTorch operator and plan a from-scratch ncnn base kernel.
 
 Task: {task_name}
@@ -558,7 +576,7 @@ PyTorch model:
 
 Model introspection (ground truth):
 {_introspect(intro)}
-
+{forced_block}
 {NCNN_LAYER_BACKGROUND}
 
 {_FUNCTIONAL_OP_GUIDE}

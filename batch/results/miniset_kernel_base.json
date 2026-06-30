@@ -10,5 +10,17 @@
     "compile": true,
     "numeric": "passed",
     "max_diff": 0.0
+  },
+  "Conv": {
+    "category": "",
+    "elapsed_s": 267.6,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "backend": "base",
+    "rounds": 2,
+    "compile": true,
+    "numeric": "passed",
+    "max_diff": 0.0
   }
 }

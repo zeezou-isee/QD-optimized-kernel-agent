@@ -102,6 +102,8 @@ class OperatorAgent:
         self.e2e_repair_max_attempts = max(0, int(e2e_repair_max_attempts))
         # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
         self._ncnn_guard = None
+        # baseline probe cache populated by _early_baseline_probe()
+        self._cached_baseline = None
 
     # ------------------------------------------------------------------ paths
     @property
@@ -135,11 +137,26 @@ class OperatorAgent:
         if not self.install:
             self._ncnn_guard = arm_guard(self.ncnn_root, auto_cleanup=self.auto_cleanup_ncnn)
 
+        # ---------------- [0b] Baseline probe (FIRST — feeds [1] and [3]) -----
+        # Run pnnx ONCE up front to learn what ncnn layer type it actually emits
+        # for this op. That layer type becomes a HARD CONSTRAINT on KernelAgent's
+        # analog_layer choice — prevents the "LLM picks InnerProduct but pnnx
+        # emits Gemm" class of e2e failures. The cached probe artifacts also
+        # feed the later existence-check (no duplicate pnnx invocation).
+        force_analog, _baseline = self._early_baseline_probe()
+        if force_analog:
+            print(f"[orchestrator] baseline-probe: pnnx emits ncnn `{force_analog}` "
+                  f"→ pinning KernelAgent analog_layer")
+        else:
+            print("[orchestrator] baseline-probe: no single ncnn layer detected — "
+                  "KernelAgent will pick analog_layer itself")
+
         # ---------------- [1] Kernel ----------------
         print("\n===== [1] KernelAgent (kernel, numeric vs PyTorch) =====")
         kernel_sum = KernelAgent(task_name=self.task_name, model_py=self.model_py,
                                  cfg=self._cfg(run_numeric=True),
-                                 llm_query=self.llm_query).run()
+                                 llm_query=self.llm_query,
+                                 force_analog_layer=force_analog).run()
         kernel_ok = kernel_sum.get("status") == "success"
         kprof = kernel_sum.get("kernel_profile") or {}
         kcode = (kernel_sum.get("final_result") or {}).get("response_code") or {}
@@ -291,6 +308,7 @@ class OperatorAgent:
                         seed_code=kcode, seed_profile=kprof,
                         seed_feedback=seed_fb,
                         run_subdir_suffix=f"_e2e_repair_{attempt}",
+                        force_analog_layer=force_analog,  # pin to baseline truth
                     ).run()
                     if repair_sum.get("status") != "success":
                         print(f"[orchestrator] e2e_repair attempt {attempt} did not converge "
@@ -388,21 +406,55 @@ class OperatorAgent:
               f"registered={summary.get('registered', False)}")
         return summary
 
-    # --------------------------------------------------------- existence check
-    def _check_already_in_ncnn(self) -> tuple[bool, dict]:
-        """Run baseline pnnx; if it already converts cleanly, mimic a graph_sum.
+    # --------------------------------------------------------- baseline probe
+    def _early_baseline_probe(self) -> tuple[str | None, dict | None]:
+        """Run pnnx baseline ONCE before KernelAgent, cache the result.
 
-        Returns (already, graph_sum_like). The returned dict shape matches what
-        GraphAgent.run() would have produced, so downstream code (end-to-end
-        numeric, production correctness) works without changes.
+        Returns (force_analog_layer, grounding):
+          - force_analog_layer: the principal ncnn layer type pnnx emits for
+            this op (e.g. "Convolution", "Gemm", "AbsVal"), or None if pnnx
+            failed / no convertible layer was found. Becomes a hard constraint
+            on KernelAgent.analyze's analog_layer choice.
+        The later existence-check reuses the cached grounding (no duplicate
+        pnnx invocation).
         """
         rd = self.run_dir / "_baseline_probe"
         cfg = self._cfg(run_numeric=False)
         try:
             grounding = probe_pnnx_ir(cfg, self._resolve_model_py(), rd, self.task_name)
         except Exception as exc:  # noqa: BLE001
-            print(f"[orchestrator] existence probe failed: {exc}")
-            return False, {}
+            print(f"[orchestrator] baseline-probe failed: {exc}")
+            self._cached_baseline = None
+            return None, None
+        self._cached_baseline = grounding
+        ncnn_param_text = grounding.get("ncnn_param") or ""
+        if not ncnn_param_text:
+            return None, grounding
+        from graph_pipeline import _ncnn_layer_types
+        op_layers = _ncnn_layer_types(ncnn_param_text) - {"Input", "Output", "Split"}
+        if len(op_layers) == 1:
+            return next(iter(op_layers)), grounding
+        return None, grounding
+
+    # --------------------------------------------------------- existence check
+    def _check_already_in_ncnn(self) -> tuple[bool, dict]:
+        """If the pnnx baseline already converts cleanly, mimic a graph_sum.
+
+        Reuses the probe result cached by _early_baseline_probe (no duplicate
+        pnnx run). Returns (already, graph_sum_like).
+        """
+        grounding = getattr(self, "_cached_baseline", None)
+        if grounding is None:
+            # _early_baseline_probe wasn't called or failed; fall back to
+            # running pnnx ourselves (old behavior).
+            rd = self.run_dir / "_baseline_probe"
+            cfg = self._cfg(run_numeric=False)
+            try:
+                grounding = probe_pnnx_ir(cfg, self._resolve_model_py(), rd, self.task_name)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[orchestrator] existence probe failed: {exc}")
+                return False, {}
+        rd = self.run_dir / "_baseline_probe"
         supported = bool(grounding.get("baseline_supported"))
         op_types = grounding.get("op_types") or []
         residual = grounding.get("residual_aten") or []

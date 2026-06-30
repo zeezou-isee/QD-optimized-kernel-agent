@@ -21,6 +21,7 @@
 #include "modelbin.h"
 #include "paramdict.h"
 #include "option.h"
+#include "datareader.h"
 
 #include CANDIDATE_HEADER
 
@@ -87,32 +88,40 @@ static Mat read_weight(const char* path)
     return flat.clone();
 }
 
-// Strict ModelBin that validates requested size — catches load_model bugs
-// where the kernel requests the wrong number of weights (real ncnn's
-// ModelBinFromDataReader checks this; the loose ModelBinFromMatArray does not).
-class ModelBinFromMatArrayStrict : public ModelBin
+// Pack a sequence of fp32 weight Mats into a ncnn-standard .bin byte stream
+// (in-memory), so we can use the REAL ncnn ModelBinFromDataReader to feed
+// op->load_model — making the LayerOracle's mb.load() semantics IDENTICAL to
+// what the kernel sees inside ncnn::Net at production / NetOracle time.
+//
+// Layout per weight (matching ncnn modelwriter's fwrite_weight_tag_data for
+// fp32-raw mode, used when fp16 storage is OFF):
+//     [4-byte flag = 0x00000000] [w * sizeof(float) bytes of raw fp32 data]
+//
+// This is the "f0==0" raw branch in ModelBinFromDataReader::load(w, type=0).
+// type==1 reads raw bytes only (no flag) — also handled natively by the real
+// ncnn DataReader. Mis-use of type by the kernel (e.g. using type=0 on a slot
+// where bytes are raw, or type=1 on a flagged slot) will misalign the cursor
+// inside the real reader, surface as load_model failure / wrong values — same
+// as production. No more silent slip-throughs.
+//
+// We use DataReaderFromMemory so no temp file is needed.
+static std::vector<unsigned char> pack_weights_bin(const Mat* weights, int n_weights)
 {
-public:
-    ModelBinFromMatArrayStrict(const Mat* _weights) : weights_(_weights) {}
-    Mat load(int w, int /*type*/) const override
+    std::vector<unsigned char> bin;
+    for (int i = 0; i < n_weights; i++)
     {
-        if (!weights_) return Mat();
-        Mat m = weights_[index_];
-        int actual = m.w * m.h * m.d * m.c;
-        if (actual != w)
-        {
-            fprintf(stderr, "load_model size mismatch: requested %d, actual %d (weight index %d)\n",
-                    w, actual, index_);
-            return Mat();
-        }
-        index_++;
-        return m;
+        const Mat& m = weights[i];
+        int n = m.w * m.h * m.d * m.c;
+        // 4-byte flag header (zero = fp32-raw branch in ModelBinFromDataReader)
+        unsigned int zero_flag = 0;
+        const unsigned char* fp = (const unsigned char*)&zero_flag;
+        bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
+        // raw fp32 data
+        const unsigned char* dp = (const unsigned char*)(const float*)m;
+        bin.insert(bin.end(), dp, dp + (size_t)n * sizeof(float));
     }
-
-private:
-    const Mat* weights_;
-    mutable int index_ = 0;
-};
+    return bin;
+}
 
 static void parse_params(const std::string& s, ParamDict& pd)
 {
@@ -157,7 +166,15 @@ int main(int argc, char** argv)
 
     std::vector<Mat> w;
     for (size_t i = 0; i < weights.size(); i++) w.push_back(read_weight(weights[i].c_str()));
-    ModelBinFromMatArrayStrict mb(w.data());
+    // Pack weights into ncnn-standard fp32-raw bin layout, then use the REAL
+    // ncnn DataReader + ModelBinFromDataReader so op->load_model sees the
+    // exact same mb.load(w, type) semantics it will see inside ncnn::Net at
+    // production / NetOracle time. This way mb.load type misuse is caught
+    // here, not silently slipped to NetOracle.
+    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), (int)w.size());
+    const unsigned char* mem_ptr = mb_bin.data();
+    DataReaderFromMemory dr(mem_ptr);
+    ModelBinFromDataReader mb(dr);
     if (op->load_model(mb) != 0) { fprintf(stderr, "load_model failed\n"); return 3; }
 
     Option opt;

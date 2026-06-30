@@ -47,6 +47,8 @@ class KernelAgent:
         seed_feedback: str | None = None,           # e2e_repair: failure detail from end-to-end stage
         seed_profile: dict | None = None,           # e2e_repair: re-use the analyzer's profile
         run_subdir_suffix: str = "",                # e2e_repair: write to runs/<task>/kernel<suffix>/
+        force_analog_layer: str | None = None,      # baseline-probe-driven hard constraint:
+                                                    # the actual ncnn layer type pnnx emits
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
@@ -63,6 +65,7 @@ class KernelAgent:
         self.seed_feedback = seed_feedback
         self.seed_profile = dict(seed_profile) if seed_profile else None
         self.run_subdir_suffix = run_subdir_suffix
+        self.force_analog_layer = (force_analog_layer or "").strip() or None
         # vulkan verifies on the GPU via VulkanLayerOracle (isolated instantiation,
         # runtime-compiled shader); base/arm use the CPU LayerOracle.
         if backend == "vulkan":
@@ -109,10 +112,22 @@ class KernelAgent:
 
     # ------------------------------------------------------------------ roles
     def analyze(self) -> KernelProfile:
-        prompt = analyzer_prompt(self.task_name, self.model_code, self.intro)
+        prompt = analyzer_prompt(self.task_name, self.model_code, self.intro,
+                                 force_analog_layer=self.force_analog_layer)
         text = self.llm(prompt, self.cfg.model)
         (self.run_dir / "analyzer.md").write_text(text, encoding="utf-8")
         profile = parse_profile_json(self.task_name, text)
+        # Hard constraint: if the orchestrator told us what ncnn layer pnnx
+        # actually emits for this op, overwrite the LLM's analog_layer guess.
+        # The LLM often picks a "semantically nearer" layer (e.g. nn.Linear →
+        # InnerProduct) while pnnx may emit a different one (Gemm). Using the
+        # LLM pick makes LayerOracle pass but NetOracle fail because the
+        # .ncnn.param schemas differ.
+        if self.force_analog_layer and profile.analog_layer != self.force_analog_layer:
+            print(f"[analyze] forcing analog_layer: LLM said {profile.analog_layer!r} "
+                  f"-> baseline-probe truth {self.force_analog_layer!r}")
+            profile.analog_layer = self.force_analog_layer
+            profile.params = {}   # LLM-supplied params follow the wrong schema; reset
         self._validate_weight_keys(profile)
         self._infer_params(profile)
         write_json(self.run_dir / "kernel_profile.json", profile.to_dict())
@@ -302,6 +317,16 @@ class KernelAgent:
             # we are not re-analyzing, we are repairing the code on top of it.
             self.profile = KernelProfile.from_llm(self.task_name, self.seed_profile,
                                                   backend=self.backend)
+            # Apply force_analog here too (analyze() isn't called on the seed
+            # path). The seed profile may have used the wrong analog — likely
+            # WHY e2e failed — so let baseline-probe truth override and reset
+            # params to be re-derived from the (correct) dict entry.
+            if self.force_analog_layer and self.profile.analog_layer != self.force_analog_layer:
+                print(f"[e2e_repair] forcing analog_layer: seed said "
+                      f"{self.profile.analog_layer!r} -> {self.force_analog_layer!r}")
+                self.profile.analog_layer = self.force_analog_layer
+                self.profile.params = {}
+                self._infer_params(self.profile)
             write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
         elif self._subclasses_base:
             # derive the arm/vulkan profile from the verified base (no 2nd analyzer call)

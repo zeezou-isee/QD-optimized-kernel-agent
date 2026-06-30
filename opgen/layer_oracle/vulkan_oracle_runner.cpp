@@ -24,6 +24,7 @@
 #include "modelbin.h"
 #include "paramdict.h"
 #include "option.h"
+#include "datareader.h"
 #include "gpu.h"
 #include "command.h"
 
@@ -94,28 +95,29 @@ static Mat read_weight(const char* path)
     return flat.clone();
 }
 
-class ModelBinFromMatArrayStrict : public ModelBin
+// Pack weights into a ncnn-standard fp32-raw bin layout (in-memory). Used with
+// DataReaderFromMemory + ModelBinFromDataReader (ncnn's real reader chain) so
+// op->load_model sees the exact mb.load(w, type) semantics it gets in
+// production / NetOracle. See layer_oracle_runner.cpp for the full rationale.
+//
+// Layout per weight: [4-byte flag = 0x00000000] [w * sizeof(float) raw fp32].
+// Every weight gets a flag header, so the kernel must call mb.load(w, 0) for
+// every weight (this matches the fp32-storage modelwriter convention).
+static std::vector<unsigned char> pack_weights_bin(const Mat* weights, int n_weights)
 {
-public:
-    ModelBinFromMatArrayStrict(const Mat* _weights) : weights_(_weights) {}
-    Mat load(int w, int /*type*/) const override
+    std::vector<unsigned char> bin;
+    for (int i = 0; i < n_weights; i++)
     {
-        if (!weights_) return Mat();
-        Mat m = weights_[index_];
-        int actual = m.w * m.h * m.d * m.c;
-        if (actual != w)
-        {
-            fprintf(stderr, "load_model size mismatch: requested %d, actual %d (weight index %d)\n",
-                    w, actual, index_);
-            return Mat();
-        }
-        index_++;
-        return m;
+        const Mat& m = weights[i];
+        int n = m.w * m.h * m.d * m.c;
+        unsigned int zero_flag = 0;
+        const unsigned char* fp = (const unsigned char*)&zero_flag;
+        bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
+        const unsigned char* dp = (const unsigned char*)(const float*)m;
+        bin.insert(bin.end(), dp, dp + (size_t)n * sizeof(float));
     }
-private:
-    const Mat* weights_;
-    mutable int index_ = 0;
-};
+    return bin;
+}
 
 static void parse_params(const std::string& s, ParamDict& pd)
 {
@@ -176,7 +178,10 @@ int main(int argc, char** argv)
 
     std::vector<Mat> w;
     for (size_t i = 0; i < weights.size(); i++) w.push_back(read_weight(weights[i].c_str()));
-    ModelBinFromMatArrayStrict mb(w.data());
+    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), (int)w.size());
+    const unsigned char* mem_ptr = mb_bin.data();
+    DataReaderFromMemory dr(mem_ptr);
+    ModelBinFromDataReader mb(dr);
     if (op->load_model(mb) != 0) { fprintf(stderr, "load_model failed\n"); return 3; }
 
     Option opt;
