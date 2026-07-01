@@ -72,14 +72,20 @@ class KernelAgent:
             self.oracle = VulkanLayerOracle()
         else:
             self.oracle = LayerOracle(ncnn_root=self.cfg.ncnn_root, workdir=RUNS_ROOT / "_oracle")
-        # arm: compile the candidate against src/layer/arm helpers + NC4HW4 packing.
-        # `_packing` defaults to elempack=4 on arm, BUT for functional ops (weights
-        # arriving as bottom_blobs) we keep elempack=1 — the runner's
-        # convert_packing() would otherwise repack the weight tensor too and
-        # destroy its PyTorch layout. Finalised in run() once the profile is known.
+        # arm: compile the candidate against src/layer/arm helpers.
+        # PACKING is kept OFF (elempack=1) for the arm LayerOracle so it matches
+        # what NetOracle / production actually run: net_oracle_runner sets
+        # opt.use_packing_layout=false, so inside a real ncnn::Net the arm layer
+        # receives elempack=1 mats. Validating arm at elempack=4 (--packing 4)
+        # forced the LLM to get the packed NC4HW4 broadcast path right — a path
+        # that is never exercised downstream — which was the dominant source of
+        # arm false-negatives (packed-broadcast port bugs). Aligning LayerOracle
+        # with NetOracle (elempack=1 NEON, 4-wide over the contiguous axis) keeps
+        # the arm kernel a real NEON override while removing that variance. A
+        # future fp16+packing pass can validate the packed path in BOTH oracles.
         self._extra_includes = ([str(self.cfg.ncnn_root / "src" / "layer" / "arm")]
                                 if backend == "arm" else [])
-        self._packing = 4 if backend == "arm" else 0
+        self._packing = 0
         # arm and vulkan both subclass the verified base layer
         self._subclasses_base = backend in ("arm", "vulkan")
         self.profile: KernelProfile | None = None

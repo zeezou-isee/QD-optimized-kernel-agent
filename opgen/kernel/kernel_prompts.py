@@ -110,54 +110,57 @@ failure. When in doubt, mirror the built-in layer's own load_model exactly.
   w*h; dims==3 → loop over c using channel(q); dims==4 → loop over c, each channel
   holds w*h*d). Do NOT assume 4D.
 
-=== PACKED LAYOUT — what changes when packing is ON (elempack > 1) ===
-The base kernel itself runs at elempack=1 (no packing). But ncnn's packing path is
-ALSO exercised against your kernel in regression checks, and an arm subclass WILL
-run packed. Internal mental model so you don't write code that breaks under packing:
-- When elempack=N, each "channel slot" stores N original channels interleaved at the
-  innermost layout. `mat.c` becomes `original_c / elempack` (the number of channel
-  *groups*), and `mat.elempack = N`. Each `channel(q)` then holds
-  `w*h*d*elempack` contiguous floats: N values per spatial position, lane-interleaved.
-- `mat.cstep` (in floats) still includes the per-channel-group alignment gap. If you
-  write per-channel loops correctly (per the section above), the packed path "just
-  works" for pure elementwise ops — process `w*h*d*elempack` floats per channel slot.
-- Reductions across channels, broadcasting along channel, or anything that mixes lanes
-  must explicitly handle elempack: either unpack first, or iterate
-  `(q, lane)` with the right stride.
+=== PACKING IS OFF in this harness (elempack == 1) ===
+Both LayerOracle and the real ncnn::Net (NetOracle / production) run with
+`opt.use_packing_layout = false`. Every Mat you get has `elempack == 1`,
+`elemsize == sizeof(float)` — plain row-major fp32. You do NOT need any
+elempack>1 (NC4HW4) packed path, not even in the arm subclass. Write correct
+elempack=1 code; on arm, vectorise 4-wide over the contiguous axis (width / the
+flat w*h*d run per channel), not over packed lanes.
+(Background only, not required here: if packing were ON, elempack=N would
+interleave N channels per slot with `mat.c = original_c/elempack` and each
+`channel(q)` holding `w*h*d*elempack` lane-interleaved floats — a future
+fp16+packing validation pass would exercise that. It is OFF now.)
 """
 
 ARM_LAYER_BACKGROUND = """\
 THIS IS AN ARM (NEON) BACKEND KERNEL — it SUBCLASSES the base layer (which is
-already written & verified). It is compiled together with the base .cpp and run
-with PACKING ON (NC4HW4, elempack=4). Be numerically identical to the base op.
+already written & verified). It is compiled together with the base .cpp. Be
+numerically identical to the base op.
+
+PACKING IS OFF — elempack == 1 (CRITICAL, read this first):
+  The validator (LayerOracle) AND the real ncnn::Net (NetOracle / production) both
+  run with `opt.use_packing_layout = false`. So EVERY Mat your forward receives has
+  `elempack == 1` and `elemsize == sizeof(float)` — plain row-major fp32, exactly
+  like the base kernel. You do NOT need to handle the NC4HW4 (elempack=4) packed
+  layout; getting packed broadcast right is the #1 cause of arm failures and it is
+  a path that is never exercised here. Your NEON win comes from vectorising 4-wide
+  over the CONTIGUOUS axis (width / the flat w*h*d run per channel), NOT from
+  elempack lanes.
+  - DO NOT branch on elempack or read `bottom.elempack` to pick lanes; treat it as 1.
+  - DO NOT set `support_packing = true` (that would invite elempack=4 input in real
+    packed deployment which this kernel does not handle). Leave it false (the base
+    default) so ncnn guarantees elempack=1 input.
+  - Allocate output with `elemsize=sizeof(float)` and the same shape as the base.
 
 Conventions (CRITICAL):
 - Header: `#include "{base_header}"` then `class {arm_class} : public {base_class}`.
   Override ONLY the forward method(s); inherit params/weights/flags from the base
-  constructor by calling nothing special — the base ctor already ran.
+  constructor — the base ctor already ran.
 - MANDATORY OVERRIDE: you MUST define `{arm_class}::forward` (or
   `{arm_class}::forward_inplace`) out-of-line in the .cpp with the NEON path. If you
   omit it, C++ silently dispatches to the inherited base CPU forward — the kernel is
   then a degraded base kernel (not arm) and WILL BE REJECTED even if numerics match.
-- Constructor: enable packing:
-    {arm_class}::{arm_class}() {{
-    #if __ARM_NEON
-        support_packing = true;
-    #endif
-    }}
 - NEON: `#if __ARM_NEON` + `#include <arm_neon.h>`. Optional ncnn helpers (on the
   include path): `#include "neon_mathfun.h"` (exp_ps/log_ps/sin_ps/tanh_ps/...),
-  `#include "arm_usability.h"`.
-- PACKED layout: read `int elempack = bottom_top_blob.elempack;` (it is 4). Each
-  `channel(q)` holds `w*h*d*elempack` contiguous floats. For an elementwise op,
-  packing is transparent — just process those floats, vectorizing 4-at-a-time:
-    for (int q=0;q<channels;q++) {{ float* p = blob.channel(q);
-        int size = w*h*d*elempack, i=0;
-        for (; i+4<=size; i+=4) {{ float32x4_t v=vld1q_f32(p+i); /* f(v) */ vst1q_f32(p+i,v); }}
-        for (; i<size; i++) p[i] = /* f(p[i]) */; }}
-  Keep a correct scalar tail; also stay correct if elempack==1 (fallback path).
-- Allocate output with the SAME elempack & elemsize as input; for an inplace op,
-  do not reallocate.
+  `#include "arm_usability.h"`. Guard the NEON body with `#if __ARM_NEON` and keep a
+  correct plain-C fallback for the non-NEON build.
+- Vectorise 4-wide over the contiguous run, with a correct scalar tail:
+    for (int q=0;q<channels;q++) {{ const float* p = bottom.channel(q); float* o = top.channel(q);
+        int size = w*h*d, i=0;                     // elempack==1, so size is the real count
+        for (; i+4<=size; i+=4) {{ float32x4_t v=vld1q_f32(p+i); /* f(v) */ vst1q_f32(o+i,v); }}
+        for (; i<size; i++) o[i] = /* f(p[i]) */; }}
+  Iterate per channel via `channel(q)` (respect cstep); never flat-index across channels.
 - Parallelize channels: `#pragma omp parallel for num_threads(opt.num_threads)`.
 - Do NOT write DEFINE_LAYER_CREATOR — arm registration is automatic via cmake.
 """
