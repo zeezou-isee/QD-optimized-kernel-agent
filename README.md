@@ -22,9 +22,14 @@ link and a real optimizer:
    NEON/NC4HW4 `arm` subclass), verified by allclose vs PyTorch.
 2. **GraphAgent** — for ops ncnn doesn't natively convert, authors the PNNX pass
    (PyTorch→ncnn), verified structurally + numerically.
-3. **OptimizeAgent** — a two-layer Quality-Diversity optimizer (LLM proposer +
+3. **AdapterAgent** — when a kernel is *numerically* correct in the per-op sandbox
+   but fails end-to-end inside `ncnn::Net`, it rewrites the kernel to satisfy the
+   ncnn **Layer-Net contract** (weight `mb.load` type, forward overload vs flags,
+   param IDs), armed with a contract spec distilled from ncnn source + the real
+   `.ncnn.param`. See `AgentDesign/monologue/AdapterAgent.md`.
+4. **OptimizeAgent** — a two-layer Quality-Diversity optimizer (LLM proposer +
    real on-machine measurement) that makes the verified kernel faster.
-4. **OperatorAgent** — a decision-driven orchestrator that wires all of the above
+5. **OperatorAgent** — a decision-driven orchestrator that wires all of the above
    into one end-to-end flow.
 
 ---
@@ -40,6 +45,9 @@ OperatorAgent (orchestrator) — decision-driven 7-stage flow
         already supported  -> use the native conversion
         not supported      -> [3b] GraphAgent: author the PNNX pass (<=15 rounds)
   [4] end-to-end numeric         run the converted .ncnn model vs PyTorch (allclose)
+        e2e fails  -> [4b] AdapterAgent: rewrite the (algorithm-correct) kernel to
+                          satisfy the ncnn Layer-Net contract (mb.load weight type,
+                          forward overload vs flags, param IDs), reinstall, re-check
   [5] production validation      compile + correctness [+ android benchmark]
   [6] OptimizeAgent              two-layer QD: make the (arm) kernel faster, re-validate
   [7] cleanup / --install        restore the source tree, or permanently register the op
@@ -87,8 +95,8 @@ pool, **M3** = cross-op reuse + best-first comparison (all implemented & tested)
 | backend | status | notes |
 |---|---|---|
 | `base` | ✅ | portable C++ ncnn layer; runs anywhere |
-| `arm`  | ✅ | NEON + NC4HW4 packing; **requires an arm64 host** (Apple Silicon / ARM Linux). Subclasses the verified base layer |
-| `vulkan` | ⏳ deferred | designed (BD axes, spec-constant params) but not implemented — needs an `NCNN_VULKAN=ON` build + a GPU device |
+| `arm`  | ✅ | NEON on an **arm64 host** (Apple Silicon / ARM Linux); subclasses the verified base. Validated at **elempack=1** (matching what NetOracle/production run); the packed NC4HW4 + fp16 paths are a future optimization/validation pass |
+| `vulkan` | ⏳ deferred | gen+verify designed (BD axes, spec-constant params) — needs an `NCNN_VULKAN=ON` build + a GPU device |
 
 ---
 
@@ -97,20 +105,33 @@ pool, **M3** = cross-op reuse + best-first comparison (all implemented & tested)
 ```
 opgen/
   config.py            paths / runtime config (finds ../ncnn)
-  llm_api.py           OpenRouter LLM wrapper (streaming; reasoning off by default)
-  kernel/              KernelAgent: ncnn kernel writer (base + arm)
+  llm_api.py           multi-provider LLM wrapper (IdeaLab / DeepSeek / OpenRouter,
+                       routed by model name; streaming; reasoning off by default)
+  kernel/              KernelAgent: ncnn kernel writer (base + arm + vulkan)
   graph/               GraphAgent: PyTorch->ncnn PNNX conversion writer
+  ncnn_interface/      110-layer interface dict + ncnn_contract.md (C1-C6 Layer-Net
+                       contract); lookup.py injects param-id/weight/flag facts into prompts
   layer_oracle/        LayerOracle + NetOracle (compile/run/allclose verification)
-  orchestrator/        OperatorAgent (7-stage flow) + production_validation
+  orchestrator/        OperatorAgent (flow) + AdapterAgent (e2e contract repair)
+                       + production_validation
   optimize/            OptimizeAgent (QD optimizer)
     schemas.py         ParameterizedTemplate / MeasureSample / BasinValue / OptimizeResult
     evaluator/         cpu_runner, correctness_oracle, measure_harness, evaluator
     inner/             hardware_specs, constraint_engine, coarse_grid, hill_climb, inner_search
     policy/            roofline, bd, archive (MAP-Elites), experience_pool, map_elites, best_first
     test_m1/2/3.py     76 unit tests (fake evaluator/proposer; no LLM/ncnn needed)
-  cli/                 run_kernel_agent / run_operator_agent / run_arm_batch / ...
+  cli/                 run_kernel_agent / run_operator_agent / run_graph_agent / ...
   tools/               file/shell helpers
-dataset/Mobilekernelbench/   183 PyTorch reference operators (12 categories)
+batch/                 batch_runner.py (one runner for all sets) + sets/{miniset,subset,all}.py
+                       + results/*.json (resumable; ops with a result are skipped)
+dataset/
+  Mobilekernelbench/            183 PyTorch reference operators (12 categories)
+  Mobilekernelbench_miniset/    11-op fast smoke set
+  Mobilekernelbench_subset/     ~26-op mid-tier coverage set
+  Mobilekernelbench_unsupported/ 38 ops ncnn does NOT natively support (need the
+                                 Cand-kernel pipeline) + _unsupported_index.json
+  Mobilekernelbench_pnnx_native.json  the pnnx-native audit (142 supported / 38 unsupported)
+AgentDesign/monologue/  per-agent design docs (KernelAgent / GraphAgent / AdapterAgent / ...)
 算子优化-*.md / 微观参数优化设计.md   the optimizer design documents
 opgen/docs/          background, ncnn graph/kernel notes, validation reports
 ```
@@ -130,12 +151,27 @@ parent/
 └── QD-optimized-kernel-agent/ # this repo
 ```
 
-**2) Python deps**
+**2) Python env + deps** (Python 3.12; deps pinned in `requirements.txt`)
+
+Option A — **conda** (recommended when available):
 ```bash
 cd QD-optimized-kernel-agent
-python3 -m venv .venv && source .venv/bin/activate
-pip install torch numpy openai pyyaml cmake ncnn
+conda create -n qdkernel python=3.12 -y
+conda activate qdkernel
+pip install -r requirements.txt          # numpy torch openai ncnn cmake
 ```
+
+Option B — **venv** (fallback when conda can't be installed on the host, e.g.
+this machine): identical deps, no conda:
+```bash
+cd QD-optimized-kernel-agent
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+> `cmake` and `ncnn` (pyncnn) are **runtime** deps, not just build tools: the
+> oracles shell out to `cmake` to compile candidate kernels, and `pyncnn` runs
+> the converted `.ncnn` model in-process for the end-to-end allclose. The
+> pip-distributed `cmake` puts the CLI on PATH so no system install is needed.
 
 **3) Build `libncnn.a`** (required for the kernel/optimize oracles):
 ```bash
@@ -147,10 +183,21 @@ cmake --build build_lib -j8
 > For the new-operator graph path (GraphAgent / OperatorAgent), also build **pnnx**
 > under `ncnn/tools/pnnx` (needs PyTorch). Kernel writing + optimization alone do not.
 
-**4) Configure**
+**4) Configure** — the LLM provider is chosen by the `--model-name` you pass; set
+the matching key (`opgen/llm_api.py` routes by model name):
+
+| model name | provider | env var |
+|---|---|---|
+| `claude-opus-4-8` (or `idealab/<model>`) | IdeaLab Anthropic-compatible proxy | `IDEALAB_API_KEY` |
+| `deepseek-v4-pro` / `deepseek-chat` / `deepseek-*` | DeepSeek | `DEEPSEEK_API_KEY` |
+| anything else (`z-ai/...`, `anthropic/...`, `openai/...`) | OpenRouter | `OPENROUTER_API_KEY` |
+
 ```bash
-export OPENROUTER_API_KEY=sk-or-v1-...        # your key
-export PATH="$PWD/../QD-optimized-kernel-agent/.venv/bin:$PATH"   # cmake on PATH
+export IDEALAB_API_KEY=...      # for claude-opus-4-8 (the current default in batch runs)
+# or: export DEEPSEEK_API_KEY=...    (for deepseek-v4-pro)
+# or: export OPENROUTER_API_KEY=sk-or-v1-...
+# ensure cmake is on PATH (conda/venv bin dir):
+export PATH="$PWD/.venv/bin:$PATH"        # venv;  conda: `conda activate qdkernel` already does this
 ```
 
 ---
@@ -172,9 +219,12 @@ python opgen/optimize/run_optimize.py --task Exp --backend arm --policy map_elit
 python opgen/cli/run_operator_agent.py --task Greater --backends base,arm \
        --optimize --optimize-policy map_elites
 
-# --- batch over the dataset (records compile / correctness / perf per op) ---
-python opgen/cli/run_arm_batch.py --category Unary,Activation,Logic
-#   -> opgen/runs/_arm_batch/{results.json, report.md}
+# --- batch a whole set end-to-end (kernel + graph + e2e + production per op) ---
+# sets: miniset (11) | subset (~26) | all (183). Resumable: ops already in the
+# results json are skipped, so you can pre-seed it to skip already-tested ops.
+IDEALAB_API_KEY=... python batch/batch_runner.py --set miniset --model claude-opus-4-8
+python batch/batch_runner.py --set subset --ops Gemm,LayerNorm    # debug a few ops
+#   -> batch/results/<set>.json
 
 # --- unit tests (no LLM / ncnn needed) ---
 python opgen/optimize/test_m1.py && python opgen/optimize/test_m2.py && python opgen/optimize/test_m3.py
@@ -186,17 +236,22 @@ Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 
 ---
 
-## Validated results (real LLM, on-machine compile + measure; arm64 host)
+## Validated results (real LLM = claude-opus-4-8; on-machine compile + e2e; Apple M-series arm64)
 
-- **From-scratch new operators** `Greater` / `Less` (`torch.gt`/`torch.lt`, no native
-  ncnn support): kernel + PNNX graph + end-to-end numeric all pass, `max_diff = 0`.
-- **Optimizer (real speedups, each candidate correctness-gated):**
-  - `Erf` (base): 16.40 -> 14.92 ms (-9.0%) via an LLM rational-approx erf.
-  - `Exp` (existing op, arm NEON/NC4HW4): 19.67 -> 18.95 ms (-3.6%).
-  - `Greater` (new op, full pipeline, arm): 19.61 -> 17.44 ms (-11.1%), production re-validated.
-- **best-first control arm** correctly reports `tie` for trivial elementwise ops
-  (QD's diversity doesn't pay off there) — the intended data-driven verdict.
-- **76 unit tests** green for the optimizer (M1/M2/M3).
+- **miniset 11/11** end-to-end green on **both `base` and `arm`** backends
+  (kernel + e2e numeric + production), every `kernel_arm` a real NEON override,
+  **0 fallback**.
+- **subset 26/26** end-to-end green (10 miniset-carried + 16 new, incl. Winograd /
+  ConvTranspose / Group conv, MatMul variants, LayerNorm, Concat, Einsum-as-Permute).
+- The hard failures found along the way were **harness/pipeline fidelity bugs**, not
+  kernel-authoring failures — all fixed at source (deterministic weight seed; per-weight
+  bin-tag packing; `mb.load` type guidance; symmetric production squeeze; arm elempack=1
+  validation; decomposed-op retarget guard; multi-shape squeeze consistency).
+- **Optimizer (real speedups, each candidate correctness-gated):** `Erf` base
+  16.40→14.92 ms (-9.0%); `Exp` arm 19.67→18.95 ms (-3.6%); `Greater` arm full
+  pipeline 19.61→17.44 ms (-11.1%), production re-validated. best-first control arm
+  reports `tie` for trivial elementwise ops (the intended data-driven verdict).
+- **76 unit tests** green for the optimizer (M1/M2/M3); taxonomy + retarget unit tests green.
 
 ---
 
@@ -217,11 +272,13 @@ Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 
 - `arm` backend requires an **arm64 host**; on x86 only `base` is meaningful.
 - Running the full orchestrator needs **cmake on PATH** (it rebuilds `libncnn.a`).
-- Kernel authoring is reliable for **elementwise / unary / activation / logic /
-  binary** ops; complex ops (conv, matmul, reductions, multi-axis tensor ops) often
-  fail at authoring and are recorded as such by the batch harness.
-- Not yet done: Vulkan backend, arm fp16, OpenMP multithreading in the oracle
-  (current arm path is single-thread + NEON vectorization), real on-device benchmark.
+- Kernel authoring now covers the miniset/subset breadth (elementwise, logic,
+  conv variants incl. Winograd/Group/ConvTranspose, matmul variants, norms, pooling,
+  reduction, concat/reshape) at 11/11 and 26/26 e2e. Genuinely hard ops with no ncnn
+  layer (einsum contractions, Det/LU, Unique/TopK, LSTM) remain the frontier and are
+  what `dataset/Mobilekernelbench_unsupported/` collects for the new-op pipeline.
+- Not yet done: Vulkan backend, arm fp16 + packed NC4HW4 validation (correctness is
+  validated at elempack=1 fp32, matching NetOracle/production), real on-device benchmark.
 
 ---
 
