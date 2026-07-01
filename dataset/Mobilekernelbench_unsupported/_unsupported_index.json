@@ -1,0 +1,316 @@
+{
+  "schema_version": "1.0",
+  "source_classification": "Mobilekernelbench_pnnx_native.json",
+  "ncnn_head_sha": "b16501a65edf03828dae55b4d20ccc6a6bf4a3b4",
+  "criterion": "status==UNSUPPORTED (pnnx cannot emit runnable native ncnn graph: residual aten/prim OR emitted layer not in ncnn runtime)",
+  "count": 38,
+  "ops": {
+    "And": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_and']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.logical_and"
+      ]
+    },
+    "BitWiseOr": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_or']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.bitwise_or"
+      ]
+    },
+    "BitWiseXor": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_xor']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.bitwise_xor"
+      ]
+    },
+    "BitwiseAnd": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.bitwise_and']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.bitwise_and"
+      ]
+    },
+    "Det": {
+      "category": "Matrix",
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": []
+    },
+    "Det_2d": {
+      "category": "Matrix",
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": []
+    },
+    "Det_3d": {
+      "category": "Matrix",
+      "reason": "no pnnx pass; residual=['aten::linalg_det']",
+      "residual_aten": [
+        "aten::linalg_det"
+      ],
+      "unknown_layers": []
+    },
+    "Equal": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.eq']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.eq"
+      ]
+    },
+    "Gather": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.index_select']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.index_select"
+      ]
+    },
+    "GatherElements": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.gather']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.gather"
+      ]
+    },
+    "Greater": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.gt']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.gt"
+      ]
+    },
+    "GreaterEqual": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.ge']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.ge"
+      ]
+    },
+    "InstanceNormalization_1d": {
+      "category": "Normalization",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['nn.InstanceNorm1d']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "nn.InstanceNorm1d"
+      ]
+    },
+    "LSTM": {
+      "category": "Others",
+      "reason": "no pnnx pass; residual=['prim::TupleConstruct']",
+      "residual_aten": [
+        "prim::TupleConstruct"
+      ],
+      "unknown_layers": []
+    },
+    "Less": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.lt']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.lt"
+      ]
+    },
+    "LessEqual": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.le']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.le"
+      ]
+    },
+    "LogicalXor": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ]
+    },
+    "LogicalXor3d": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ]
+    },
+    "LogicalXor_2d": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_xor']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.logical_xor"
+      ]
+    },
+    "MaxPool_2d_dilations": {
+      "category": "Pooling",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['F.max_pool2d']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "F.max_pool2d"
+      ]
+    },
+    "MaxPool_2d_same_lower": {
+      "category": "Pooling",
+      "reason": "no pnnx pass; residual=['aten::max_pool2d']",
+      "residual_aten": [
+        "aten::max_pool2d"
+      ],
+      "unknown_layers": []
+    },
+    "Not": {
+      "category": "Logic",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.logical_not']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.logical_not"
+      ]
+    },
+    "OneHot": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::one_hot']",
+      "residual_aten": [
+        "aten::one_hot"
+      ],
+      "unknown_layers": []
+    },
+    "Range": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.arange']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.arange"
+      ]
+    },
+    "ScatterElements": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::scatter']",
+      "residual_aten": [
+        "aten::scatter"
+      ],
+      "unknown_layers": []
+    },
+    "Stft": {
+      "category": "Others",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.stft']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.stft"
+      ]
+    },
+    "TopK": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.topk"
+      ]
+    },
+    "TopK_3d": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.topk"
+      ]
+    },
+    "TopK_dim0": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.topk"
+      ]
+    },
+    "TopK_indices": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.topk"
+      ]
+    },
+    "TopK_sorted": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.topk']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.topk"
+      ]
+    },
+    "Trilu_lower": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::tril']",
+      "residual_aten": [
+        "aten::tril"
+      ],
+      "unknown_layers": []
+    },
+    "Trilu_uppper": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::triu']",
+      "residual_aten": [
+        "aten::triu"
+      ],
+      "unknown_layers": []
+    },
+    "Unique": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "unknown_layers": []
+    },
+    "Unique_sorted_with_axis": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "unknown_layers": []
+    },
+    "Unique_sorted_with_axis_3d": {
+      "category": "Tensor",
+      "reason": "no pnnx pass; residual=['aten::unique_dim', 'prim::TupleConstruct']",
+      "residual_aten": [
+        "aten::unique_dim",
+        "prim::TupleConstruct"
+      ],
+      "unknown_layers": []
+    },
+    "Where": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.where']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.where"
+      ]
+    },
+    "Where_broadcast": {
+      "category": "Tensor",
+      "reason": "pnnx emits layer ncnn doesn't recognize: ['torch.where']",
+      "residual_aten": [],
+      "unknown_layers": [
+        "torch.where"
+      ]
+    }
+  }
+}
