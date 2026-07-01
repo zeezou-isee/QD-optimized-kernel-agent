@@ -141,6 +141,16 @@ def probe_pnnx_ir(cfg: GraphConfig, model_py: str | Path, run_dir: Path, task_na
         out["ncnn_param"] = Path(artifacts[".ncnn.param"]).read_text(encoding="utf-8", errors="replace")
     out["op_types"] = parse_pnnx_op_types(out["pnnx_param"])
     out["residual_aten"] = sorted({t for t in re.findall(r"\b(aten::[A-Za-z0-9_]+|prim::[A-Za-z0-9_]+)", out["pnnx_param"])})
+    # BENIGN residuals: prim::Tuple/List Construct/Unpack are just output PACKAGING
+    # ("the model returns multiple values"), NOT unlowered ops. pnnx's ncnn export
+    # resolves them into a multi-output native layer — e.g. nn.LSTM returning
+    # (output, h_n, c_n) becomes a clean `LSTM 1 3 in0 out0 out1 out2` in the
+    # .ncnn.param even though the pnnx IR still shows prim::TupleConstruct. Treating
+    # these as blocking wrongly marked LSTM (and would mark MHA/GRU with hidden
+    # states) as unsupported. Only REAL aten::/prim:: op residuals disqualify.
+    _BENIGN_RESIDUAL = ("prim::TupleConstruct", "prim::TupleUnpack",
+                        "prim::ListConstruct", "prim::ListUnpack")
+    _blocking_residual = [t for t in out["residual_aten"] if t not in _BENIGN_RESIDUAL]
     # pnnx-only emitted layer names that ncnn's RUNTIME cannot load.
     # pnnx sometimes emits its own op names into the .ncnn.param — e.g.
     # `torch.logical_and`, `torch.gt`, `F.max_pool2d`, `nn.InstanceNorm1d`,
@@ -155,7 +165,7 @@ def probe_pnnx_ir(cfg: GraphConfig, model_py: str | Path, run_dir: Path, task_na
     # Does the CURRENT pnnx already convert this op correctly (structurally +
     # numerically)? If so, the op is already supported and the agent should not
     # author new passes (it would only risk breaking a working baseline).
-    out["baseline_structural_ok"] = bool(out["ncnn_param"]) and not out["residual_aten"] \
+    out["baseline_structural_ok"] = bool(out["ncnn_param"]) and not _blocking_residual \
         and not out["unknown_layers"] \
         and len(_emitted - {"Input", "Output", "Split"}) > 0
     if out["baseline_structural_ok"]:
