@@ -118,11 +118,23 @@ def probe_pnnx_ir(cfg: GraphConfig, model_py: str | Path, run_dir: Path, task_na
         out["ncnn_param"] = Path(artifacts[".ncnn.param"]).read_text(encoding="utf-8", errors="replace")
     out["op_types"] = parse_pnnx_op_types(out["pnnx_param"])
     out["residual_aten"] = sorted({t for t in re.findall(r"\b(aten::[A-Za-z0-9_]+|prim::[A-Za-z0-9_]+)", out["pnnx_param"])})
+    # pnnx-only emitted layer names that ncnn's RUNTIME cannot load.
+    # pnnx sometimes emits its own op names into the .ncnn.param — e.g.
+    # `torch.logical_and`, `torch.gt`, `F.max_pool2d`, `nn.InstanceNorm1d`,
+    # `pnnx.Expression`. These pass the "no aten::/prim:: residual" check yet ncnn
+    # rejects them at load time with "layer X not exists or registered". Real ncnn
+    # layer types are single identifiers with NO namespace dot, so any emitted type
+    # containing '.' is a pnnx-only name => the op is NOT natively supported and
+    # GraphAgent MUST author a real conversion (this is the case for And / Greater /
+    # the whole Logic family, MaxPool_2d_dilations, InstanceNormalization_1d, ...).
+    _emitted = _ncnn_layer_types(out["ncnn_param"])
+    out["unknown_layers"] = sorted(t for t in _emitted if "." in t)
     # Does the CURRENT pnnx already convert this op correctly (structurally +
     # numerically)? If so, the op is already supported and the agent should not
     # author new passes (it would only risk breaking a working baseline).
     out["baseline_structural_ok"] = bool(out["ncnn_param"]) and not out["residual_aten"] \
-        and len(_ncnn_layer_types(out["ncnn_param"]) - {"Input", "Output", "Split"}) > 0
+        and not out["unknown_layers"] \
+        and len(_emitted - {"Input", "Output", "Split"}) > 0
     if out["baseline_structural_ok"]:
         out["baseline_numeric_ok"] = baseline_numeric(cfg, model_py, probe_dir, Path(pt).stem)
     else:

@@ -485,7 +485,13 @@ class OperatorAgent:
         if not ncnn_param_text:
             return None, grounding
         from graph_pipeline import _ncnn_layer_types
-        op_layers = _ncnn_layer_types(ncnn_param_text) - {"Input", "Output", "Split"}
+        # Exclude pnnx-only emitted names (torch.logical_and, F.max_pool2d, ...):
+        # they contain a namespace dot and are NOT real ncnn layers, so they must
+        # not become force_analog (that would pin KernelAgent to a non-existent
+        # analog and mis-drive the retarget guard). Such an op is unsupported ->
+        # force_analog stays None -> GraphAgent authors the real conversion.
+        op_layers = {t for t in _ncnn_layer_types(ncnn_param_text)
+                     if t not in {"Input", "Output", "Split"} and "." not in t}
         if len(op_layers) == 1:
             return next(iter(op_layers)), grounding
         return None, grounding
