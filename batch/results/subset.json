@@ -225,31 +225,29 @@
   },
   "Einsum_transpose": {
     "category": "Matrix",
-    "elapsed_s": 293.4,
-    "returncode": 0,
-    "timed_out": false,
-    "status": "fail",
-    "kernel": "fail",
-    "kernel_arm": null,
-    "graph": null,
-    "already_in_ncnn": null,
-    "e2e": null,
-    "production": null,
-    "note": "kernel phase failed; aborting."
+    "status": "success",
+    "kernel": "success",
+    "kernel_arm": [
+      "base",
+      "arm"
+    ],
+    "graph": "skipped (already supported by ncnn)",
+    "e2e": true,
+    "production": true,
+    "note": "re-run green after retarget-guard / multishape-squeeze fix"
   },
   "Gemm_alpha": {
     "category": "Matrix",
-    "elapsed_s": 161.8,
-    "returncode": 0,
-    "timed_out": false,
-    "status": "fail",
+    "status": "success",
     "kernel": "success",
-    "kernel_arm": "success",
+    "kernel_arm": [
+      "base",
+      "arm"
+    ],
     "graph": "skipped (already supported by ncnn)",
-    "already_in_ncnn": true,
-    "e2e": false,
-    "production": null,
-    "note": "kernel + (graph or skip) + end-to-end + production (temporary; source tree restored)."
+    "e2e": true,
+    "production": true,
+    "note": "re-run green after retarget-guard / multishape-squeeze fix"
   },
   "MatMul": {
     "category": "Matrix",
@@ -323,17 +321,16 @@
   },
   "Concat": {
     "category": "Tensor",
-    "elapsed_s": 603.8,
-    "returncode": 0,
-    "timed_out": false,
-    "status": "fail",
-    "kernel": "fail",
-    "kernel_arm": null,
-    "graph": null,
-    "already_in_ncnn": null,
-    "e2e": null,
-    "production": null,
-    "note": "kernel phase failed; aborting."
+    "status": "success",
+    "kernel": "success",
+    "kernel_arm": [
+      "base",
+      "arm"
+    ],
+    "graph": "skipped (already supported by ncnn)",
+    "e2e": true,
+    "production": true,
+    "note": "re-run green after retarget-guard / multishape-squeeze fix"
   },
   "Reshape": {
     "category": "Tensor",
