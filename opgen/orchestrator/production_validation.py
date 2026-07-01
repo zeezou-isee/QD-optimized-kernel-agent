@@ -139,17 +139,21 @@ class ProductionValidator:
 
     # --- 2. correctness (NetOracle reuse) --------------------------------
     def production_correctness(self, graph_sum: dict, model_py: str | Path,
-                               tol: float = 2e-3, retarget_to: str | None = None) -> dict:
+                               tol: float = 2e-3, retarget_to: str | None = None,
+                               expected_src_type: str | None = None) -> dict:
         art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
         param, binf = art.get(".ncnn.param"), art.get(".ncnn.bin")
         if not param or not binf or not Path(param).exists():
             return {"passed": False, "detail": "no converted .ncnn.param/.bin in graph summary"}
 
         # re-point the output layer to OUR impl so the net runs ours, not built-in
-        # (needed for ops ncnn already supports; idempotent for new ops).
+        # (needed for ops ncnn already supports; idempotent for new ops). The
+        # expected_src_type guard skips the retarget for decomposed ops (output
+        # layer is a different native type) so the baseline native graph runs.
         if retarget_to:
             rp = self.workdir / "prod_correctness_retargeted.param"
-            retarget_param_output_file(param, rp, retarget_to)
+            retarget_param_output_file(param, rp, retarget_to,
+                                       expected_src_type=expected_src_type)
             param = str(rp)
 
         import torch
@@ -201,7 +205,8 @@ class ProductionValidator:
         return self.ncnn_root / "build-android-aarch64"
 
     def benchmark(self, model_param_path: str | Path, input_shapes_str: str,
-                  retarget_to: str | None = None) -> dict:
+                  retarget_to: str | None = None,
+                  expected_src_type: str | None = None) -> dict:
         """Benchmark the converted model on-device via benchncnn.
 
         `retarget_to` (= the candidate's Cand_<Op> class) re-points the model's
@@ -224,7 +229,8 @@ class ProductionValidator:
         if retarget_to:
             try:
                 text = param_to_push.read_text(encoding="utf-8")
-                new_text, retarget_n = retarget_param_output_layer(text, retarget_to)
+                new_text, retarget_n = retarget_param_output_layer(text, retarget_to,
+                                                                   expected_src_type)
                 rp = self.workdir / "model_retargeted.param"
                 rp.write_text(new_text, encoding="utf-8")
                 param_to_push = rp

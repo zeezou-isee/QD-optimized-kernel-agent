@@ -95,7 +95,9 @@ def main() -> int:
         "Input            in0    0 1 in0 0=8 1=8 2=4\n"
         "UnaryOp          exp0   1 1 in0 out0 0=7\n"
     )
-    ru, nu = retarget_param_output_layer(UNARY, "Cand_Exp")
+    # New contract: pass the detected principal native type so the guard knows
+    # this single-layer op IS the op under test (matches -> retarget).
+    ru, nu = retarget_param_output_layer(UNARY, "Cand_Exp", "UnaryOp")
     lu = ru.splitlines()
     check(nu == 1, f"output-layer retarget hit exactly 1 (got {nu})")
     check(lu[2].startswith("Input "), "Input not retargeted")
@@ -108,6 +110,26 @@ def main() -> int:
     # idempotent: retargeting an already-Cand_ output layer is a no-op rewrite
     ri, ni = retarget_param_output_layer(ru, "Cand_Exp")
     check(ni == 1 and ri == ru, "idempotent: cls->cls leaves text identical")
+
+    # --- 5) DECOMPOSED-OP GUARD: output layer is a different native type ---
+    # e.g. alpha*(A@B)+beta*C -> Gemm + BinaryOp(mul) + BinaryOp(add); the OUTPUT
+    # layer is the final Add, NOT our Gemm. Substituting a monolithic Cand_Gemm
+    # there mis-wires it. The guard must SKIP (text unchanged).
+    DECOMP = (
+        "7767517\n"
+        "6 6\n"
+        "Input    in0 0 1 in0\n"
+        "Input    in1 0 1 in1\n"
+        "Input    in2 0 1 in2\n"
+        "Gemm     mm  2 1 in0 in1 3\n"
+        "BinaryOp mul 1 1 3 4 0=2 2=0.5\n"
+        "BinaryOp add 2 1 4 in2 out0 0=0\n"
+    )
+    rd, nd = retarget_param_output_layer(DECOMP, "Cand_Gemm_alpha", "Gemm")
+    check(nd == 0 and rd == DECOMP, "decomposed op (analog Gemm, output BinaryOp) -> SKIP")
+    # and when no principal layer was detected (expected_src_type=None) -> also SKIP
+    rd2, nd2 = retarget_param_output_layer(DECOMP, "Cand_Gemm_alpha")
+    check(nd2 == 0 and rd2 == DECOMP, "decomposed op, no analog detected -> SKIP")
 
     print()
     if _FAILS:

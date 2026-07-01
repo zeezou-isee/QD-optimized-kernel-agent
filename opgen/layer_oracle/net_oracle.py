@@ -98,7 +98,8 @@ def retarget_param_layer(param_text: str, src_type: str, dst_type: str,
     return new_text, n
 
 
-def retarget_param_output_layer(param_text: str, dst_type: str) -> tuple[str, int]:
+def retarget_param_output_layer(param_text: str, dst_type: str,
+                                expected_src_type: str | None = None) -> tuple[str, int]:
     """Rewrite the TYPE of the layer that produces the graph's final output blob.
 
     For a single-op reference model (the dataset ops) this layer IS the op under
@@ -109,6 +110,16 @@ def retarget_param_output_layer(param_text: str, dst_type: str) -> tuple[str, in
 
     Idempotent: if the output layer is already `dst_type` (the new-op path, where
     GraphAgent forced the target), this rewrites cls->cls (text unchanged).
+
+    DECOMPOSED-OP GUARD (`expected_src_type`): some ops do NOT map to a single
+    ncnn layer — pnnx decomposes them into a chain of native layers, all correct
+    on their own (e.g. `alpha*(A@B)+beta*C` -> Gemm + BinaryOp(mul) + BinaryOp(add),
+    where the OUTPUT layer is the final Add, not our Gemm). Blindly retargeting the
+    output layer to a monolithic `Cand_<Op>` mis-wires it (wrong input count) and
+    produces garbage/NaN. When `expected_src_type` is given, we only retarget if the
+    output layer's current type matches it (case-insensitive) OR is already
+    `dst_type`; otherwise the op is a native multi-layer decomposition and we SKIP
+    (return the text unchanged, n=0) so the caller runs the correct baseline graph.
 
     Returns (new_param_text, n) where n is 1 if a layer was rewritten else 0.
     """
@@ -130,6 +141,21 @@ def retarget_param_output_layer(param_text: str, dst_type: str) -> tuple[str, in
     m = re.match(r"(\s*)(\S+)(\s+)(\S+)(.*)", lines[target])
     if not m:
         return param_text, 0
+    cur_type = m.group(2)
+    # Decide whether this output layer is actually the op we built a Cand for.
+    # Retarget only when: (a) it is already our Cand (new-op path, idempotent), or
+    # (b) its native type matches the detected principal layer (single-native-op).
+    # Otherwise the op is a native multi-layer DECOMPOSITION (e.g. Gemm_alpha ->
+    # Gemm + BinaryOp*2, output layer = Add) OR the baseline probe found no single
+    # principal layer at all (expected_src_type is None for exactly that reason) —
+    # substituting a monolithic Cand there mis-wires the layer (wrong input count
+    # -> NaN). In both cases, skip and let the correct baseline native graph run.
+    if cur_type != dst_type:
+        if expected_src_type:
+            if cur_type.lower() != expected_src_type.strip().lower():
+                return param_text, 0        # different native type -> decomposed
+        else:
+            return param_text, 0            # no principal layer detected -> decomposed
     lines[target] = m.group(1) + dst_type + m.group(3) + m.group(4) + m.group(5)
     new_text = "\n".join(lines)
     if param_text.endswith("\n"):
@@ -138,11 +164,16 @@ def retarget_param_output_layer(param_text: str, dst_type: str) -> tuple[str, in
 
 
 def retarget_param_output_file(src_path: str | Path, dst_path: str | Path,
-                               dst_type: str) -> int:
+                               dst_type: str,
+                               expected_src_type: str | None = None) -> int:
     """Read a .ncnn.param, retarget its output-producing layer to `dst_type`,
-    write to dst_path. Returns 1 if a layer was rewritten else 0. Idempotent."""
+    write to dst_path. Returns 1 if a layer was rewritten else 0. Idempotent.
+
+    `expected_src_type` gates the retarget for decomposed ops — see
+    retarget_param_output_layer. When it doesn't match, the file is copied
+    through unchanged (n=0) so the baseline native graph runs."""
     text = Path(src_path).read_text(encoding="utf-8")
-    new_text, n = retarget_param_output_layer(text, dst_type)
+    new_text, n = retarget_param_output_layer(text, dst_type, expected_src_type)
     Path(dst_path).write_text(new_text, encoding="utf-8")
     return n
 

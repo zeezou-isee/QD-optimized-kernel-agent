@@ -108,6 +108,8 @@ class OperatorAgent:
         self._ncnn_guard = None
         # baseline probe cache populated by _early_baseline_probe()
         self._cached_baseline = None
+        # principal native ncnn layer type pnnx emits (set in run()); guards retarget
+        self._force_analog = None
 
     # ------------------------------------------------------------------ paths
     @property
@@ -148,6 +150,10 @@ class OperatorAgent:
         # emits Gemm" class of e2e failures. The cached probe artifacts also
         # feed the later existence-check (no duplicate pnnx invocation).
         force_analog, _baseline = self._early_baseline_probe()
+        # remember the principal native ncnn layer type pnnx emits for this op —
+        # used to guard the output-layer retarget against DECOMPOSED ops (where the
+        # output layer is a different native type, e.g. Gemm_alpha's final Add).
+        self._force_analog = force_analog
         if force_analog:
             print(f"[orchestrator] baseline-probe: pnnx emits ncnn `{force_analog}` "
                   f"→ pinning KernelAgent analog_layer")
@@ -578,7 +584,8 @@ class OperatorAgent:
                                  do_benchmark=self.do_benchmark, workdir=self.run_dir)
         pc = pv.production_compile()
         print(f"[orchestrator] production compile ({pc.get('mode')}): ok={pc.get('ok')}")
-        cr = pv.production_correctness(graph_sum, model_py, retarget_to=op_class)
+        cr = pv.production_correctness(graph_sum, model_py, retarget_to=op_class,
+                                       expected_src_type=getattr(self, "_force_analog", None))
         print(f"[orchestrator] production correctness: passed={cr.get('passed')} "
               f"{cr.get('detail','')}")
         prod = {"compile": pc, "correctness": cr,
@@ -587,7 +594,8 @@ class OperatorAgent:
             art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
             param = art.get(".ncnn.param")
             shapes = torch_input_shapes_str(model_py)
-            bm = pv.benchmark(param, shapes, retarget_to=op_class)
+            bm = pv.benchmark(param, shapes, retarget_to=op_class,
+                              expected_src_type=getattr(self, "_force_analog", None))
             print(f"[orchestrator] benchmark: ran={bm.get('ran')} skipped={bm.get('skipped')} "
                   f"retargeted={bm.get('retargeted')} reason={bm.get('reason','')} avg={bm.get('avg')}")
             prod["benchmark"] = bm
@@ -726,8 +734,15 @@ class OperatorAgent:
         # built-in (needed for ops ncnn already supports; idempotent for new ops).
         if op_class:
             rp = self.run_dir / "net_numeric_retargeted.param"
-            retarget_param_output_file(param, rp, op_class)
+            n = retarget_param_output_file(param, rp, op_class,
+                                           expected_src_type=getattr(self, "_force_analog", None))
             param = str(rp)
+            if n == 0:
+                _fa = getattr(self, "_force_analog", None)
+                why = (f"output layer type != principal `{_fa}`" if _fa
+                       else "no single principal ncnn layer detected")
+                print(f"[orchestrator] retarget SKIPPED ({why}) — op is a native "
+                      f"multi-layer decomposition; running baseline graph as-is")
 
         import importlib.util
         mp = self._resolve_model_py()

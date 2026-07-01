@@ -262,13 +262,22 @@ def _size_variants(inputs):
 
 
 def _multishape_check(oracle, profile, cpp_path, params, model_py,
-                      extra_sources, extra_includes, backend_kwargs, tol):
+                      extra_sources, extra_includes, backend_kwargs, tol,
+                      in0_squeezed: bool = False):
     """Re-verify a weightless kernel on size variants (8.2). Returns (category, detail)
     of the first failing variant, or None if all pass / the op rejects them.
 
     _size_variants yields variants in order: (1) halved, (2) channel-gap. The
     channel-gap variant specifically catches the cstep flat-cast bug — when it's
     what fails, the message points the LLM at the right root cause.
+
+    `in0_squeezed` MUST match the main verify path's squeeze decision: only drop
+    axis 0 from inputs/reference when pnnx actually squeezed it (batched nn.Module
+    op). For ops where axis 0 is a real matrix dim (2D transpose `ij->ji`,
+    multi-input Concat along axis 0), dropping it fabricates a degenerate variant
+    and a FALSE failure — the historical bug that failed Einsum_transpose/Concat
+    even though their primary shape passed. Variants are same-rank slices, so the
+    original op's squeeze decision applies unchanged.
     """
     import torch
     mod = _load_module(model_py)
@@ -281,8 +290,12 @@ def _multishape_check(oracle, profile, cpp_path, params, model_py,
             if isinstance(ref, (tuple, list)):
                 ref = ref[0]
             ref_np = ref.detach().numpy()
-            reference = ref_np[0] if ref_np.ndim >= 2 else ref_np
-            ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in vin]
+            # mirror the main path: squeeze axis 0 ONLY if pnnx did on the original
+            reference = ref_np[0] if (in0_squeezed and ref_np.ndim >= 2) else ref_np
+            ncnn_inputs = []
+            for t in vin:
+                a = np.ascontiguousarray(t.detach().numpy())
+                ncnn_inputs.append(a[0] if (in0_squeezed and a.ndim >= 2) else a)
         except Exception:  # noqa: BLE001 — op rejects this shape, skip it
             continue
         v = oracle.verify(candidate_cpp=cpp_path, class_name=profile.class_name,
@@ -571,7 +584,8 @@ def verify_kernel(
     has_weights = bool(profile.weight_keys) or bool(getattr(profile, "weights_from_inputs", None))
     if res.numeric_ok and run_numeric and not has_weights:
         bad = _multishape_check(oracle, profile, cpp_path, params, model_py,
-                                extra_sources, extra_includes, backend_kwargs, tol)
+                                extra_sources, extra_includes, backend_kwargs, tol,
+                                in0_squeezed=in0_squeezed)
         if bad is not None:
             res.numeric_ok = False
             res.failure_category = bad[0]
