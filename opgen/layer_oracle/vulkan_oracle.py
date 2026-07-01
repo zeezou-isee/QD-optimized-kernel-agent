@@ -97,17 +97,20 @@ class VulkanLayerOracle:
 
     # --- compile (cached by input mtime) -----------------------------------
     def compile(self, candidate_cpp: str | Path, class_name: str, header: str,
-                shader: str | Path,
+                shader: str | Path | None,
                 extra_sources: Sequence[str | Path] = (),
                 extra_includes: Sequence[str | Path] = ()) -> tuple[Path, str]:
         """Build runner + candidate.cpp [+ extra_sources] against vulkan libncnn.
 
         `shader` is the candidate's .comp file (injected as CANDIDATE_SHADER and
-        compiled at runtime). The runner exe path is returned.
+        compiled at runtime) for the FROM-SCRATCH path. Pass None for the
+        NATIVE-SUBCLASS path (`Cand_X_vulkan : public ncnn::X_vulkan`), which
+        inherits ncnn's built-in create_pipeline + baked SPIR-V and needs no
+        candidate shader. The runner exe path is returned.
         """
         self._ensure_libncnn()
         candidate_cpp = Path(candidate_cpp).resolve()
-        shader = Path(shader).resolve()
+        shader = Path(shader).resolve() if shader is not None else None
         extra_src = [Path(s).resolve() for s in extra_sources]
         for _p in [candidate_cpp, *extra_src]:
             _strip_creator_inplace(_p)
@@ -118,7 +121,9 @@ class VulkanLayerOracle:
         runner = build / "runner"
 
         # rebuild if exe missing or any input newer than exe
-        inputs = [candidate_cpp, self.runner_src, shader, _THIS / "cand_vulkan_shader.h"]
+        inputs = [candidate_cpp, self.runner_src, _THIS / "cand_vulkan_shader.h"]
+        if shader is not None:
+            inputs.append(shader)
         inputs += [s for s in extra_src if s.exists()]
         newest = max(p.stat().st_mtime for p in inputs if p.exists())
         if runner.exists() and runner.stat().st_mtime >= newest:
@@ -143,13 +148,20 @@ class VulkanLayerOracle:
         return runner, log
 
     def _cmakelists(self, candidate_cpp: Path, class_name: str, header: str,
-                    shader: Path, extra_src: list[Path], extra_includes: Sequence[str | Path]) -> str:
+                    shader: Path | None, extra_src: list[Path], extra_includes: Sequence[str | Path]) -> str:
         srcs = " ".join(f'"{s}"' for s in [self.runner_src, candidate_cpp, *extra_src])
+        # ncnn source-tree includes so a NATIVE-SUBCLASS candidate can
+        # `#include "vulkan/<op>_vulkan.h"` (internal layer headers are NOT
+        # exported by the install, only present in the source tree). Harmless for
+        # the from-scratch path.
+        src = self.ncnn_root / "src"
         incs = " ".join(f'"{i}"' for i in [
             candidate_cpp.parent,            # candidate's own header
             _THIS,                           # cand_vulkan_shader.h
+            src, src / "layer", src / "layer" / "vulkan",
             *[Path(x) for x in extra_includes],
         ])
+        shader_def = f'\n    "CANDIDATE_SHADER=\\"{shader}\\""' if shader is not None else ""
         return f"""cmake_minimum_required(VERSION 3.10)
 project(vk_oracle CXX)
 set(CMAKE_CXX_STANDARD 11)
@@ -160,14 +172,13 @@ add_executable(runner {srcs})
 target_include_directories(runner PRIVATE {incs})
 target_compile_definitions(runner PRIVATE
     "CANDIDATE_HEADER=\\"{header}\\""
-    "CANDIDATE_CLASS={class_name}"
-    "CANDIDATE_SHADER=\\"{shader}\\"")
+    "CANDIDATE_CLASS={class_name}"{shader_def})
 target_link_libraries(runner ncnn)
 """
 
     # --- run ---------------------------------------------------------------
     def run(self, *, candidate_cpp: str | Path, class_name: str, header: str,
-            shader: str | Path,
+            shader: str | Path | None = None,
             params: dict[int, Any] | None = None,
             inputs: Sequence[np.ndarray],
             weights: Sequence[np.ndarray] = (),
@@ -219,7 +230,7 @@ target_link_libraries(runner ncnn)
 
     # --- verify vs reference (oracle) --------------------------------------
     def verify(self, *, candidate_cpp: str | Path, class_name: str, header: str,
-               shader: str | Path,
+               shader: str | Path | None = None,
                params: dict[int, Any] | None,
                inputs: Sequence[np.ndarray],
                reference: np.ndarray,

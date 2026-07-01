@@ -28,6 +28,13 @@ class KernelProfile:
     backend: str = "base"          # "base" | "arm" | "vulkan"
     base_class: str = ""           # for arm/vulkan: the base layer class it subclasses (Cand_Abs)
     shader: str = ""               # vulkan only: the .comp shader file (e.g. cand_abs.comp)
+    # vulkan only: when the op maps to a native ncnn <analog>_vulkan layer, the
+    # candidate is a THIN SUBCLASS of it (Cand_X_vulkan : public <analog>_vulkan)
+    # that inherits ncnn's verified create_pipeline + baked SPIR-V — no from-scratch
+    # .comp needed. Set by KernelAgent when a native vulkan layer exists.
+    native_vulkan: bool = False
+    native_vulkan_class: str = ""  # e.g. "BinaryOp_vulkan"
+    native_vulkan_header: str = "" # e.g. "vulkan/binaryop_vulkan.h"
     notes: str = ""
 
     # naming suffix per backend (base has none); vulkan reserved for a later phase.

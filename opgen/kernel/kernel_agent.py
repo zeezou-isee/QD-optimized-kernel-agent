@@ -307,6 +307,108 @@ class KernelAgent:
         ))
         write_json(self.run_dir / "history.json", {"history": [h.to_dict() for h in self.history]})
 
+    # --------------------------------------------------------- native vulkan
+    def _parse_baseline_params(self, analog: str) -> dict | None:
+        """Correct ncnn params for `analog` from the pnnx baseline .ncnn.param.
+
+        The from-scratch base kernel's params are bespoke and may not match ncnn's
+        real schema (e.g. Mul needs BinaryOp op_type=2, Reduction needs an axes
+        array) — but a native <analog>_vulkan subclass reads params via ncnn's own
+        load_param, so they MUST be the ncnn schema. pnnx already wrote them into
+        the baseline .ncnn.param; parse the analog layer line. Returns {id_str: val}
+        (arrays as {positive_id: [values]}), or None if no baseline param found.
+        """
+        roots = list((RUNS_ROOT / self.task_name).rglob("*.ncnn.param"))
+        for p in roots:
+            try:
+                txt = p.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for ln in txt.splitlines()[2:]:
+                parts = ln.split()
+                if len(parts) >= 4 and parts[0] == analog:
+                    try:
+                        nin, nout = int(parts[2]), int(parts[3])
+                    except ValueError:
+                        continue
+                    toks = parts[4 + nin + nout:]
+                    params: dict[str, Any] = {}
+                    for t in toks:
+                        if "=" not in t:
+                            continue
+                        k, v = t.split("=", 1)
+                        try:
+                            ki = int(k)
+                        except ValueError:
+                            continue
+                        if ki <= -23300:                    # array param (neg-key trick)
+                            real_id = -ki - 23300
+                            vals = v.split(",")[1:]         # drop the leading count
+                            params[str(real_id)] = [
+                                float(x) if ("." in x or "e" in x.lower()) else int(x)
+                                for x in vals]
+                        elif "." in v or "e" in v.lower():
+                            params[k] = float(v)
+                        else:
+                            params[k] = int(v)
+                    return params
+        return None
+
+    def _native_vulkan_run(self) -> dict | None:
+        """Native-vulkan-subclass path: `Cand_X_vulkan : public ncnn::<analog>_vulkan`.
+
+        Returns a success summary if the thin subclass verifies on the GPU, else
+        None to fall back to the from-scratch LLM shader loop.
+        """
+        analog = (self.profile.analog_layer or "").strip()
+        if not analog or "." in analog:            # pnnx-only name -> no native vk
+            return None
+        stem = analog.lower()
+        hdr = self.cfg.ncnn_root / "src" / "layer" / "vulkan" / f"{stem}_vulkan.h"
+        if not hdr.exists():
+            return None                            # ncnn has no vulkan for this op
+        native_class = f"{analog}_vulkan"
+        native_header = f"vulkan/{stem}_vulkan.h"
+
+        parsed = self._parse_baseline_params(analog)
+        if parsed is not None:
+            self.profile.params = parsed
+        self.profile.native_vulkan = True
+        self.profile.native_vulkan_class = native_class
+        self.profile.native_vulkan_header = native_header
+        self.profile.shader = ""
+
+        cls, hname, fname = self.profile.class_name, self.profile.header, self.profile.file
+        guard = cls.upper().replace(".", "_") + "_H"
+        code_book = {
+            hname: (f"#ifndef {guard}\n#define {guard}\n"
+                    f'#include "{native_header}"\n'
+                    f"namespace ncnn {{ class {cls} : public {native_class} {{}}; }}\n"
+                    f"#endif\n"),
+            fname: (f'#include "{hname}"\n'
+                    f"namespace ncnn {{ DEFINE_LAYER_CREATOR({cls}) }}\n"),
+        }
+        print(f"[kernel] vulkan NATIVE-SUBCLASS: {cls} : public {native_class} "
+              f"(inherits ncnn baked shader; no from-scratch .comp). "
+              f"params={self.profile.params}")
+        write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
+        result = self._run_pipeline(code_book, 0)
+        self._save_round(0, "native_vulkan", "(native subclass, no LLM)", "", result)
+        print(f"[kernel] native-vulkan: ok={result.ok} compile={result.compile_ok} "
+              f"numeric={result.numeric_status} max_diff={result.max_diff}")
+        if not result.ok:
+            print("[kernel] native-vulkan did not verify; falling back to from-scratch shader")
+            return None
+        summary = {
+            "status": "success", "task_name": self.task_name, "backend": self.backend,
+            "rounds": len(self.history),
+            "kernel_profile": self.profile.to_dict(),
+            "history": [h.to_dict() for h in self.history],
+            "final_result": result.to_dict(),
+        }
+        write_json(self.run_dir / "summary.json", summary)
+        return summary
+
     # ------------------------------------------------------------------- loop
     def run(self) -> dict:
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -354,6 +456,18 @@ class KernelAgent:
         print(f"[kernel] backend={self.backend} profile: class={self.profile.class_name} "
               f"analog={self.profile.analog_layer} weight_keys={self.profile.weight_keys} "
               f"params={self.profile.params}")
+
+        # NATIVE-VULKAN SUBCLASS: if ncnn ships a built-in <analog>_vulkan layer,
+        # don't ask the LLM to author a from-scratch shader (a hard, crash-prone
+        # frontier for non-elementwise ops). Generate a thin subclass that inherits
+        # ncnn's VERIFIED GPU implementation (create_pipeline + baked SPIR-V), with
+        # the correct ncnn params pulled from the pnnx baseline .ncnn.param. This
+        # mirrors how arm subclasses the base and is the "reference ncnn / minimal
+        # harness" path the goal calls for.
+        if self.backend == "vulkan":
+            native = self._native_vulkan_run()
+            if native is not None:
+                return native
 
         result: KernelResult | None = None
         # e2e_repair: prefill code_book with the seeded code so the first round's

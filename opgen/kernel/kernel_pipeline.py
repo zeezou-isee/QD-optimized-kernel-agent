@@ -383,7 +383,8 @@ def verify_kernel(
     # vulkan: the candidate also emits a separate .comp shader (compiled at runtime
     # by the VulkanLayerOracle). Locate it among the written files.
     shader_path = None
-    if profile.backend == "vulkan":
+    native_vk = profile.backend == "vulkan" and getattr(profile, "native_vulkan", False)
+    if profile.backend == "vulkan" and not native_vk:
         if profile.shader and (round_dir / profile.shader).exists():
             shader_path = round_dir / profile.shader
         else:
@@ -393,9 +394,12 @@ def verify_kernel(
             res.messages.append("missing .comp")
             return res
 
-    # backend-specific oracle kwargs: vulkan passes the shader; base/arm pass packing
-    backend_kwargs: dict = ({"shader": str(shader_path)} if profile.backend == "vulkan"
-                            else {"packing": packing})
+    # backend-specific oracle kwargs: vulkan passes the shader (None for a native
+    # subclass, which inherits ncnn's baked shader); base/arm pass packing.
+    if profile.backend == "vulkan":
+        backend_kwargs = {"shader": (str(shader_path) if shader_path else None)}
+    else:
+        backend_kwargs = {"packing": packing}
 
     # PyTorch reference (single sample, ncnn layout)
     import torch
