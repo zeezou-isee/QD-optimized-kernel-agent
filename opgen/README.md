@@ -21,7 +21,7 @@ OperatorAgent（总控,operator_agent.py）
 ```
 opgen/
   config.py                 路径与运行参数(GraphConfig, RUNS_ROOT, 自动定位 kernelgen/ncnn)
-  llm_api.py                多 provider LLM(按 model 名路由:IdeaLab / DeepSeek / OpenRouter;流式 + 默认关 reasoning)
+  llm_api.py                多 provider LLM(按 model 名路由:DeepSeek / OpenRouter;流式 + 默认关 reasoning)
   kernel/                   kernel_agent.py / kernel_pipeline.py / kernel_prompts.py / kernel_schemas.py
   graph/                    graph_agent.py  / graph_pipeline.py  / graph_prompts.py  / graph_schemas.py
   ncnn_interface/           110 层接口字典 + ncnn_contract.md(C1-C6 Layer-Net 契约);lookup.py 把 param-id/权重/flag 注入 prompt
@@ -64,17 +64,16 @@ opgen/
          -DCMAKE_BUILD_TYPE=Release && cmake --build ../../ncnn/build_lib -j
    ```
 3. **LLM key**(按 `--model-name` 选 provider,`llm_api.py` 按名路由):
-   - `claude-opus-4-8`(当前批量默认)→ `export IDEALAB_API_KEY=...`
    - `deepseek-v4-pro` / `deepseek-*` → `export DEEPSEEK_API_KEY=...`
    - 其它(`z-ai/...` 等)→ `export OPENROUTER_API_KEY=...`
 
 ## 运行命令
 单算子(在 `opgen/` 下,用 conda/venv 的 python):
 ```bash
-python cli/run_operator_agent.py --task Greater --backends base,arm --model-name claude-opus-4-8
+python cli/run_operator_agent.py --task Greater --backends base,arm --model-name deepseek-v4-pro
 ```
 批量(在仓库根,一个 runner 管所有集合;可断点续跑,结果里已有的算子跳过):
 ```bash
-IDEALAB_API_KEY=... python batch/batch_runner.py --set miniset --model claude-opus-4-8
+DEEPSEEK_API_KEY=... python batch/batch_runner.py --set miniset --model deepseek-v4-pro
 # sets: miniset(11) / subset(~26) / all(183);--ops A,B 只跑指定算子
 ```

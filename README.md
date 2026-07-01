@@ -105,8 +105,8 @@ pool, **M3** = cross-op reuse + best-first comparison (all implemented & tested)
 ```
 opgen/
   config.py            paths / runtime config (finds ../ncnn)
-  llm_api.py           multi-provider LLM wrapper (IdeaLab / DeepSeek / OpenRouter,
-                       routed by model name; streaming; reasoning off by default)
+  llm_api.py           multi-provider LLM wrapper (DeepSeek / OpenRouter, routed by
+                       model name; streaming; reasoning off by default)
   kernel/              KernelAgent: ncnn kernel writer (base + arm + vulkan)
   graph/               GraphAgent: PyTorch->ncnn PNNX conversion writer
   ncnn_interface/      110-layer interface dict + ncnn_contract.md (C1-C6 Layer-Net
@@ -188,13 +188,11 @@ the matching key (`opgen/llm_api.py` routes by model name):
 
 | model name | provider | env var |
 |---|---|---|
-| `claude-opus-4-8` (or `idealab/<model>`) | IdeaLab Anthropic-compatible proxy | `IDEALAB_API_KEY` |
 | `deepseek-v4-pro` / `deepseek-chat` / `deepseek-*` | DeepSeek | `DEEPSEEK_API_KEY` |
 | anything else (`z-ai/...`, `anthropic/...`, `openai/...`) | OpenRouter | `OPENROUTER_API_KEY` |
 
 ```bash
-export IDEALAB_API_KEY=...      # for claude-opus-4-8 (the current default in batch runs)
-# or: export DEEPSEEK_API_KEY=...    (for deepseek-v4-pro)
+export DEEPSEEK_API_KEY=...              # for deepseek-v4-pro
 # or: export OPENROUTER_API_KEY=sk-or-v1-...
 # ensure cmake is on PATH (conda/venv bin dir):
 export PATH="$PWD/.venv/bin:$PATH"        # venv;  conda: `conda activate qdkernel` already does this
@@ -222,7 +220,7 @@ python opgen/cli/run_operator_agent.py --task Greater --backends base,arm \
 # --- batch a whole set end-to-end (kernel + graph + e2e + production per op) ---
 # sets: miniset (11) | subset (~26) | all (183). Resumable: ops already in the
 # results json are skipped, so you can pre-seed it to skip already-tested ops.
-IDEALAB_API_KEY=... python batch/batch_runner.py --set miniset --model claude-opus-4-8
+DEEPSEEK_API_KEY=... python batch/batch_runner.py --set miniset --model deepseek-v4-pro
 python batch/batch_runner.py --set subset --ops Gemm,LayerNorm    # debug a few ops
 #   -> batch/results/<set>.json
 
@@ -236,7 +234,7 @@ Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 
 ---
 
-## Validated results (real LLM = claude-opus-4-8; on-machine compile + e2e; Apple M-series arm64)
+## Validated results (real LLM; on-machine compile + e2e; Apple M-series arm64)
 
 - **miniset 11/11** end-to-end green on **both `base` and `arm`** backends
   (kernel + e2e numeric + production), every `kernel_arm` a real NEON override,
