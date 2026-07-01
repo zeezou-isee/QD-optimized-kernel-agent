@@ -171,6 +171,7 @@ target_link_libraries(runner ncnn)
             params: dict[int, Any] | None = None,
             inputs: Sequence[np.ndarray],
             weights: Sequence[np.ndarray] = (),
+            weight_flags: Sequence[int] = (),
             extra_sources: Sequence[str | Path] = (),
             extra_includes: Sequence[str | Path] = (),
             packing: int = 0) -> OracleResult:
@@ -194,6 +195,8 @@ target_link_libraries(runner ncnn)
             p = wd / f"w{i}.bin"
             write_bin(p, np.asarray(w).reshape(-1))
             argv += ["--weight", str(p)]
+            flag = weight_flags[i] if i < len(weight_flags) else 0
+            argv += ["--weight-flag", str(int(flag))]
         out_path = wd / "out.bin"
         argv += ["--out", str(out_path)]
         if packing > 0:
@@ -221,6 +224,7 @@ target_link_libraries(runner ncnn)
                inputs: Sequence[np.ndarray],
                reference: np.ndarray,
                weights: Sequence[np.ndarray] = (),
+               weight_flags: Sequence[int] = (),
                tol: float = 1e-3,
                extra_sources: Sequence[str | Path] = (),
                extra_includes: Sequence[str | Path] = (),
@@ -228,6 +232,7 @@ target_link_libraries(runner ncnn)
                backend: str = "vulkan") -> OracleResult:
         res = self.run(candidate_cpp=candidate_cpp, class_name=class_name, header=header,
                        shader=shader, params=params, inputs=inputs, weights=weights,
+                       weight_flags=weight_flags,
                        extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
         if res.skipped:
             res.passed = None

@@ -103,16 +103,25 @@ static Mat read_weight(const char* path)
 // Layout per weight: [4-byte flag = 0x00000000] [w * sizeof(float) raw fp32].
 // Every weight gets a flag header, so the kernel must call mb.load(w, 0) for
 // every weight (this matches the fp32-storage modelwriter convention).
-static std::vector<unsigned char> pack_weights_bin(const Mat* weights, int n_weights)
+// Per-weight bin layout, matching ncnn modelwriter (same rule as the base
+// layer_oracle_runner): wflag==0 => PRIMARY (tagged, read with type 0) so we
+// prepend a 4-byte tag=0; wflag==1 => SECONDARY (raw, read with type 1) so no
+// tag. Flags come from the interface dict via --weight-flag. Default 0.
+static std::vector<unsigned char> pack_weights_bin(const Mat* weights,
+                                                   const int* wflags, int n_weights)
 {
     std::vector<unsigned char> bin;
     for (int i = 0; i < n_weights; i++)
     {
         const Mat& m = weights[i];
         int n = m.w * m.h * m.d * m.c;
-        unsigned int zero_flag = 0;
-        const unsigned char* fp = (const unsigned char*)&zero_flag;
-        bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
+        int flag = wflags ? wflags[i] : 0;
+        if (flag == 0)
+        {
+            unsigned int zero_flag = 0;
+            const unsigned char* fp = (const unsigned char*)&zero_flag;
+            bin.insert(bin.end(), fp, fp + sizeof(unsigned int));
+        }
         const unsigned char* dp = (const unsigned char*)(const float*)m;
         bin.insert(bin.end(), dp, dp + (size_t)n * sizeof(float));
     }
@@ -141,6 +150,7 @@ static void parse_params(const std::string& s, ParamDict& pd)
 int main(int argc, char** argv)
 {
     std::vector<std::string> inputs, weights;
+    std::vector<int> wflags;   // per-weight bin layout: 0=tagged(type0), 1=raw(type1)
     std::string out = "out.bin", param_str;
     int packing = 0;   // reserved; v1 runs elempack=1 on GPU
     for (int i = 1; i < argc; i++)
@@ -148,11 +158,13 @@ int main(int argc, char** argv)
         std::string a = argv[i];
         if (a == "--input" && i + 1 < argc) inputs.push_back(argv[++i]);
         else if (a == "--weight" && i + 1 < argc) weights.push_back(argv[++i]);
+        else if (a == "--weight-flag" && i + 1 < argc) wflags.push_back(atoi(argv[++i]));
         else if (a == "--param" && i + 1 < argc) param_str = argv[++i];
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
     }
     (void)packing;
+    while (wflags.size() < weights.size()) wflags.push_back(0);
 
     // --- acquire a vulkan device; skip (not fail) if none ---
     int gpu_count = get_gpu_count();
@@ -178,7 +190,7 @@ int main(int argc, char** argv)
 
     std::vector<Mat> w;
     for (size_t i = 0; i < weights.size(); i++) w.push_back(read_weight(weights[i].c_str()));
-    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), (int)w.size());
+    std::vector<unsigned char> mb_bin = pack_weights_bin(w.data(), wflags.data(), (int)w.size());
     const unsigned char* mem_ptr = mb_bin.data();
     DataReaderFromMemory dr(mem_ptr);
     ModelBinFromDataReader mb(dr);

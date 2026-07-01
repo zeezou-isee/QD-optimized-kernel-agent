@@ -29,7 +29,7 @@ from kernel_schemas import KernelProfile, KernelResult
 
 
 # ---------------------------------------------------------------------------
-_FILE_RE = re.compile(r"[A-Za-z0-9_./+-]+\.(?:cpp|cc|cxx|hpp|h)")
+_FILE_RE = re.compile(r"[A-Za-z0-9_./+-]+\.(?:cpp|cc|cxx|hpp|h|comp)")
 _FENCE_RE = re.compile(r"```(?:[a-zA-Z0-9_+]*)\s*\n(.*?)```", re.DOTALL)
 
 _ARM_DEGRADE_MSG = (
