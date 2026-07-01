@@ -32,6 +32,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tools.bash_exec import bash_exec  # noqa: E402
 
 
+def _pnnx_env_prefix() -> str:
+    """`DYLD/LD_LIBRARY_PATH=<torch lib>` prefix for invoking the pnnx binary.
+
+    The prebuilt pnnx binary links libtorch (libc10.dylib, ...) via an rpath that
+    was baked at BUILD time. If pnnx was built under a different project dir /
+    venv, that rpath points at a path that may no longer exist, and pnnx aborts
+    with `Library not loaded: @rpath/libc10.dylib`. Rather than depend on the
+    caller's shell having DYLD set, we point the loader at the CURRENT torch's
+    lib dir explicitly, so pnnx runs regardless of environment.
+    """
+    try:
+        import torch
+        lib = str(Path(torch.__file__).resolve().parent / "lib")
+    except Exception:  # noqa: BLE001
+        return ""
+    if not Path(lib).is_dir():
+        return ""
+    # macOS uses DYLD_LIBRARY_PATH; Linux uses LD_LIBRARY_PATH. Set both (harmless
+    # on the other platform) so the prefix is portable.
+    return (f'DYLD_LIBRARY_PATH="{lib}:${{DYLD_LIBRARY_PATH}}" '
+            f'LD_LIBRARY_PATH="{lib}:${{LD_LIBRARY_PATH}}" ')
+
+
 # ---------------------------------------------------------------------------
 # 1. Code extraction
 # ---------------------------------------------------------------------------
@@ -728,7 +751,7 @@ def run_conversion(cfg: GraphConfig, pt_path: str, inputshape: str, run_dir: Pat
     pt_path = str(Path(pt_path).resolve())
     stem = Path(pt_path).stem
     cmd = (
-        f"{cfg.pnnx_bin} {pt_path} inputshape={inputshape} "
+        f"{_pnnx_env_prefix()}{cfg.pnnx_bin} {pt_path} inputshape={inputshape} "
         f"pnnxparam={stem}.pnnx.param pnnxbin={stem}.pnnx.bin "
         f"ncnnparam={stem}.ncnn.param ncnnbin={stem}.ncnn.bin "
         f"pnnxpy={stem}_pnnx.py ncnnpy={stem}_ncnn.py"
