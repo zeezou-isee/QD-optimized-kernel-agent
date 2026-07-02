@@ -23,6 +23,12 @@ dataset/*.json.*.bak
 # OSS sync reports
 ossutil_output/
 
+# Vendored ncnn source tree (large, has its own git; build it locally)
+ncnn/
+
+# Converted-model artifacts (regenerate with convert_dataset.py)
+dataset/converted/
+
 # batch runner artifacts (kept: results/*.json — those are committable summaries)
 batch/results/*.bak
 batch/results/*.json.bak

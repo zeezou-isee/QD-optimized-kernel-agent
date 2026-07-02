@@ -26,8 +26,10 @@ try:
 except ImportError:  # pragma: no cover
     OpenAI = None
 
-_MAX_RETRIES = 5
-_RETRY_SLEEP = 2
+_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "8"))
+_RETRY_SLEEP = float(os.environ.get("LLM_RETRY_SLEEP", "2"))
+# Cap for the exponential backoff between retries (seconds).
+_RETRY_SLEEP_MAX = float(os.environ.get("LLM_RETRY_SLEEP_MAX", "30"))
 
 
 def _route(model: str) -> tuple[str, str, str, str]:
@@ -111,6 +113,23 @@ def query_llm(prompt: str, model: str = "deepseek-v4-pro") -> str:
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
         if attempt < _MAX_RETRIES:
-            print(f"[llm retry {attempt}/{_MAX_RETRIES}] {last_exc}")
-            time.sleep(_RETRY_SLEEP)
+            # Exponential backoff (capped). Transient failures like
+            # "Connection error" recover far better with a growing delay than a
+            # flat 2s — a brief API/network blip used to kill the whole op (and,
+            # in batch mode, every op after it) after only ~10s of retries.
+            sleep_s = min(_RETRY_SLEEP * (2 ** (attempt - 1)), _RETRY_SLEEP_MAX)
+            print(f"[llm retry {attempt}/{_MAX_RETRIES}] {last_exc} (sleep {sleep_s:.0f}s)")
+            time.sleep(sleep_s)
     raise RuntimeError(f"LLM query failed after {_MAX_RETRIES} attempts: {last_exc}")
+
+
+def get_llm_query():
+    """Return the active LLM query callable: ``(prompt, model) -> str``.
+
+    Compatibility shim: several callers (graph_agent, operator_agent,
+    run_optimize, run_arm_batch) import ``get_llm_query`` from the pre-sync API.
+    The post-sync API routes by model name inside ``query_llm`` itself, so the
+    "active backend" is simply ``query_llm``. Kept so those imports resolve
+    without each caller needing to change.
+    """
+    return query_llm

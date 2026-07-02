@@ -15,7 +15,9 @@ Pipeline (driven by an existence check on ncnn):
         verified (对拍 baseline) + timed in a fast LayerOracle loop; the winner is
         re-installed and re-validated through production before being swapped into
         [7]. Runs for BOTH native and new operators (for native ops, the custom
-        kernel is optimized even though the graph uses baseline IR).
+        kernel is optimized even though the graph uses baseline IR). For native
+        ops the framework's own implementation is also seeded into the experience
+        pool as a floor elite (see native_seed.py).
   [7] cleanup / --install
 """
 
@@ -401,6 +403,12 @@ class OperatorAgent:
 
             # ------------- [6] Optimization (real; opt-in) -------------
             if self.optimize and functional_ok:
+                # For natively-supported ops, drop ncnn's own implementation into
+                # the experience pool as a floor seed before the QD search starts.
+                if already_in_ncnn and self.experience_pool_path:
+                    summary["phases"]["native_seed"] = self._seed_native(
+                        baseline_graph_sum,
+                        backend="arm" if (self.want_arm and arm_code) else "base")
                 tgt = "arm" if (self.want_arm and arm_code) else "base"
                 print(f"\n===== [6] OptimizeAgent (backend={tgt}, policy={self.optimize_policy}, "
                       f"map_budget={self.optimize_map_budget}) =====")
@@ -539,6 +547,40 @@ class OperatorAgent:
             "_residual_aten": residual,
         }
 
+    # --------------------------------------------------------- native pool seed
+    def _seed_native(self, baseline_graph_sum: dict, backend: str = "base") -> dict:
+        """Seed ncnn's native implementation of this op into the experience pool.
+
+        Only meaningful when the op is already supported by ncnn (then a native
+        .cpp/.h exists to copy). The real ncnn layer type is read from the
+        baseline-converted .ncnn.param (the task name does NOT map to it in
+        general, e.g. torch.exp -> ncnn 'UnaryOp'). Non-blocking: any failure is
+        recorded as seeded=False and does not affect optimization.
+        """
+        from graph_pipeline import _ncnn_layer_types
+        from native_seed import seed_native_into_pool
+
+        art = (baseline_graph_sum.get("final_result") or {}).get("artifacts") or {}
+        param_path = art.get(".ncnn.param")
+        if not param_path or not Path(param_path).exists():
+            return {"seeded": False, "note": "no baseline .ncnn.param to read layer type"}
+        types = _ncnn_layer_types(Path(param_path).read_text(encoding="utf-8", errors="replace"))
+        # the operator layer = the non-structural type (drop ncnn plumbing layers)
+        op_types = sorted(types - {"Input", "Output", "Split", "Reshape", "Squeeze", "Permute"})
+        if not op_types:
+            return {"seeded": False, "note": f"no operator layer type in param (saw {sorted(types)})"}
+        # single-op reference models normally yield exactly one operator layer
+        layer_type = op_types[0]
+        try:
+            return seed_native_into_pool(
+                ncnn_root=self.ncnn_root, ncnn_layer_type=layer_type,
+                model_py=self._resolve_model_py(), pool_path=self.experience_pool_path,
+                backend=backend,
+            )
+        except Exception as exc:  # noqa: BLE001 — seeding is a non-blocking gain
+            return {"seeded": False, "note": f"seed_native_into_pool raised: {exc}",
+                    "ncnn_layer_type": layer_type}
+
     # --------------------------------------------------------- permanent register
     def _register_pass(self, graph_sum: dict, kcode: dict, cls: str) -> dict:
         """Install the verified pnnx conversion pass permanently + rebuild pnnx."""
@@ -600,11 +642,21 @@ class OperatorAgent:
             art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
             param = art.get(".ncnn.param")
             shapes = torch_input_shapes_str(model_py)
-            bm = pv.benchmark(param, shapes, retarget_to=op_class,
-                              expected_src_type=getattr(self, "_force_analog", None))
-            print(f"[orchestrator] benchmark: ran={bm.get('ran')} skipped={bm.get('skipped')} "
-                  f"retargeted={bm.get('retargeted')} reason={bm.get('reason','')} avg={bm.get('avg')}")
-            prod["benchmark"] = bm
+            # single on-device path: profile_op runs benchncnn under simpleperf, so
+            # each per-thread config carries BOTH micro-arch metrics and latency.
+            # expected_src_type carries the decomposed-op retarget guard (from main):
+            # only retarget when the output layer really is our principal op type.
+            prof = pv.profile_op(param, shapes, op_name=(op_class or self.task_name),
+                                 retarget_to=op_class,
+                                 expected_src_type=getattr(self, "_force_analog", None))
+            if prof.get("ran"):
+                c0 = (prof.get("configs") or [{}])[0]
+                print(f"[orchestrator] op profile: ran=True ipc={c0.get('ipc')} "
+                      f"cache_miss={c0.get('cache_miss_rate')} frac={c0.get('operator_fraction')} "
+                      f"latency_avg={c0.get('latency_avg')} trust={c0.get('trustworthy')}")
+            else:
+                print(f"[orchestrator] op profile: skipped reason={prof.get('reason','')}")
+            prod["profile"] = prof
         return prod
 
     # --------------------------------------------------------- optimization
@@ -637,10 +689,14 @@ class OperatorAgent:
             if h is not None: netoc.restore(h)
         netoc.rebuild_libncnn()
 
-        baseline_perf = (summary.get("phases", {}).get("production", {}) or {}).get("benchmark", {}) or {}
+        # optimizer baseline latency: taken from the profile phase (profile_op runs
+        # benchncnn under simpleperf; threads=1 is the cleanest single-op latency).
+        # No separate benchmark() run — same on-device measurement feeds both.
+        prof = (summary.get("phases", {}).get("production", {}) or {}).get("profile", {}) or {}
+        baseline_perf = _perf_from_profile(prof)
 
-        from llm_api import query_llm
-        llm = self.llm_query or query_llm
+        from llm_api import get_llm_query
+        llm = self.llm_query or get_llm_query()
         agent = OptimizeAgent(
             task_name=self.task_name, baseline_kernel_code=baseline_kernel,
             model_py=model_py, ncnn_root=self.ncnn_root, llm_query=llm,
@@ -801,6 +857,25 @@ class OperatorAgent:
                 "max_diff": float(diff.max()), "mean_diff": float(diff.mean()),
                 "detail": f"max_diff={float(diff.max()):.6f} out_name={out_name} "
                           f"in_names={in_names}"}
+
+
+def _perf_from_profile(prof: dict) -> dict:
+    """Map a profile_op() result to the optimizer's baseline_perf shape ({avg,min}).
+
+    profile_op runs benchncnn under simpleperf and attaches per-thread
+    latency_{avg,min,max} to each config. We use threads=1 (cleanest single-op
+    latency) when available, else the first config. Empty dict if no latency
+    (e.g. profiling was skipped) — the optimizer then has no baseline to beat.
+    """
+    configs = (prof or {}).get("configs") or []
+    if not configs:
+        return {}
+    chosen = next((c for c in configs if c.get("threads") == 1), configs[0])
+    avg = chosen.get("latency_avg")
+    if avg is None:
+        return {}
+    return {"avg": avg, "min": chosen.get("latency_min", avg),
+            "threads": chosen.get("threads")}
 
 
 def kprof_class_name(candidate: dict[str, str], baseline: dict[str, str]) -> str:
