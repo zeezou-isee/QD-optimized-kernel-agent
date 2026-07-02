@@ -308,17 +308,86 @@ class KernelAgent:
         write_json(self.run_dir / "history.json", {"history": [h.to_dict() for h in self.history]})
 
     # --------------------------------------------------------- native vulkan
+    def _ensure_baseline_probe(self) -> None:
+        """Run pnnx once so a `.ncnn.param` exists under this task's run tree.
+
+        Needed only when nobody else (GraphAgent / OperatorAgent baseline_probe)
+        has already produced one — e.g. kernel-only mode. Written to
+        `<run_dir>/_pnnx_probe/_probe/` so it lives INSIDE the vulkan run dir
+        and cannot collide with `graph/`, `operator/_baseline_probe/`, or any
+        other backend's run dir. Idempotent: skips if the probe dir already has
+        a `.ncnn.param`. Silent on failure (returns None; caller keeps its
+        pre-probe fallback behaviour).
+        """
+        probe_root = self.run_dir / "_pnnx_probe"
+        if list(probe_root.rglob("*.ncnn.param")):
+            return                              # already probed for this task
+        # Lazy import: graph_pipeline pulls tree-sitter / cmake helpers that
+        # the base/arm KernelAgent paths don't need at load time.
+        try:
+            from graph_pipeline import probe_pnnx_ir
+        except Exception as exc:                # graph_pipeline import broken
+            print(f"[kernel] pnnx probe unavailable ({exc}); native-vulkan may miss ncnn-schema params")
+            return
+        try:
+            probe_root.mkdir(parents=True, exist_ok=True)
+            probe_pnnx_ir(self.cfg, self.model_py, probe_root, self.task_name)
+        except Exception as exc:                # pnnx binary / trace / convert failed
+            print(f"[kernel] pnnx probe failed: {exc}; native-vulkan may miss ncnn-schema params")
+
+    def _detect_pnnx_layer_type(self) -> str | None:
+        """Scan the pnnx baseline .ncnn.param for the real layer type pnnx
+        picked for THIS task's op.
+
+        Returns the first non-Input/Output/Split layer name (e.g. "BinaryOp",
+        "ConvolutionDepthWise", "Reduction"), or None if no baseline exists or
+        the model has no real layer (only Input/Output). Triggers a lazy pnnx
+        probe if needed (via _parse_baseline_params' machinery — cheap re-use).
+        """
+        # First try existing baseline files
+        for p in (RUNS_ROOT / self.task_name).rglob("*.ncnn.param"):
+            layer = self._first_real_layer(p)
+            if layer:
+                return layer
+        # Nothing yet — trigger the same probe path _parse_baseline_params uses
+        self._ensure_baseline_probe()
+        for p in (RUNS_ROOT / self.task_name).rglob("*.ncnn.param"):
+            layer = self._first_real_layer(p)
+            if layer:
+                return layer
+        return None
+
+    @staticmethod
+    def _first_real_layer(param_path: Path) -> str | None:
+        _SKIP = {"Input", "Output", "Split"}
+        try:
+            txt = param_path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        for ln in txt.splitlines()[2:]:
+            parts = ln.split()
+            if parts and parts[0] not in _SKIP:
+                return parts[0]
+        return None
+
     def _parse_baseline_params(self, analog: str) -> dict | None:
         """Correct ncnn params for `analog` from the pnnx baseline .ncnn.param.
 
         The from-scratch base kernel's params are bespoke and may not match ncnn's
         real schema (e.g. Mul needs BinaryOp op_type=2, Reduction needs an axes
-        array) — but a native <analog>_vulkan subclass reads params via ncnn's own
-        load_param, so they MUST be the ncnn schema. pnnx already wrote them into
-        the baseline .ncnn.param; parse the analog layer line. Returns {id_str: val}
-        (arrays as {positive_id: [values]}), or None if no baseline param found.
+        array via -23303 + fixbug0=1) — but a native <analog>_vulkan subclass
+        reads params via ncnn's own load_param, so they MUST be the ncnn schema.
+        pnnx knows this mapping; we invoke it once (via _ensure_baseline_probe)
+        and parse the analog layer line. Returns {id_str: val} (arrays as
+        {positive_id: [values]}), or None if no baseline param found.
         """
+        analog_lc = (analog or "").lower()
         roots = list((RUNS_ROOT / self.task_name).rglob("*.ncnn.param"))
+        if not roots:
+            # kernel-only / standalone: no GraphAgent has run for this task —
+            # trigger a KernelAgent-local pnnx probe and re-scan.
+            self._ensure_baseline_probe()
+            roots = list((RUNS_ROOT / self.task_name).rglob("*.ncnn.param"))
         for p in roots:
             try:
                 txt = p.read_text(encoding="utf-8")
@@ -326,7 +395,10 @@ class KernelAgent:
                 continue
             for ln in txt.splitlines()[2:]:
                 parts = ln.split()
-                if len(parts) >= 4 and parts[0] == analog:
+                # Case-insensitive match: profile.analog_layer is often the
+                # lowercase file stem (`binaryop`, `reduction`, `pooling`) while
+                # pnnx-emitted layer names are PascalCase (`BinaryOp`, ...).
+                if len(parts) >= 4 and parts[0].lower() == analog_lc:
                     try:
                         nin, nout = int(parts[2]), int(parts[3])
                     except ValueError:
@@ -363,16 +435,85 @@ class KernelAgent:
         analog = (self.profile.analog_layer or "").strip()
         if not analog or "." in analog:            # pnnx-only name -> no native vk
             return None
+        # pnnx may lower a torch op to a MORE SPECIFIC ncnn layer than our base
+        # profile's `analog` guessed — the poster child is grouped Conv2d, which
+        # goes to `ConvolutionDepthWise` (not plain `Convolution`) once groups>1.
+        # Whenever the pnnx baseline exists (or can be produced), prefer the
+        # actual pnnx-emitted layer type: it has the exact params + weight
+        # layout ncnn's <Op>_vulkan will read.
+        pnnx_layer = self._detect_pnnx_layer_type()
+        if pnnx_layer and pnnx_layer.lower() != analog.lower():
+            print(f"[kernel] native-vulkan: pnnx emitted `{pnnx_layer}` for this op "
+                  f"(analog was `{analog}`) — using pnnx's choice")
+            analog = pnnx_layer
         stem = analog.lower()
         hdr = self.cfg.ncnn_root / "src" / "layer" / "vulkan" / f"{stem}_vulkan.h"
         if not hdr.exists():
             return None                            # ncnn has no vulkan for this op
-        native_class = f"{analog}_vulkan"
+        # Functional ops (F.conv2d / F.linear) feed weights as forward INPUTS,
+        # but ncnn's native <Layer>_vulkan reads them via load_model into an
+        # opaque VkTensor + upload path — there is no vulkan interface for
+        # runtime weight bottom_blobs (Convolution_vulkan explicitly does not
+        # support dynamic_weight). Native subclass would crash on the extra
+        # bottom_blobs. Fall back to from-scratch.
+        if self.profile.is_functional:
+            print(f"[kernel] native-vulkan: functional op (weights as inputs) — "
+                  f"ncnn {analog}_vulkan does not accept runtime weights, "
+                  f"skipping native subclass")
+            return None
+        # ncnn's `<Op>_vulkan` class name is PascalCase (BinaryOp_vulkan,
+        # BatchNorm_vulkan, InnerProduct_vulkan, ...) — NOT what you get by
+        # lower-casing the file stem. Grep the authoritative class name from
+        # the header instead of guessing the casing. `analog_layer` in the
+        # profile may be either case ("binaryop" from base as_backend, or
+        # "BinaryOp" from the pnnx-driven analyzer); the file stem is always
+        # lowercase but the class isn't.
+        import re as _re
+        try:
+            hdr_txt = hdr.read_text(encoding="utf-8")
+            m = _re.search(r"class\s+(\w+_vulkan)\s*:\s*public\s+\w+", hdr_txt)
+            native_class = m.group(1) if m else f"{analog}_vulkan"
+        except OSError:
+            native_class = f"{analog}_vulkan"
         native_header = f"vulkan/{stem}_vulkan.h"
 
+        # Params come from either (best) the pnnx baseline .ncnn.param (which
+        # ONLY exists after the full operator pipeline ran pnnx — kernel-only
+        # mode has none) or (fallback) the base-kernel profile that this vulkan
+        # subclass was derived from (as_backend copies params over). If BOTH
+        # are absent we can't safely instantiate the native layer: BinaryOp
+        # defaults op_type=0 (ADD) so a Mul/Greater/AND that hits this path
+        # silently computes ADD.
         parsed = self._parse_baseline_params(analog)
         if parsed is not None:
+            # AXES REBASE for Reduction: pnnx generates axes in the FULL-rank
+            # ncnn layout (4D input `(N,C,H,W)` treated as a 4D ncnn Mat with
+            # batch-as-c). Our KernelAgent oracle instead drops the leading
+            # batch dim via `torch_to_ncnn_input`, so ncnn sees rank-1 lower.
+            # Every axis in pnnx's array is therefore off-by-one for our runner.
+            # Elementwise/scale ops are shape-invariant so unaffected; only ops
+            # that read `axes` (Reduction, ArgMax) need this shift.
+            if analog.lower() == "reduction" and "3" in parsed:
+                axes = parsed["3"]
+                if isinstance(axes, list) and axes:
+                    rebased = [int(a) - 1 for a in axes if int(a) >= 1]
+                    if rebased:
+                        print(f"[kernel] native-vulkan: rebasing Reduction axes "
+                              f"{axes} -> {rebased} (pnnx generated for 4D, oracle "
+                              f"feeds 3D via torch_to_ncnn_input batch-drop)")
+                        parsed["3"] = rebased
             self.profile.params = parsed
+        elif not self.profile.params:
+            # No baseline + no inherited params → refuse. Matches the And case
+            # (pnnx keeps torch.logical_and unlowered → no `binaryop` line +
+            # base profile has params={} → we correctly bail out).
+            print(f"[kernel] native-vulkan: no baseline .ncnn.param for `{analog}` "
+                  f"and inherited params are empty — refusing native subclass to "
+                  f"avoid default-op-type semantic mismatch")
+            return None
+        else:
+            print(f"[kernel] native-vulkan: no pnnx baseline for `{analog}`, "
+                  f"reusing base-profile params {self.profile.params}")
         self.profile.native_vulkan = True
         self.profile.native_vulkan_class = native_class
         self.profile.native_vulkan_header = native_header
@@ -392,12 +533,34 @@ class KernelAgent:
               f"(inherits ncnn baked shader; no from-scratch .comp). "
               f"params={self.profile.params}")
         write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
-        result = self._run_pipeline(code_book, 0)
-        self._save_round(0, "native_vulkan", "(native subclass, no LLM)", "", result)
+        # Write the native round to its OWN dir (not round_00) so that fallback
+        # from-scratch rounds don't overwrite the native runner's compile/numeric
+        # log — otherwise every native-fail case looks like "kernel crashed at
+        # runtime:\n" (the from-scratch round_00 result), hiding the real error.
+        native_rd = self.run_dir / "round_native"
+        native_rd.mkdir(parents=True, exist_ok=True)
+        result = verify_kernel(self.oracle, self.profile, code_book, self.model_py,
+                               native_rd, run_numeric=self.cfg.run_numeric,
+                               base_files=(self.base_kernel_code if self._subclasses_base else None),
+                               extra_includes=tuple(self._extra_includes),
+                               packing=self._packing)
+        (native_rd / "prompt.md").write_text("(native subclass, no LLM)", encoding="utf-8")
+        (native_rd / "response.md").write_text("", encoding="utf-8")
+        write_json(native_rd / "result.json", result.to_dict())
+        self.history.append(KernelRound(
+            round_idx=-1, phase="native_vulkan",
+            prompt_path=str(native_rd / "prompt.md"),
+            response_path=str(native_rd / "response.md"),
+            result_path=str(native_rd / "result.json"),
+            ok=result.ok,
+            stages={"compile": result.compile_ok, "numeric": result.numeric_status},
+        ))
+        write_json(self.run_dir / "history.json", {"history": [h.to_dict() for h in self.history]})
         print(f"[kernel] native-vulkan: ok={result.ok} compile={result.compile_ok} "
               f"numeric={result.numeric_status} max_diff={result.max_diff}")
         if not result.ok:
-            print("[kernel] native-vulkan did not verify; falling back to from-scratch shader")
+            print(f"[kernel] native-vulkan did not verify (see {native_rd}/result.json); "
+                  f"falling back to from-scratch shader")
             return None
         summary = {
             "status": "success", "task_name": self.task_name, "backend": self.backend,

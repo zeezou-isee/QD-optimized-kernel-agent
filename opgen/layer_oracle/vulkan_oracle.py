@@ -291,8 +291,25 @@ target_link_libraries(runner ncnn)
                     break
         return env
 
+    # Same encoding as the base LayerOracle — supports scalars, floats (with
+    # explicit ".0" so the runner parses as float), and arrays via ncnn's
+    # negative-key trick (-23300-off, count-first). Reduction/Convolution/etc.
+    # pass axes/pads as arrays via key "3" or "10"; a scalar-only formatter
+    # crashes them at argv assembly. Kept in sync with LayerOracle._fmt_param.
     @staticmethod
     def _fmt_param(key: int, value: Any) -> str:
+        def _float_str(v: float) -> str:
+            if v != v:
+                return "0"
+            s = f"{v:.8g}"
+            if "." not in s and "e" not in s and "E" not in s:
+                s += ".0"
+            return s
+        if isinstance(value, (list, tuple)):
+            arr_key = -(23300 + int(key))
+            elems = ",".join(f"{int(v)}" if not isinstance(v, float)
+                             else _float_str(v) for v in value)
+            return f"{arr_key}={len(value)},{elems}"
         if isinstance(value, float):
-            return f"{key}={value:.8g}" if value == value else f"{key}=0"
+            return f"{key}={_float_str(value)}"
         return f"{key}={int(value)}"

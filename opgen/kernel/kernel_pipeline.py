@@ -506,7 +506,14 @@ def verify_kernel(
     # a phantom tag as data (var=0 -> 1/sqrt(eps) blowup).
     weight_flags: list[int] = []
     try:
-        from lookup import get_interface
+        # `from lookup import ...` used to silently fail (no `lookup` top-level
+        # module) — the except swallowed the ImportError and every weight got
+        # flag=0. That corrupted every all-secondary-weight layer (BatchNorm's
+        # slope/mean/var/bias are all type 1: raw fp32 with NO 4-byte tag). The
+        # runner then read `[fp32_of_first_weight_value] ...` as `[tag][raw...]`,
+        # dropping the first float and shifting the rest — var≈0 → 1/sqrt(eps)
+        # explodes → 16 rounds of nonsense. Import from the actual package path.
+        from ncnn_interface.lookup import get_interface
         _iface = get_interface(profile.analog_layer)
         _wlo = (_iface or {}).get("weights_load_order") or []
         for i in range(len(weights)):
@@ -541,9 +548,17 @@ def verify_kernel(
                             extra_sources=extra_sources, extra_includes=extra_includes, **backend_kwargs)
 
     # classify
-    if verdict.error and "compile failed" in verdict.error:
+    # Match both LayerOracle ("compile failed") and VulkanLayerOracle
+    # ("vulkan runner build failed" / "vulkan runner cmake configure failed").
+    # Missing the vulkan variants used to mark a build failure as compile_ok=True
+    # + numeric_log="kernel crashed at runtime:\n" (empty run_log), which hid
+    # e.g. the lowercase `binaryop_vulkan` class-name typo for 15 rounds.
+    _COMPILE_FAIL_MARKERS = ("compile failed", "vulkan runner build failed",
+                             "vulkan runner cmake configure failed")
+    if verdict.error and any(m in verdict.error for m in _COMPILE_FAIL_MARKERS):
         res.compile_ok = False
-        res.compile_error = locate_build_errors(verdict.compile_log, profile.file.split(".")[0])
+        res.compile_error = locate_build_errors(verdict.compile_log or verdict.error,
+                                                profile.file.split(".")[0])
         res.messages.append("compile failed")
         return res
     res.compile_ok = True
