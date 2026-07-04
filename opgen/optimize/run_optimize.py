@@ -24,6 +24,7 @@ from config import KERNELGEN_ROOT, RUNS_ROOT, GraphConfig
 from llm_api import query_llm
 from optimize_agent import OptimizeAgent
 from schemas import OptimizeResult
+import paths
 
 
 def _resolve_model_py(task: str, explicit: str | None, dataset_root: str | None) -> str:
@@ -37,17 +38,25 @@ def _resolve_model_py(task: str, explicit: str | None, dataset_root: str | None)
     return str(hits[0])
 
 
-def _kernel_from_summary(task: str, sub: str) -> dict[str, str]:
-    summ = RUNS_ROOT / task / sub / "summary.json"
+def _kernel_from_summary(task: str, backend: str, runs_root: Path | None = None) -> dict[str, str]:
+    """Load kernel `response_code` for (task, backend), preferring new layout.
+    Routes through paths.kernel_summary which handles legacy fallback."""
+    root = runs_root or RUNS_ROOT
+    summ = paths.kernel_summary(root, task, backend)
     if summ.exists():
         data = json.loads(summ.read_text(encoding="utf-8"))
         return (data.get("final_result") or {}).get("response_code") or {}
     return {}
 
 
-def _load_baseline_kernel(task: str, kernel_dir: str | None, backend: str) -> dict[str, str]:
-    """Read the kernel to optimize. base -> runs/<task>/kernel; arm -> kernel_arm;
-    vulkan -> kernel_vulkan (a .h/.cpp + .comp triple)."""
+def _load_baseline_kernel(task: str, kernel_dir: str | None, backend: str,
+                          runs_root: Path | None = None) -> dict[str, str]:
+    """Read the kernel to optimize. NEW layout:
+      base   -> runs/<task>/base_kernel/artifacts/  (SoT contract dir)
+      arm    -> runs/<task>/backends/arm/kernel/summary.json
+      vulkan -> runs/<task>/backends/vulkan/kernel/summary.json  (.h/.cpp/.comp)
+    Legacy fallbacks handled inside paths.kernel_summary.
+    """
     if kernel_dir:
         d = Path(kernel_dir)
         exts = (".h", ".hpp", ".cpp", ".cc", ".cxx") + ((".comp",) if backend == "vulkan" else ())
@@ -64,8 +73,17 @@ def _load_baseline_kernel(task: str, kernel_dir: str | None, backend: str) -> di
         if code:
             return code
         raise FileNotFoundError(f"no matching kernel files for backend={backend} in {d}")
-    sub = "kernel" if backend == "base" else f"kernel_{backend}"
-    code = _kernel_from_summary(task, sub)
+
+    root = runs_root or RUNS_ROOT
+    # base: prefer artifacts/ contract dir before falling back to summary
+    if backend == "base":
+        art = paths.base_kernel_artifacts_dir(root, task)
+        if art.exists():
+            code = {p.name: p.read_text(encoding="utf-8") for p in art.glob("*")
+                    if p.suffix in (".h", ".hpp", ".cpp", ".cc", ".cxx")}
+            if code:
+                return code
+    code = _kernel_from_summary(task, backend, runs_root=root)
     if code:
         return code
     raise FileNotFoundError(
@@ -103,13 +121,25 @@ def main() -> None:
                    help="base = portable C++; arm = NEON/NC4HW4 kernel; vulkan = GPU kernel "
                         "(.cpp + .comp, optimized & measured on a Vulkan device). "
                         "arm/vulkan need a verified base + that-backend kernel from run_kernel_agent")
+    p.add_argument("--runs-root", default=None,
+                   help="override the root that holds runs/<task>/{kernel,kernel_arm,...} "
+                        "when loading baselines. Default: opgen/runs")
+    p.add_argument("--out-dir", default=None,
+                   help="override where summary.json is written. Default: "
+                        "<runs-root>/<task>/backends/<backend>/optimize/ (new 5-stage layout)")
     args = p.parse_args()
 
+    runs_root = Path(args.runs_root) if args.runs_root else RUNS_ROOT
+
     model_py = _resolve_model_py(args.task, args.model, args.dataset_root)
-    baseline = _load_baseline_kernel(args.task, args.kernel_dir, args.backend)
+    baseline = _load_baseline_kernel(args.task, args.kernel_dir, args.backend,
+                                     runs_root=runs_root)
     ncnn_root = args.ncnn_root or GraphConfig().ncnn_root
-    # arm/vulkan subclass the verified base -> compile the base .cpp in as a fixed source
-    base_files = _kernel_from_summary(args.task, "kernel") if args.backend in ("arm", "vulkan") else {}
+    # arm/vulkan subclass the verified base -> compile the base .cpp in as a
+    # fixed source. Prefer the artifacts/ contract dir, fall back to summary
+    # (both handled by _load_baseline_kernel for backend="base").
+    base_files = _load_baseline_kernel(args.task, None, "base", runs_root=runs_root) \
+        if args.backend in ("arm", "vulkan") else {}
 
     agent = OptimizeAgent(
         task_name=args.task, baseline_kernel_code=baseline,
@@ -125,7 +155,8 @@ def main() -> None:
     )
     res: OptimizeResult = agent.run()
 
-    out_dir = RUNS_ROOT / args.task / "optimize"
+    out_dir = (Path(args.out_dir) if args.out_dir
+               else paths.backend_optimize_dir(runs_root, args.task, args.backend))
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "summary.json").write_text(
         json.dumps(res.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")

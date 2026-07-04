@@ -315,15 +315,18 @@ Implementation hints for your forward:
 """
 
 
-VULKAN_LAYER_BACKGROUND = """\
+VULKAN_HOST_SIDE_BACKGROUND = """\
 THIS IS A VULKAN (GPU) BACKEND KERNEL — it SUBCLASSES the base layer (already
-written & verified). You author THREE files: a C++ header, a C++ source, and a
-SEPARATE GLSL compute shader `{shader_file}` (the actual math lives in the shader).
-It is verified by isolated instantiation on the GPU (`new {vulkan_class}()`, run
+written & verified). You author THREE files: a C++ header, a C++ source, and one
+OR MORE GLSL compute shader files (the actual math lives in the shaders). It is
+verified by isolated instantiation on the GPU (`new {vulkan_class}()`, run
 `forward` on VkMat) and must be numerically identical to the base op. v1 runs at
-elempack=1 (the oracle force-unpacks inputs), so write a SCALAR shader.
+elempack=1 (the oracle force-unpacks inputs to unpacked scalar Mat), so author
+SCALAR shaders (sfp/buffer_ld1). If your op needs multiple pipelines (e.g. a
+broadcast fast-path + a general path) write multiple .comp files and load each
+via compile_candidate_shader_by_name.
 
-Conventions (CRITICAL):
+Host-side conventions (CRITICAL):
 - Header `{vulkan_header}`: `#include "{base_header}"` then
   `class {vulkan_class} : public {base_class}`. Declare:
     virtual int create_pipeline(const Option& opt);
@@ -331,55 +334,461 @@ Conventions (CRITICAL):
     using {base_class}::forward_inplace;   // if the op is inplace
     virtual int forward_inplace(VkMat& bottom_top_blob, VkCompute& cmd, const Option& opt) const;
     // or, if NOT inplace: virtual int forward(const VkMat& bottom, VkMat& top, VkCompute& cmd, const Option& opt) const;
-  and a `Pipeline* pipeline_xxx;` member.
+    // or, if multi-input: virtual int forward(const std::vector<VkMat>& bottom_blobs,
+    //                                          std::vector<VkMat>& top_blobs,
+    //                                          VkCompute& cmd, const Option& opt) const;
+  and one `Pipeline* pipeline_xxx;` member PER shader you use.
 - Source `{vulkan_file}`: `#include "{vulkan_header}"` and
   `#include "cand_vulkan_shader.h"` (a helper on the include path; it reads the
-  shader file and online-compiles it — see below).
+  .comp file(s) and online-compiles them — see below).
 - Constructor — MANDATORY: set `support_vulkan = true;` (also `support_inplace`
-  as needed) and `pipeline_xxx = 0;`. If you omit `support_vulkan = true` the
+  as needed) and every `pipeline_xxx = 0;`. Omit `support_vulkan = true` and the
   oracle REFUSES the kernel (it must not fall back to CPU).
-- create_pipeline — compile the shader AT RUNTIME (do NOT reference
-  `LayerShaderType::xxx`; that build-time enum is unavailable here):
+- create_pipeline — compile shader(s) AT RUNTIME (do NOT reference
+  `LayerShaderType::xxx`; that build-time enum is UNAVAILABLE here):
     int {vulkan_class}::create_pipeline(const Option& opt) {{
         std::vector<uint32_t> spirv;
-        if (compile_candidate_shader(opt, spirv) != 0) return -1;  // helper reads {shader_file}
-        std::vector<vk_specialization_type> specializations(1);    // MUST match the shader's
-        specializations[0].i = 0;                                  // constant_id count (1 here)
+        if (compile_candidate_shader(opt, spirv) != 0) return -1;   // primary shader
+        std::vector<vk_specialization_type> specializations(N);     // spec-const count MUST
+        specializations[0].i = ...;                                  // match the shader's
+        //   ... one entry per `layout(constant_id = k) const T name = ...;`
         pipeline_xxx = new Pipeline(vkdev);
-        pipeline_xxx->set_optimal_local_size_xyz(vkdev->info.subgroup_size(), 1, 1); // 1D!
-        return pipeline_xxx->create(spirv.data(), spirv.size() * sizeof(uint32_t), specializations);
+        pipeline_xxx->set_optimal_local_size_xyz(local_size_xyz);    // see per-op template
+        int ret = pipeline_xxx->create(spirv.data(), spirv.size() * sizeof(uint32_t), specializations);
+        if (ret != 0) return ret;
+        // repeat for each extra shader:
+        // if (compile_candidate_shader_by_name(opt, "myop_broadcast", spirv) != 0) return -1;
+        // pipeline_broadcast->create(...);
+        return 0;
     }}
-  NOTE the workgroup MUST be 1D `(subgroup_size,1,1)` to match a 1D dispatch — the
-  default `set_optimal_local_size_xyz()` is 3D and leaves most elements unprocessed.
-- destroy_pipeline: `delete pipeline_xxx; pipeline_xxx = 0; return 0;`
-- forward_inplace(VkMat&, VkCompute& cmd, opt): dispatch over total elements:
-    int n = (int)bottom_top_blob.total();   // elempack==1 -> scalar count
-    std::vector<VkMat> bindings(1); bindings[0] = bottom_top_blob;
-    std::vector<vk_constant_type> constants(1); constants[0].i = n;  // -> push_constant
-    VkMat dispatcher; dispatcher.w = n; dispatcher.h = 1; dispatcher.c = 1;
-    cmd.record_pipeline(pipeline_xxx, bindings, constants, dispatcher);
-    return 0;
+- destroy_pipeline: `delete` every non-null pipeline_xxx, zero the pointer.
+- forward*(): record ONE dispatch per pipeline you want to run. Dispatcher shape
+  MUST match your workgroup / shader indexing (see per-op template).
 - Do NOT write DEFINE_LAYER_CREATOR (vulkan registration is automatic via cmake).
 
-The shader `{shader_file}` — ncnn shader dialect, SCALAR (elempack=1):
+Multi-input ops with weights (BinaryOp with a constant b, InnerProduct, ...):
+weights are loaded by the BASE class via load_model(mb). Convert the base's CPU
+`Mat weight_data` to a `VkMat weight_data_gpu` in `upload_model(cmd, opt)` — but
+for v1 you can DELEGATE to the base's upload_model. If the base already provides
+`upload_model`, override only when your GPU layout needs to differ.
+"""
+
+
+VULKAN_SHADER_DIALECT_BACKGROUND = """\
+=== NCNN SHADER DIALECT MANUAL (READ FULLY BEFORE WRITING GLSL) ===
+
+This is NOT plain GLSL — ncnn defines a small preprocessor + type macro layer
+so the SAME shader source compiles for fp32 / fp16-storage / fp16-arithmetic
+depending on the runtime option. If you write `float`/`vec4` directly your
+shader may work at fp32 but crash / return garbage under fp16. USE THE MACROS.
+
+1) TYPE MACROS
+   - `sfp`  = storage float. ONE element in the buffer as it lives in VkMemory.
+              (fp32 → float; fp16_storage → float16_t; you never care which.)
+   - `afp`  = arithmetic float. What you compute with in registers.
+              (fp32 → float; fp16_arithmetic → float16_t.)
+   - `sfpvec4` / `afpvec4` = packed 4-lane variants for elempack=4 shaders.
+   - v1 constraint: elempack=1 only. Use `sfp` / `afp` — NEVER `sfpvec4`.
+
+2) LOAD/STORE MACROS
+   - `afp v = buffer_ld1(buf, i);` load one element (fp16→fp32 conversion baked in)
+   - `buffer_st1(buf, i, v);`      store one element
+   - `buffer_ld4` / `buffer_st4`   for the vec4 variants (do NOT use in v1).
+   - Element index `i` is in ELEMENT COUNT, not bytes. It counts sfp slots.
+
+3) BUFFER BINDINGS
+   - `layout(binding = 0) [readonly|writeonly] buffer name {{ sfp name_data[]; }};`
+   - `readonly` for inputs, `writeonly` for outputs, unqualified for inplace.
+   - The C++ side passes VkMats in the SAME order as bindings[0], bindings[1], ...
+   - Bindings must be contiguous (0, 1, 2, ...) — a gap makes ncnn crash.
+
+4) PUSH CONSTANTS + `psc(x)` — MOST COMMON SHADER-COMPILE FAIL
+   - `layout(push_constant) uniform parameter {{ int w; int h; int c; int cstep; }} p;`
+   - Access via `p.w` etc.
+   - `psc(NAME)` is an ncnn MACRO. Its EXACT expansion is:
+         `psc(x)  →  (x==0 ? p.x : x)`
+     which means EVERY name you pass to psc() MUST be BOTH:
+       (a) declared as a SPEC-CONST with default 0:
+           `layout(constant_id = SHAPE_OFFSET + K) const int NAME = 0;`
+       (b) declared as a PUSH_CONSTANT field:
+           inside `layout(push_constant) uniform parameter {{ ... int NAME; ... }} p;`
+     If EITHER is missing, glslang errors with `'NAME' : undeclared identifier`
+     and the shader FAILS TO COMPILE (SHADER_COMPILE_FAIL rc=51).
+   - Convention: pass shape hints as spec-consts when known at compile time
+     (via `specializations[i].i = shape.x` in the host); pass RUNTIME shape via
+     push_constants (via `constants[i].i = mat.x`) and read via `psc()`.
+   - ALWAYS access shape via `psc(x)`, NEVER via plain `p.x`. Using `p.x`
+     defeats the constant-folding fast path when the shape IS known.
+   - CHECKLIST before submitting a shader: for every `psc(NAME)` call, grep
+     the shader for both `constant_id = ... const int NAME = 0;` AND
+     `int NAME;` inside push_constant. Both must be present.
+
+5) SPECIALIZATION CONSTANTS
+   - `layout(constant_id = 0) const int op_type = 0;` — set from the C++
+     `specializations[0].i` slot; count MUST match ordinally in the C++ vector.
+   - Use spec-consts for values that partition the shader (op_type, axis, dims).
+     Use push_constants for values that change per dispatch (shape, cstep).
+   - MISMATCH = pipeline_create rejects the pipeline (RC_PIPELINE_CREATE_FAIL).
+
+6) NCNN MAT INDEXING (CRITICAL — most vulkan port bugs live here)
+   ncnn Mats are NOT flat contiguous fp32 arrays. Each channel starts at an
+   ALIGNED offset called `cstep`, which is USUALLY `w*h*d` but can be padded up
+   for SIMD (e.g. rounded to a multiple of 4 or 8 elements). The right index:
+       gi = c * cstep + h * w + x        // 3D Mat, one element
+       gi = c * cstep + d * (h*w) + h * w + x   // 4D Mat
+   NEVER use `c * w * h + h * w + w` — that's the WRONG index once cstep > w*h.
+   For inputs: pass `p.cstep = bottom.cstep;` and index with `c * psc(cstep) + ...`.
+
+7) DISPATCH SHAPE
+   The runner's `dispatcher` VkMat controls how many workgroups are launched.
+   The GLOBAL invocation count = `dispatcher.{{w,h,c}}` rounded UP to local_size.
+   - 1D shader (elementwise): dispatcher.w = n; h=1; c=1. Workgroup 1D.
+   - 3D shader (per-c/h/w): dispatcher.w = out.w; h = out.h; c = out.c. Workgroup 3D.
+   Your shader `main()` reads `gl_GlobalInvocationID.{{x,y,z}}` — but each maps to
+   `dispatcher.{{w,h,c}}` (X→w, Y→h, Z→c). The .x axis is NOT "cols" or "batch",
+   it's the innermost/w axis. GUARD every axis: `if (gx >= psc(w)) return;`.
+
+8) OUT-OF-BOUNDS GUARDS
+   Every shader main() MUST early-return before any load/store when the global
+   ID is past the actual shape:
+       if (gx >= psc(w) || gy >= psc(h) || gz >= psc(c)) return;
+   Missing this crashes MoltenVK/GPU driver → RC_DISPATCH_FAIL, not a soft error.
+
+9) COMMON PITFALLS SEEN IN LLM-WRITTEN SHADERS
+   - 3D workgroup with a 1D dispatcher → only x-lane runs, y/z go idle
+     (or vice versa: 1D workgroup with 3D dispatcher wastes 63/64 threads).
+   - Missed the cstep concept → all c>0 elements read wrong data.
+   - Read a scalar push_constant via `p.n` instead of `psc(n)` → shape-hint
+     branch mismatched with what create_pipeline compiled the shader for.
+   - Wrote `float` / `vec4` instead of `sfp` / `sfpvec4` → fp16_storage crash.
+   - Forgot `#version 450` at the top → glslang refuses to compile.
+   - Bindings count in shader ≠ bindings vector size in .cpp → pipeline reject.
+   - specializations vector length ≠ spec-const count in shader → pipeline reject.
+"""
+
+
+# Per-op-family templates. The KernelAgent picks one based on the profile's
+# analog_layer + op traits (elementwise / broadcast / reduction / conv / gemm).
+# Each template shows a WORKING skeleton the LLM can adapt — dispatcher shape,
+# workgroup, bindings, push-constant layout — so the shader you get back has the
+# right shape from turn 0 instead of iterating on the mechanics for 3 rounds.
+_VULKAN_TEMPLATE_ELEMENTWISE = """\
+=== PER-OP TEMPLATE: elementwise 1-in-1-out (Abs / ReLU / Sigmoid / ...) ===
+
+Shader (elempack=1, 1D dispatch over total element count):
 ```glsl
 #version 450
-layout(constant_id = 0) const int n = 0;
+#define shape_constant_id_offset 0
+layout(constant_id = shape_constant_id_offset + 0) const int n = 0;
+
 layout(binding = 0) buffer bottom_top_blob {{ sfp bottom_top_blob_data[]; }};
+
 layout(push_constant) uniform parameter {{ int n; }} p;
+
 void main() {{
     const int gi = int(gl_GlobalInvocationID.x);
     if (gi >= psc(n)) return;
     afp v = buffer_ld1(bottom_top_blob_data, gi);
-    v = /* f(v) — the op's math */;
+    v = /* f(v) — the op's math, e.g. abs(v), max(afp(0), v), 1.0/(1.0+exp(-v)) */;
     buffer_st1(bottom_top_blob_data, gi, v);
 }}
 ```
-Shader rules: `sfp`=storage float, `afp`=arithmetic float; load `buffer_ld1(buf,i)`,
-store `buffer_st1(buf,i,v)`; `psc(x)` resolves a push-constant when its spec-const
-is 0. Use ONLY scalar `sfp`/`buffer_ld1` (NOT `sfpvec4`/pack4) for v1. For multi-input
-ops add more `layout(binding=k) readonly buffer ...` and more bindings in the .cpp.
+
+Host create_pipeline: 1D workgroup, one spec-const, one push-constant.
+```cpp
+int Cand::create_pipeline(const Option& opt) {{
+    std::vector<uint32_t> spirv;
+    if (compile_candidate_shader(opt, spirv) != 0) return -1;
+    std::vector<vk_specialization_type> specializations(1);
+    specializations[0].i = 0;                            // n unknown at compile → 0
+    pipeline_xxx = new Pipeline(vkdev);
+    pipeline_xxx->set_optimal_local_size_xyz(vkdev->info.subgroup_size(), 1, 1);
+    return pipeline_xxx->create(spirv.data(), spirv.size() * sizeof(uint32_t),
+                                specializations);
+}}
+```
+
+Host forward_inplace: 1D dispatcher over total().
+```cpp
+int Cand::forward_inplace(VkMat& b, VkCompute& cmd, const Option& opt) const {{
+    int n = (int)b.total();
+    std::vector<VkMat> bindings(1); bindings[0] = b;
+    std::vector<vk_constant_type> constants(1); constants[0].i = n;
+    VkMat dispatcher; dispatcher.w = n; dispatcher.h = 1; dispatcher.c = 1;
+    cmd.record_pipeline(pipeline_xxx, bindings, constants, dispatcher);
+    return 0;
+}}
+```
 """
+
+
+_VULKAN_TEMPLATE_BINARYOP = """\
+=== PER-OP TEMPLATE: two-input elementwise / broadcast (Add / Mul / Sub / Pow / ...) ===
+
+For broadcast ops with two inputs of possibly-different shape, use a 3D shader
+so you can address (c, h, w) independently.
+
+Shader (elempack=1, 3D dispatch, broadcast-safe):
+```glsl
+#version 450
+layout(constant_id = 0) const int op_type = 0;
+#define shape_constant_id_offset 1
+layout(constant_id = shape_constant_id_offset + 0) const int aw = 0;
+layout(constant_id = shape_constant_id_offset + 1) const int ah = 0;
+layout(constant_id = shape_constant_id_offset + 2) const int ac = 0;
+layout(constant_id = shape_constant_id_offset + 3) const int acstep = 0;
+layout(constant_id = shape_constant_id_offset + 4) const int bw = 0;
+layout(constant_id = shape_constant_id_offset + 5) const int bh = 0;
+layout(constant_id = shape_constant_id_offset + 6) const int bc = 0;
+layout(constant_id = shape_constant_id_offset + 7) const int bcstep = 0;
+layout(constant_id = shape_constant_id_offset + 8) const int outw = 0;
+layout(constant_id = shape_constant_id_offset + 9) const int outh = 0;
+layout(constant_id = shape_constant_id_offset + 10) const int outc = 0;
+layout(constant_id = shape_constant_id_offset + 11) const int outcstep = 0;
+
+layout(binding = 0) readonly buffer a_blob {{ sfp a_blob_data[]; }};
+layout(binding = 1) readonly buffer b_blob {{ sfp b_blob_data[]; }};
+layout(binding = 2) writeonly buffer top_blob {{ sfp top_blob_data[]; }};
+
+layout(push_constant) uniform parameter {{
+    int aw; int ah; int ac; int acstep;
+    int bw; int bh; int bc; int bcstep;
+    int outw; int outh; int outc; int outcstep;
+}} p;
+
+void main() {{
+    int gx = int(gl_GlobalInvocationID.x);
+    int gy = int(gl_GlobalInvocationID.y);
+    int gz = int(gl_GlobalInvocationID.z);
+    if (gx >= psc(outw) || gy >= psc(outh) || gz >= psc(outc)) return;
+
+    // broadcast: clamp to each side's actual extent
+    int ax = min(gx, psc(aw) - 1);
+    int ay = min(gy, psc(ah) - 1);
+    int az = min(gz, psc(ac) - 1);
+    int bx = min(gx, psc(bw) - 1);
+    int by = min(gy, psc(bh) - 1);
+    int bz = min(gz, psc(bc) - 1);
+
+    int ai = az * psc(acstep) + ay * psc(aw) + ax;
+    int bi = bz * psc(bcstep) + by * psc(bw) + bx;
+    int gi = gz * psc(outcstep) + gy * psc(outw) + gx;
+
+    afp v1 = buffer_ld1(a_blob_data, ai);
+    afp v2 = buffer_ld1(b_blob_data, bi);
+    afp res;
+    if (op_type == 0) res = v1 + v2;
+    if (op_type == 1) res = v1 - v2;
+    if (op_type == 2) res = v1 * v2;
+    if (op_type == 3) res = v1 / v2;
+    // ... add the ops your base BinaryOp implements
+    buffer_st1(top_blob_data, gi, res);
+}}
+```
+
+Host forward (NOT inplace): populate bindings[0/1/2], set all 12 push constants,
+dispatcher = out shape.
+"""
+
+
+_VULKAN_TEMPLATE_REDUCTION = """\
+=== PER-OP TEMPLATE: reduction along an axis (Sum / Max / Mean / ...) ===
+
+Two-pass or one-workgroup-per-slice pattern. Simplest correct approach: one
+GPU thread per OUTPUT element, loop over the reduced axis inside the shader.
+
+Shader (axis = spec-const, one thread per output element):
+```glsl
+#version 450
+layout(constant_id = 0) const int axis = 0;    // ncnn axis: 0=c, 1=h, 2=w (for dims=3)
+layout(constant_id = 1) const int op_type = 0; // 0=sum 1=max 2=min 3=mean ...
+#define shape_constant_id_offset 2
+layout(constant_id = shape_constant_id_offset + 0) const int inw = 0;
+layout(constant_id = shape_constant_id_offset + 1) const int inh = 0;
+layout(constant_id = shape_constant_id_offset + 2) const int inc = 0;
+layout(constant_id = shape_constant_id_offset + 3) const int incstep = 0;
+layout(constant_id = shape_constant_id_offset + 4) const int outw = 0;
+layout(constant_id = shape_constant_id_offset + 5) const int outh = 0;
+layout(constant_id = shape_constant_id_offset + 6) const int outc = 0;
+layout(constant_id = shape_constant_id_offset + 7) const int outcstep = 0;
+
+layout(binding = 0) readonly buffer bottom_blob {{ sfp bottom_blob_data[]; }};
+layout(binding = 1) writeonly buffer top_blob {{ sfp top_blob_data[]; }};
+
+layout(push_constant) uniform parameter {{
+    int inw; int inh; int inc; int incstep;
+    int outw; int outh; int outc; int outcstep;
+}} p;
+
+void main() {{
+    int gx = int(gl_GlobalInvocationID.x);
+    int gy = int(gl_GlobalInvocationID.y);
+    int gz = int(gl_GlobalInvocationID.z);
+    if (gx >= psc(outw) || gy >= psc(outh) || gz >= psc(outc)) return;
+
+    afp acc = afp(0.0);
+    int len = (axis == 0) ? psc(inc) : (axis == 1 ? psc(inh) : psc(inw));
+    for (int k = 0; k < len; k++) {{
+        int ix = (axis == 2) ? k : gx;
+        int iy = (axis == 1) ? k : gy;
+        int iz = (axis == 0) ? k : gz;
+        int ii = iz * psc(incstep) + iy * psc(inw) + ix;
+        afp v = buffer_ld1(bottom_blob_data, ii);
+        acc = acc + v;    // or max(acc, v), min(acc, v), ...
+    }}
+    // for mean: acc = acc / afp(len);
+    int gi = gz * psc(outcstep) + gy * psc(outw) + gx;
+    buffer_st1(top_blob_data, gi, acc);
+}}
+```
+
+CRITICAL: ncnn's reduction `axis` is dims-relative, and pnnx writes axes in the
+final Mat's rank (see analog dict). Verify axis semantics against the base CPU
+kernel's for loops BEFORE writing the shader.
+"""
+
+
+_VULKAN_TEMPLATE_CONV = """\
+=== PER-OP TEMPLATE: Convolution (direct, unfused, elempack=1) ===
+
+Convolution is the highest-complexity op. For v1 write ONE direct-conv shader
+(no winograd, no im2col, no packing). Correctness first, perf later.
+
+Shader (one thread per output element):
+```glsl
+#version 450
+layout(constant_id = 0) const int kernel_w = 0;
+layout(constant_id = 1) const int kernel_h = 0;
+layout(constant_id = 2) const int dilation_w = 0;
+layout(constant_id = 3) const int dilation_h = 0;
+layout(constant_id = 4) const int stride_w = 0;
+layout(constant_id = 5) const int stride_h = 0;
+layout(constant_id = 6) const int bias_term = 0;
+#define shape_constant_id_offset 7
+layout(constant_id = shape_constant_id_offset + 0) const int inw = 0;
+layout(constant_id = shape_constant_id_offset + 1) const int inh = 0;
+layout(constant_id = shape_constant_id_offset + 2) const int inc = 0;
+layout(constant_id = shape_constant_id_offset + 3) const int incstep = 0;
+layout(constant_id = shape_constant_id_offset + 4) const int outw = 0;
+layout(constant_id = shape_constant_id_offset + 5) const int outh = 0;
+layout(constant_id = shape_constant_id_offset + 6) const int outc = 0;
+layout(constant_id = shape_constant_id_offset + 7) const int outcstep = 0;
+
+layout(binding = 0) readonly buffer bottom_blob {{ sfp bottom_blob_data[]; }};
+layout(binding = 1) writeonly buffer top_blob {{ sfp top_blob_data[]; }};
+layout(binding = 2) readonly buffer weight_blob {{ sfp weight_data[]; }};
+layout(binding = 3) readonly buffer bias_blob {{ sfp bias_data[]; }};
+
+layout(push_constant) uniform parameter {{
+    int inw; int inh; int inc; int incstep;
+    int outw; int outh; int outc; int outcstep;
+}} p;
+
+void main() {{
+    int gx = int(gl_GlobalInvocationID.x);
+    int gy = int(gl_GlobalInvocationID.y);
+    int gz = int(gl_GlobalInvocationID.z);
+    if (gx >= psc(outw) || gy >= psc(outh) || gz >= psc(outc)) return;
+
+    afp sum = (bias_term == 1) ? buffer_ld1(bias_data, gz) : afp(0.0);
+    // weight layout: [outc][inc][kh][kw] flat
+    int w_slice = psc(inc) * kernel_h * kernel_w;
+    for (int q = 0; q < psc(inc); q++) {{
+        for (int y = 0; y < kernel_h; y++) {{
+            for (int x = 0; x < kernel_w; x++) {{
+                int iy = gy * stride_h + y * dilation_h;
+                int ix = gx * stride_w + x * dilation_w;
+                int ii = q * psc(incstep) + iy * psc(inw) + ix;
+                int wi = gz * w_slice + q * kernel_h * kernel_w + y * kernel_w + x;
+                sum = sum + buffer_ld1(bottom_blob_data, ii) * buffer_ld1(weight_data, wi);
+            }}
+        }}
+    }}
+    int gi = gz * psc(outcstep) + gy * psc(outw) + gx;
+    buffer_st1(top_blob_data, gi, sum);
+}}
+```
+
+The base Convolution CPU kernel and reference ncnn `convolution_vulkan.cpp` (in
+the examples above) show the padded-input handling and bias binding. For v1 you
+may assume pad=0 (the base pipeline injects a Padding layer upstream if needed).
+"""
+
+
+_VULKAN_TEMPLATE_MATMUL = """\
+=== PER-OP TEMPLATE: matmul / InnerProduct / Gemm ===
+
+Shader: one thread per output (row, col) — 2D dispatch over (out.w, out.h).
+```glsl
+#version 450
+layout(constant_id = 0) const int bias_term = 0;
+#define shape_constant_id_offset 1
+layout(constant_id = shape_constant_id_offset + 0) const int M = 0;   // rows of A / rows of out
+layout(constant_id = shape_constant_id_offset + 1) const int K = 0;   // cols of A / rows of B
+layout(constant_id = shape_constant_id_offset + 2) const int N = 0;   // cols of B / cols of out
+
+layout(binding = 0) readonly buffer a_blob {{ sfp a_data[]; }};
+layout(binding = 1) writeonly buffer out_blob {{ sfp out_data[]; }};
+layout(binding = 2) readonly buffer w_blob {{ sfp w_data[]; }};
+layout(binding = 3) readonly buffer bias_blob {{ sfp bias_data[]; }};
+
+layout(push_constant) uniform parameter {{ int M; int K; int N; }} p;
+
+void main() {{
+    int gx = int(gl_GlobalInvocationID.x);   // col in [0, N)
+    int gy = int(gl_GlobalInvocationID.y);   // row in [0, M)
+    if (gx >= psc(N) || gy >= psc(M)) return;
+
+    afp sum = (bias_term == 1) ? buffer_ld1(bias_data, gx) : afp(0.0);
+    for (int k = 0; k < psc(K); k++) {{
+        // A[gy][k] * W[k][gx]  — check your base's actual layout for W
+        sum = sum + buffer_ld1(a_data, gy * psc(K) + k)
+                  * buffer_ld1(w_data, k * psc(N) + gx);
+    }}
+    buffer_st1(out_data, gy * psc(N) + gx, sum);
+}}
+```
+"""
+
+
+_VULKAN_TEMPLATE_INDEX = {
+    # by analog stem — the pipeline routes on `profile.analog_layer`. Anything
+    # not in this table falls back to a generic 1-shader elementwise template.
+    "absval": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "relu": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "sigmoid": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "tanh": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "elu": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "hardsigmoid": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "hardswish": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "clip": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "unaryop": _VULKAN_TEMPLATE_ELEMENTWISE,
+    "binaryop": _VULKAN_TEMPLATE_BINARYOP,
+    "eltwise": _VULKAN_TEMPLATE_BINARYOP,
+    "reduction": _VULKAN_TEMPLATE_REDUCTION,
+    "convolution": _VULKAN_TEMPLATE_CONV,
+    "convolutiondepthwise": _VULKAN_TEMPLATE_CONV,
+    "innerproduct": _VULKAN_TEMPLATE_MATMUL,
+    "gemm": _VULKAN_TEMPLATE_MATMUL,
+    "matmul": _VULKAN_TEMPLATE_MATMUL,
+}
+
+
+def _vulkan_op_template(profile: "KernelProfile | None") -> str:
+    if profile is None:
+        return _VULKAN_TEMPLATE_ELEMENTWISE
+    stem = (profile.analog_layer or "").strip().lower()
+    for suf in ("_vulkan", "_arm"):
+        if stem.endswith(suf):
+            stem = stem[: -len(suf)]
+    return _VULKAN_TEMPLATE_INDEX.get(stem, _VULKAN_TEMPLATE_ELEMENTWISE)
+
+
+# Legacy alias — kept so _background() keeps building. Composes the three
+# blocks: host conventions, shader dialect manual, per-op template.
+VULKAN_LAYER_BACKGROUND = (VULKAN_HOST_SIDE_BACKGROUND + "\n\n"
+                           + VULKAN_SHADER_DIALECT_BACKGROUND
+                           + "\n\n{op_template}")
 
 
 def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
@@ -406,12 +815,15 @@ def _background(backend: str, profile: "KernelProfile | None" = None) -> str:
         if profile and profile.is_functional:
             addendum += "\n" + ARM_FUNCTIONAL_STRATEGY.format(arm_class=sub_class)
     else:  # vulkan
-        shader_file = (profile.shader if profile and profile.shader else "cand_x.comp")
+        # HOST_SIDE + SHADER_DIALECT are op-agnostic; op_template is picked by
+        # analog_layer. Composing them gives the LLM: (1) file/class rules,
+        # (2) shader macros/pitfalls manual, (3) a working per-op skeleton.
+        op_tpl = _vulkan_op_template(profile)
         addendum = VULKAN_LAYER_BACKGROUND.format(
             base_header=base_header, base_class=base_class, vulkan_class=sub_class,
             vulkan_header=(profile.header if profile else "cand_x_vulkan.h"),
             vulkan_file=(profile.file if profile else "cand_x_vulkan.cpp"),
-            shader_file=shader_file)
+            op_template=op_tpl)
     return NCNN_LAYER_BACKGROUND + "\n" + addendum + ("\n" + bcast if bcast else "")
 
 
@@ -433,7 +845,18 @@ No prose outside the code blocks. Class name and #include must match the profile
 def _examples(examples: dict[str, str]) -> str:
     if not examples:
         return "(no example retrieved)"
-    return "\n\n".join(f"----- ncnn/src/layer/{k} -----\n{v}" for k, v in examples.items())
+    def _pathify(name: str) -> str:
+        # Reconstruct the ncnn source-tree location from the basename so the
+        # LLM sees the real include path (matters for vulkan: host and shader
+        # live in different subdirs, and the base .cpp is a THIRD location).
+        if name.endswith("_vulkan.h") or name.endswith("_vulkan.cpp"):
+            return f"ncnn/src/layer/vulkan/{name}"
+        if name.endswith(".comp"):
+            return f"ncnn/src/layer/vulkan/shader/{name}"
+        if name.endswith("_arm.h") or name.endswith("_arm.cpp"):
+            return f"ncnn/src/layer/arm/{name}"
+        return f"ncnn/src/layer/{name}"
+    return "\n\n".join(f"----- {_pathify(k)} -----\n{v}" for k, v in examples.items())
 
 
 def _introspect(intro: dict | None) -> str:
@@ -631,9 +1054,15 @@ def parse_profile_json(task_name: str, text: str, backend: str = "base") -> Kern
 def _files_instruction(profile: KernelProfile) -> str:
     """Backend-aware 'which files to emit' line for the coder/debugger prompts."""
     if profile.backend == "vulkan":
-        return (f"Write exactly THREE files: {profile.header}, {profile.file}, and the "
-                f"GLSL shader {profile.shader}. The class must be `{profile.class_name}`. "
-                f"Do NOT write DEFINE_LAYER_CREATOR. Do NOT reference LayerShaderType.")
+        return (f"Write AT LEAST three files: {profile.header}, {profile.file}, and the "
+                f"primary GLSL shader {profile.shader}. If your op needs multiple pipelines "
+                f"(e.g. BinaryOp with a broadcast fast-path, Convolution with a bias-free "
+                f"fast-path), emit ONE .comp file PER pipeline and load them via "
+                f"`compile_candidate_shader_by_name(opt, \"<name>\", spirv)` (the runtime "
+                f"helper reads them from CANDIDATE_SHADER_DIR). Name them "
+                f"{profile.shader.replace('.comp','')}_<variant>.comp for clarity. "
+                f"The class must be `{profile.class_name}`. Do NOT write "
+                f"DEFINE_LAYER_CREATOR. Do NOT reference LayerShaderType.")
     if profile.backend == "arm":
         return (f"Write exactly two files: {profile.header} and {profile.file}. The class "
                 f"must be `{profile.class_name}` and MUST override forward/forward_inplace. "
@@ -744,10 +1173,43 @@ _PHASE = {
 }
 
 
+def _split_vulkan_code_book(code_book: dict[str, str]) -> str:
+    """Render code_book with SHADER files in their own top-level section, so the
+    LLM sees at a glance which .comp needs the fix vs which .cpp/.h is host-side.
+    Non-vulkan callers use the default `----- name -----` layout via the caller.
+    """
+    hosts = {n: c for n, c in code_book.items() if not n.endswith(".comp")}
+    shaders = {n: c for n, c in code_book.items() if n.endswith(".comp")}
+    parts = []
+    if hosts:
+        parts.append("=== HOST (C++) ===")
+        parts.extend(f"----- {n} -----\n{c}" for n, c in hosts.items())
+    if shaders:
+        parts.append("=== SHADER (GLSL) ===")
+        parts.extend(f"----- {n} -----\n{c}" for n, c in shaders.items())
+    return "\n\n".join(parts) or "(none)"
+
+
+def _classify_vulkan_feedback(feedback: str) -> str | None:
+    """Return the runner's error category if the feedback carries one, else None.
+
+    The vulkan oracle stamps `category=<label>` into the error text (see
+    `VulkanLayerOracle._classify_runner_rc`). Labels we care about:
+    shader_compile, pipeline_create, gpu_dispatch, no_vulkan_device.
+    """
+    import re as _re
+    m = _re.search(r"category=(shader_compile|pipeline_create|gpu_dispatch|no_vulkan_device|runner_other)",
+                   feedback or "")
+    return m.group(1) if m else None
+
+
 def debugger_prompt(phase: str, profile: KernelProfile, code_book: dict[str, str],
                     feedback: str, memory: str, intro: dict | None) -> str:
     framing = _PHASE.get(phase, "The kernel failed.")
-    cur = "\n\n".join(f"----- {p} -----\n{c}" for p, c in code_book.items()) or "(none)"
+    if profile.backend == "vulkan":
+        cur = _split_vulkan_code_book(code_book)
+    else:
+        cur = "\n\n".join(f"----- {p} -----\n{c}" for p, c in code_book.items()) or "(none)"
     extra = ""
     if phase == "numeric_repair":
         extra = ("\nCommon causes: wrong Mat indexing (use channel(q), not c*w*h), wrong axis/"
@@ -764,6 +1226,38 @@ def debugger_prompt(phase: str, profile: KernelProfile, code_book: dict[str, str
                       "LayerShaderType (unavailable — use compile_candidate_shader); used "
                       "sfpvec4/pack4 instead of scalar sfp/buffer_ld1 at elempack=1; wrong push "
                       "constant wiring (psc(n) reads p.n). Must match PyTorch.")
+    # Route on the vulkan runner's structured error category if the feedback
+    # carries one. shader_compile → focus on .comp; pipeline_create → focus on
+    # host-side descriptor/spec-const setup; gpu_dispatch → focus on dispatcher
+    # shape / bindings / OOB in shader.
+    if profile.backend == "vulkan" and phase in ("compile_repair", "numeric_repair"):
+        cat = _classify_vulkan_feedback(feedback)
+        if cat == "shader_compile":
+            extra += ("\nERROR CATEGORY: shader_compile — the .comp file did NOT compile to "
+                      "SPIR-V. The glslang errors above cite .comp LINE NUMBERS. Fix the GLSL "
+                      "syntax/semantics in the .comp file. DO NOT touch the .h/.cpp unless a "
+                      "binding/push-constant declaration there needs to match a shader change."
+                      "\n\nIF the error is `'NAME' : undeclared identifier` from a psc() call: "
+                      "psc(x) expands to `(x==0 ? p.x : x)` so `x` MUST BE DECLARED AS BOTH "
+                      "a spec-const `layout(constant_id = OFFSET+K) const int NAME = 0;` AND a "
+                      "push-constant `int NAME;` inside `layout(push_constant) ... }} p;`. "
+                      "Missing either is the #1 shader-compile fail. Fix by adding the matching "
+                      "spec-const declaration for every psc(x) name.")
+        elif cat == "pipeline_create":
+            extra += ("\nERROR CATEGORY: pipeline_create — the shader compiled but Vulkan "
+                      "rejected the pipeline. Check: (1) specialization vector length matches "
+                      "the shader's `layout(constant_id=N)` count; (2) push_constant range in "
+                      "the .cpp `vk_constant_type constants[K]` matches shader's push_constant "
+                      "struct byte size; (3) `layout(binding=k)` in the shader vs `bindings[k]` "
+                      "count in the .cpp; (4) local_size_xyz set (default 3D leaves elements "
+                      "unprocessed for 1D dispatchers).")
+        elif cat == "gpu_dispatch":
+            extra += ("\nERROR CATEGORY: gpu_dispatch — forward() returned nonzero (MoltenVK "
+                      "or the GPU driver hit an error at record/submit time). Common causes: "
+                      "dispatcher shape doesn't cover all elements (`dispatcher.w = n; h=1; c=1` "
+                      "for 1D — but MUST use w=blob.w, h=blob.h, c=blob.c for a 3D shader); "
+                      "bindings vector has fewer entries than the shader expects; OOB access "
+                      "in the shader crashed the driver (add `if (gi >= psc(n)) return;`).")
     return f"""Repair the from-scratch ncnn {profile.backend} kernel.
 
 Situation: {framing}{extra}

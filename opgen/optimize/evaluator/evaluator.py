@@ -25,7 +25,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from layer_oracle import LayerOracle, torch_to_ncnn_input
+from layer_oracle import LayerOracle, VulkanLayerOracle, torch_to_ncnn_input
 from schemas import (
     CorrectnessReport,
     MeasureSample,

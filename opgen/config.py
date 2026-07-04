@@ -68,6 +68,16 @@ class GraphConfig:
     # If None, pnnx auto-probes the pip-installed PyTorch (PNNXProbeForPyTorchInstall).
     torch_install_dir: Path | None = None
 
+    # --- vulkan-specific ---------------------------------------------------
+    # How the vulkan KernelAgent uses ncnn's built-in <Op>_vulkan classes.
+    #   "scratch"      → agent writes .h+.cpp+.comp from scratch (default;
+    #                    the ncnn baseline is only consulted for pnnx-driven
+    #                    profile calibration, never subclassed)
+    #   "native_first" → try native-subclass first, fall back to from-scratch
+    #                    if it doesn't verify
+    #   "native_only"  → native-subclass only (fail if unavailable / doesn't
+    #                    verify). Legacy path from the miniset/subset audit.
+    vulkan_mode: str = "scratch"
     # --- dataset (PyTorch reference models) --------------------------------
     dataset_root: Path | None = None
 
@@ -136,8 +146,12 @@ class GraphConfig:
     }
 
     def run_dir(self, task_name: str) -> Path:
-        # GraphAgent output: runs/<task>/graph
-        return self.run_root / task_name / "graph"
+        # GraphAgent output. Route through paths.py so the layout has ONE
+        # source of truth (see opgen/paths.py — new 5-stage runs/<task>/
+        # layout). Current implementation returns runs/<task>/graph, but that
+        # name is defined in paths.graph_dir; do not hardcode it here.
+        import paths  # local import to avoid circular at module load time
+        return paths.graph_dir(self.run_root, task_name)
 
 
 # A module-level default, convenient for quick scripts / tests.

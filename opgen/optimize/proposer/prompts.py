@@ -54,20 +54,90 @@ Rules:
 - Every <PLACEHOLDER> used in the code MUST appear as a key in "params".
 - "values" are a SMALL discrete set (2–4 each); the search explores them.
 - Constraints are arithmetic/comparison expressions over the param names and the
-  hardware symbols {L1, L2, VEC_BITS, FP32_PER_VEC, VECTOR_REGS}. No function calls.
+  hardware symbols listed in the "Target hardware" section. No function calls.
 - The materialized kernel (any legal combination) MUST compile and be numerically
   equivalent to the baseline — correctness is gated by an oracle before timing.
 """
 
 
-def _hw_block(hw: dict[str, Any]) -> str:
+def _hw_block(hw: dict[str, Any], backend: str = "base") -> str:
+    """Render hardware facts for the prompt. Vulkan gets GPU fields; arm/base
+    get the CPU fields. Symbols emitted here become the vocabulary the LLM is
+    expected to reference in its constraint equations — keep them in lockstep
+    with ConstraintEngine.hw_ns + WikiLoader.hardware_extras().
+    """
+    if backend == "vulkan":
+        lines = [
+            f"- arch: {hw.get('arch')}",
+            f"- SUBGROUP_SIZE: {hw.get('SUBGROUP_SIZE', '?')}",
+            f"- MAX_WG_INVOCATIONS: {hw.get('MAX_WG_INVOCATIONS', '?')}",
+            f"- MAX_SHARED_MEM_BYTES: {hw.get('MAX_SHARED_MEM_BYTES', '?')}",
+            f"- MAX_PUSH_CONSTANTS_BYTES: {hw.get('MAX_PUSH_CONSTANTS_BYTES', '?')}",
+            f"- HAS_FP16: {hw.get('HAS_FP16', 0)}",
+            f"- HAS_INT8: {hw.get('HAS_INT8', 0)}",
+            f"- HAS_COOPMAT: {hw.get('HAS_COOPMAT', 0)}",
+            f"- HAS_SUBGROUP_ARITHMETIC: {hw.get('HAS_SUBGROUP_ARITHMETIC', 0)}",
+            f"- HAS_SUBGROUP_SHUFFLE: {hw.get('HAS_SUBGROUP_SHUFFLE', 0)}",
+            f"- HAS_SUBGROUP_BALLOT: {hw.get('HAS_SUBGROUP_BALLOT', 0)}",
+        ]
+        return "\n".join(lines) + "\n"
+    # arm / base: CPU-facing fields
+    lines = [
+        f"- arch: {hw.get('arch')}",
+        f"- L1 data cache: {hw.get('l1d_bytes')} bytes (symbol: L1 / L1D)",
+        f"- L2 cache: {hw.get('l2_bytes')} bytes (symbol: L2)",
+    ]
+    if "L3" in hw and hw["L3"]:
+        lines.append(f"- L3 cache: {hw['L3']} bytes (symbol: L3)")
+    if "CACHE_LINE" in hw:
+        lines.append(f"- cache line: {hw['CACHE_LINE']} bytes (symbol: CACHE_LINE)")
+    lines += [
+        f"- SIMD width: {hw.get('vector_bits')} bits "
+        f"({hw.get('fp32_per_vector')} fp32/vector) (symbols: VEC_BITS, FP32_PER_VEC)",
+        f"- vector registers: {hw.get('vector_regs')} (symbol: VECTOR_REGS)",
+        f"- physical cores: {hw.get('n_cores')}",
+    ]
+    for k, sym in (
+        ("HAS_DOTPROD", "HAS_DOTPROD"),
+        ("HAS_ASIMDHP", "HAS_ASIMDHP"),
+        ("HAS_BF16", "HAS_BF16"),
+        ("HAS_I8MM", "HAS_I8MM"),
+    ):
+        if k in hw:
+            lines.append(f"- {sym}: {int(hw[k])}")
+    return "\n".join(lines) + "\n"
+
+
+def _persona(backend: str) -> str:
+    if backend == "vulkan":
+        return (
+            "You are a senior GPU compute-shader kernel optimization engineer. "
+            "You optimize an ncnn Vulkan layer (GLSL compute shader + C++ pipeline "
+            "wrapper) for a SINGLE operator on a SINGLE mobile GPU, targeting "
+            "lower latency while keeping the output numerically identical to the "
+            "baseline."
+        )
     return (
-        f"- arch: {hw.get('arch')}\n"
-        f"- L1 data cache: {hw.get('l1d_bytes')} bytes\n"
-        f"- L2 cache: {hw.get('l2_bytes')} bytes\n"
-        f"- SIMD width: {hw.get('vector_bits')} bits ({hw.get('fp32_per_vector')} fp32/vector)\n"
-        f"- vector registers: {hw.get('vector_regs')}\n"
-        f"- physical cores: {hw.get('n_cores')}\n"
+        "You are a senior mobile-CPU kernel optimization engineer. You optimize "
+        "an ncnn layer kernel for a SINGLE operator on a SINGLE CPU, targeting "
+        "lower latency while keeping the output numerically identical to the "
+        "baseline."
+    )
+
+
+def _persona_vary(backend: str) -> str:
+    if backend == "vulkan":
+        return (
+            "You are a senior GPU compute-shader kernel optimization engineer "
+            "running one step of a MAP-Elites search. You mutate a PARENT "
+            "Vulkan kernel into a new parameterized template, keeping the "
+            "output numerically identical to the parent."
+        )
+    return (
+        "You are a senior mobile-CPU kernel optimization engineer running one "
+        "step of a MAP-Elites search. You mutate a PARENT kernel into a new "
+        "parameterized template, keeping the output numerically identical to "
+        "the parent."
     )
 
 
@@ -84,6 +154,17 @@ _DIRECTIVE_TEXT = {
 }
 
 
+def _context_section(context: str) -> str:
+    """Optional wiki context — a 3-section markdown block (dialect + playbook +
+    failure codes) built by WikiLoader.context_block(). Empty string when no
+    wiki content is available for this backend/family; the section is omitted
+    so the prompt stays lean."""
+    context = (context or "").strip()
+    if not context:
+        return ""
+    return f"\n# Backend & operator playbook\n{context}\n"
+
+
 def vary_prompt(
     task_name: str,
     parent_kernel: dict[str, str],
@@ -91,6 +172,8 @@ def vary_prompt(
     directive: str,
     tried: list[str],
     recent_failures: list[str] | None = None,
+    context: str = "",
+    backend: str = "base",
 ) -> str:
     """Prompt for MAP-Elites variation: mutate a PARENT elite per a directive."""
     files = "\n\n".join(
@@ -99,16 +182,14 @@ def vary_prompt(
     tried_block = ("\n".join(f"- {t}" for t in tried)) if tried else "(none yet)"
     fail_block = ("\n".join(f"- {f}" for f in recent_failures)) if recent_failures else "(none)"
     goal = _DIRECTIVE_TEXT.get(directive, _DIRECTIVE_TEXT["optimize"])
-    return f"""You are a senior mobile-CPU kernel optimization engineer running one step
-of a MAP-Elites search. You mutate a PARENT kernel into a new parameterized
-template, keeping the output numerically identical to the parent.
+    return f"""{_persona_vary(backend)}
 
 # Operator
 {task_name}
 
 # Target hardware
-{_hw_block(hardware)}
-
+{_hw_block(hardware, backend)}
+{_context_section(context)}
 # Parent kernel (the elite you are mutating)
 {files}
 
@@ -134,22 +215,22 @@ def proposer_prompt(
     baseline_kernel: dict[str, str],
     hardware: dict[str, Any],
     tried: list[str],
+    context: str = "",
+    backend: str = "base",
 ) -> str:
     """Build the proposer prompt from the baseline kernel + hardware + history."""
     files = "\n\n".join(
         f"### {name}\n```cpp\n{code}\n```" for name, code in baseline_kernel.items()
     )
     tried_block = ("\n".join(f"- {t}" for t in tried)) if tried else "(none yet)"
-    return f"""You are a senior mobile-CPU kernel optimization engineer. You optimize an
-ncnn layer kernel for a SINGLE operator on a SINGLE CPU, targeting lower latency
-while keeping the output numerically identical to the baseline.
+    return f"""{_persona(backend)}
 
 # Operator
 {task_name}
 
 # Target hardware
-{_hw_block(hardware)}
-
+{_hw_block(hardware, backend)}
+{_context_section(context)}
 # Baseline kernel (already correct; this is your starting point)
 {files}
 

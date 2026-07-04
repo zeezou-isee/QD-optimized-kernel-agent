@@ -88,7 +88,14 @@ class FeasibilityReport:
 
 
 class ConstraintEngine:
-    def __init__(self, hw: HardwareSpecs) -> None:
+    def __init__(self, hw: HardwareSpecs, extras: dict[str, float] | None = None) -> None:
+        """`extras` are backend-scoped hardware symbols supplied by WikiLoader
+        (arm: L3/CACHE_LINE/HAS_DOTPROD/…; vulkan: SUBGROUP_SIZE/MAX_SHARED_MEM_BYTES/
+        HAS_FP16/…). They merge on TOP of the CPU defaults so the LLM can reference
+        the same symbols it saw in the prompt's hardware block. Silent skip on
+        unknown symbols still applies (safe_eval catches _Unsafe) — the extras
+        just widen what the LLM is allowed to actually resolve.
+        """
         self.hw = hw
         # hardware constants available to LLM equations.
         self.hw_ns: dict[str, float] = {
@@ -96,6 +103,10 @@ class ConstraintEngine:
             "VEC_BITS": hw.vector_bits, "FP32_PER_VEC": hw.fp32_per_vector,
             "VECTOR_REGS": hw.vector_regs, "NEON": 1 if hw.arch.startswith(("arm", "aarch")) else 0,
         }
+        if extras:
+            for k, v in extras.items():
+                if isinstance(v, (int, float, bool)):
+                    self.hw_ns[k] = float(v)
 
     def feasible(self, point: dict, constraints: list[str] | None = None) -> FeasibilityReport:
         """True if `point` satisfies all LLM equations + built-in heuristics."""

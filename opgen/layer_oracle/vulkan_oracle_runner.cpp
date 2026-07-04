@@ -30,6 +30,16 @@
 #include "pipelinecache.h"
 
 #include CANDIDATE_HEADER
+// Read-only view of the shared shader-fail flag; definition lives in
+// cand_vulkan_shader.h alongside compile_candidate_shader (function-local
+// static, ODR-safe under inline linkage).
+#ifdef CANDIDATE_SHADER
+#include "cand_vulkan_shader.h"
+#else
+// Native-subclass builds compile with no CANDIDATE_SHADER (they reuse ncnn's
+// baked SPIR-V registry). Provide a stub so the runner links either way.
+namespace ncnn { inline bool& _cand_shader_compile_failed() { static bool v = false; return v; } }
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -40,6 +50,12 @@
 using namespace ncnn;
 
 #define RC_NO_VULKAN_DEVICE 42
+// Structured runner exit codes — keep in sync with cand_vulkan_shader.h so
+// the oracle-side driver can route repair prompts (shader-side vs host-side vs
+// dispatch-side) to the correct role without grepping stderr.
+#define RC_SHADER_COMPILE_FAIL 51
+#define RC_PIPELINE_CREATE_FAIL 52
+#define RC_DISPATCH_FAIL 53
 
 // ---- bin protocol: [int ndim][int dims...][float data]  (matches MoKA / base runner) ----
 static Mat read_mat(const char* path)
@@ -265,15 +281,22 @@ int main(int argc, char** argv)
 
     // Hand shape hints to the layer so pack-aware ncnn <Op>_vulkan layers
     // (BatchNorm_vulkan, Convolution_vulkan, ...) pick the right pipeline in
-    // create_pipeline(). For inplace one_blob_only ops top_shape == bottom_shape.
-    // For non-inplace / multi-input, top_shapes is left empty — many layers
-    // tolerate that; the ones that don't will fail create_pipeline explicitly
-    // instead of the previous silent NULL-pipeline segfault.
-    std::vector<Mat> bshapes(in_cpus.size());
-    for (size_t i = 0; i < in_cpus.size(); i++) bshapes[i] = pack_shape_hint(in_cpus[i]);
-    op->bottom_shapes = bshapes;
-    if (op->one_blob_only && op->support_inplace)
-        op->top_shapes = std::vector<Mat>{bshapes[0]};
+    // create_pipeline(). Only set BOTH bottom_shapes and top_shapes together —
+    // never one without the other. Setting `bottom_shapes` alone defeats the
+    // `shape.dims == 0` short-circuit in ncnn's pipeline-selection macros
+    // (e.g. Reshape_vulkan.cpp:95,103,111,119) but leaves out_shape empty, so
+    // the branch `shape.elempack == 4 && out_shape.elempack == 4` fails and
+    // pipeline_reshape_pack4 stays NULL → forward crashes with EXC_BAD_ACCESS
+    // inside Pipeline::shader_info().
+    //
+    // We only know top_shape for inplace one_blob_only ops (top == bottom).
+    // For non-inplace or multi-input, leave BOTH empty and let ncnn build all
+    // pack variants unconditionally (via the `shape.dims == 0` short-circuit).
+    if (op->one_blob_only && op->support_inplace) {
+        Mat h = pack_shape_hint(in_cpus[0]);
+        op->bottom_shapes = std::vector<Mat>{h};
+        op->top_shapes = std::vector<Mat>{h};
+    }
 
     std::vector<Mat> w;
     for (size_t i = 0; i < weights.size(); i++) w.push_back(read_weight(weights[i].c_str()));
@@ -317,8 +340,20 @@ int main(int argc, char** argv)
 
     if (op->create_pipeline(opt) != 0)
     {
-        fprintf(stderr, "create_pipeline failed\n");
-        rc = 5;
+        // The candidate's create_pipeline calls compile_candidate_shader; if
+        // THAT failed, we split the error attribution: shader-side (SPIR-V
+        // compile fail, glslang error above) vs host-side (pipeline layout
+        // rejection, spec-const mismatch, etc.).
+        if (_cand_shader_compile_failed())
+        {
+            fprintf(stderr, "create_pipeline failed via shader compile fail\n");
+            rc = RC_SHADER_COMPILE_FAIL;
+        }
+        else
+        {
+            fprintf(stderr, "create_pipeline failed (pipeline object, not shader)\n");
+            rc = RC_PIPELINE_CREATE_FAIL;
+        }
     }
 
     // isolated-instantiation guarantee: the candidate MUST actually run on vulkan.
@@ -392,14 +427,14 @@ int main(int argc, char** argv)
             if (op->support_inplace)
             {
                 int ret = op->forward_inplace(in_gpu, cmd, opt);
-                if (ret != 0) { fprintf(stderr, "forward_inplace failed ret=%d\n", ret); rc = 4; }
+                if (ret != 0) { fprintf(stderr, "forward_inplace failed ret=%d\n", ret); rc = RC_DISPATCH_FAIL; }
                 else cmd.record_download(in_gpu, out_cpu, opt_dl);
             }
             else
             {
                 VkMat out_gpu;
                 int ret = op->forward(in_gpu, out_gpu, cmd, opt);
-                if (ret != 0) { fprintf(stderr, "forward failed ret=%d\n", ret); rc = 4; }
+                if (ret != 0) { fprintf(stderr, "forward failed ret=%d\n", ret); rc = RC_DISPATCH_FAIL; }
                 else cmd.record_download(out_gpu, out_cpu, opt_dl);
             }
 
@@ -424,7 +459,7 @@ int main(int argc, char** argv)
             if (op->support_inplace) { out_gpu = in_gpu; ret = op->forward_inplace(out_gpu, cmd, opt); }
             else ret = op->forward(in_gpu, out_gpu, cmd, opt);
 
-            if (ret != 0) { fprintf(stderr, "forward(multi) failed ret=%d\n", ret); rc = 4; }
+            if (ret != 0) { fprintf(stderr, "forward(multi) failed ret=%d\n", ret); rc = RC_DISPATCH_FAIL; }
             else
             {
                 Mat out_cpu;

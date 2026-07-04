@@ -16,9 +16,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # opgen/ for `import paths`
 
-from config import RUNS_ROOT, GraphConfig
-from graph_schemas import write_json
+import json  # noqa: E402
+import paths  # noqa: E402
+from config import RUNS_ROOT, GraphConfig  # noqa: E402
+from graph_schemas import write_json  # noqa: E402
 from kernel_pipeline import (
     extract_kernel_code,
     introspect_model,
@@ -97,8 +100,16 @@ class KernelAgent:
     # ------------------------------------------------------------------ setup
     @property
     def run_dir(self) -> Path:
-        sub = "kernel" if self.backend == "base" else f"kernel_{self.backend}"
-        return RUNS_ROOT / self.task_name / f"{sub}{self.run_subdir_suffix}"
+        # New layout: base -> runs/<task>/base_kernel;
+        #             arm/vulkan/... -> runs/<task>/backends/<backend>/kernel
+        # The run_subdir_suffix (e.g. "_e2e_repair_1") is appended to the LAST
+        # segment, giving "base_kernel_e2e_repair_1" or "kernel_e2e_repair_1"
+        # placed as a sibling — preserving OperatorAgent's e2e repair semantics.
+        if self.backend == "base":
+            base = paths.base_kernel_dir(RUNS_ROOT, self.task_name)
+        else:
+            base = paths.backend_kernel_dir(RUNS_ROOT, self.task_name, self.backend)
+        return base.parent / f"{base.name}{self.run_subdir_suffix}"
 
     def _resolve_model(self, model_py, model_code) -> tuple[str, str]:
         if model_py:
@@ -313,15 +324,20 @@ class KernelAgent:
 
         Needed only when nobody else (GraphAgent / OperatorAgent baseline_probe)
         has already produced one — e.g. kernel-only mode. Written to
-        `<run_dir>/_pnnx_probe/_probe/` so it lives INSIDE the vulkan run dir
-        and cannot collide with `graph/`, `operator/_baseline_probe/`, or any
-        other backend's run dir. Idempotent: skips if the probe dir already has
-        a `.ncnn.param`. Silent on failure (returns None; caller keeps its
-        pre-probe fallback behaviour).
+        `analyze/pnnx_probe/_probe/` under the task root, so it is SHARED by
+        every backend (base/arm/vulkan/...) and only runs once per task. Also
+        matches any legacy probe under `kernel*/_pnnx_probe/` via the check
+        below (avoids re-probing when a legacy run already produced one).
+        Idempotent: skips if any `.ncnn.param` exists anywhere under the task
+        root. Silent on failure (caller keeps its pre-probe fallback).
         """
-        probe_root = self.run_dir / "_pnnx_probe"
-        if list(probe_root.rglob("*.ncnn.param")):
-            return                              # already probed for this task
+        # Fast path: any existing .ncnn.param anywhere under the task root
+        # (analyze/pnnx_probe/, operator/_baseline_probe/, legacy kernel*/,
+        # graph/, ...) is good enough — pnnx output is backend-invariant.
+        task_root = paths.task_root(RUNS_ROOT, self.task_name)
+        if task_root.exists() and list(task_root.rglob("*.ncnn.param")):
+            return
+        probe_root = paths.analyze_pnnx_probe_dir(RUNS_ROOT, self.task_name)
         # Lazy import: graph_pipeline pulls tree-sitter / cmake helpers that
         # the base/arm KernelAgent paths don't need at load time.
         try:
@@ -426,6 +442,39 @@ class KernelAgent:
                     return params
         return None
 
+    def _prime_profile_from_pnnx_baseline(self) -> None:
+        """Vulkan scratch mode: pull pnnx's real analog + params into the profile
+        WITHOUT generating a native subclass.
+
+        Without this, the base-derived vulkan profile carries the analyzer's
+        guess for `analog_layer` (e.g. "innerproduct" for nn.Linear) and empty
+        params — that's fine for the base kernel path (from-scratch LLM math
+        doesn't need pnnx's schema), but for VULKAN scratch we still want:
+          (a) the correct interface-dict entry to inject into the prompt (so
+              the LLM sees the RIGHT layer's param IDs)
+          (b) concrete params for the model at hand (so the LLM doesn't have
+              to guess numeric values it will read via pd.get)
+          (c) the right shader/header/file basenames (KernelProfile derives
+              these from class_name; class_name is stable, no change needed)
+        This mirrors _native_vulkan_run's initial "detect + parse baseline"
+        block but stops BEFORE synthesising the subclass header/cpp.
+        """
+        pnnx_layer = self._detect_pnnx_layer_type()
+        if pnnx_layer and pnnx_layer.lower() != (self.profile.analog_layer or "").lower():
+            print(f"[kernel] vulkan scratch: pnnx emitted `{pnnx_layer}` "
+                  f"(analog was `{self.profile.analog_layer}`) — using pnnx's choice")
+            self.profile.analog_layer = pnnx_layer
+        parsed = self._parse_baseline_params(self.profile.analog_layer or "")
+        if parsed is not None:
+            self.profile.params = parsed
+            print(f"[kernel] vulkan scratch: pnnx baseline params for "
+                  f"`{self.profile.analog_layer}` = {parsed}")
+        # NEVER set native_vulkan=True here — this is the from-scratch prime,
+        # and the shader-existence gate in kernel_pipeline.py keys on
+        # profile.native_vulkan to decide whether a .comp is required.
+        self.profile.native_vulkan = False
+        write_json(self.run_dir / "kernel_profile.json", self.profile.to_dict())
+
     def _native_vulkan_run(self) -> dict | None:
         """Native-vulkan-subclass path: `Cand_X_vulkan : public ncnn::<analog>_vulkan`.
 
@@ -446,6 +495,14 @@ class KernelAgent:
             print(f"[kernel] native-vulkan: pnnx emitted `{pnnx_layer}` for this op "
                   f"(analog was `{analog}`) — using pnnx's choice")
             analog = pnnx_layer
+            # verify_kernel looks up weight_flags via `profile.analog_layer` in
+            # the ncnn interface dict. If we override analog here but leave the
+            # profile field on the base's guess (e.g. `innerproduct` when pnnx
+            # actually chose `Gemm`), the runner sends flags from the WRONG
+            # layer's schema — bias flag for InnerProduct is 1 (raw) but Gemm's
+            # C_data reads with a tag, so the tag byte gets pulled from bias data
+            # and the whole model bin is off by 4 bytes → silent numerical drift.
+            self.profile.analog_layer = analog
         stem = analog.lower()
         hdr = self.cfg.ncnn_root / "src" / "layer" / "vulkan" / f"{stem}_vulkan.h"
         if not hdr.exists():
@@ -486,22 +543,18 @@ class KernelAgent:
         # silently computes ADD.
         parsed = self._parse_baseline_params(analog)
         if parsed is not None:
-            # AXES REBASE for Reduction: pnnx generates axes in the FULL-rank
-            # ncnn layout (4D input `(N,C,H,W)` treated as a 4D ncnn Mat with
-            # batch-as-c). Our KernelAgent oracle instead drops the leading
-            # batch dim via `torch_to_ncnn_input`, so ncnn sees rank-1 lower.
-            # Every axis in pnnx's array is therefore off-by-one for our runner.
-            # Elementwise/scale ops are shape-invariant so unaffected; only ops
-            # that read `axes` (Reduction, ArgMax) need this shift.
-            if analog.lower() == "reduction" and "3" in parsed:
-                axes = parsed["3"]
-                if isinstance(axes, list) and axes:
-                    rebased = [int(a) - 1 for a in axes if int(a) >= 1]
-                    if rebased:
-                        print(f"[kernel] native-vulkan: rebasing Reduction axes "
-                              f"{axes} -> {rebased} (pnnx generated for 4D, oracle "
-                              f"feeds 3D via torch_to_ncnn_input batch-drop)")
-                        parsed["3"] = rebased
+            # pnnx is INTERNALLY CONSISTENT: the axes it writes to .ncnn.param
+            # and the input feed policy it writes to <task>_ncnn.py agree on
+            # the same rank. For batch_index=0 white-listed ops (Conv/BN/...)
+            # pnnx rebases axes down and squeezes(0) the input; for
+            # batch_index=233 isolated ops (torch.sum / F.softmax alone) it
+            # keeps axes at the pytorch rank and keeps the input as-is (4D).
+            # verify_kernel's pnnx_driven_ncnn_inputs mirrors that squeeze
+            # decision (see kernel_pipeline.py:_PROBE_SUBS), so ncnn receives
+            # a rank consistent with the axes pnnx wrote — no per-op rebase
+            # needed here. A blanket `axes[i]-1` used to live here to patch
+            # the 4D-vs-3D mismatch caused by verify_kernel not finding our
+            # lazy pnnx probe; that mismatch is now fixed at the source.
             self.profile.params = parsed
         elif not self.profile.params:
             # No baseline + no inherited params → refuse. Matches the And case
@@ -575,7 +628,22 @@ class KernelAgent:
     # ------------------------------------------------------------------- loop
     def run(self) -> dict:
         self.run_dir.mkdir(parents=True, exist_ok=True)
-        self.intro = introspect_model(self.model_py)
+        # SHARED introspect cache: introspect_model is a pure function of the
+        # PyTorch model file (shape / state_dict / init_inputs) — safe to cache
+        # under analyze/ and reuse across all backends. First backend for this
+        # task populates the cache; the rest read.
+        intro_cache = paths.introspect_json(RUNS_ROOT, self.task_name)
+        if intro_cache.exists():
+            try:
+                self.intro = json.loads(intro_cache.read_text(encoding="utf-8"))
+            except Exception:
+                self.intro = introspect_model(self.model_py)
+        else:
+            self.intro = introspect_model(self.model_py)
+            intro_cache.parent.mkdir(parents=True, exist_ok=True)
+            write_json(intro_cache, self.intro)
+        # Keep a per-backend copy inside run_dir for post-mortem visibility
+        # (small file; harmless duplication).
         write_json(self.run_dir / "introspect.json", self.intro)
         write_json(self.run_dir / "config.json", {
             "task_name": self.task_name, "model": self.cfg.model,
@@ -620,17 +688,48 @@ class KernelAgent:
               f"analog={self.profile.analog_layer} weight_keys={self.profile.weight_keys} "
               f"params={self.profile.params}")
 
-        # NATIVE-VULKAN SUBCLASS: if ncnn ships a built-in <analog>_vulkan layer,
-        # don't ask the LLM to author a from-scratch shader (a hard, crash-prone
-        # frontier for non-elementwise ops). Generate a thin subclass that inherits
-        # ncnn's VERIFIED GPU implementation (create_pipeline + baked SPIR-V), with
-        # the correct ncnn params pulled from the pnnx baseline .ncnn.param. This
-        # mirrors how arm subclasses the base and is the "reference ncnn / minimal
-        # harness" path the goal calls for.
+        # VULKAN dispatch modes (cfg.vulkan_mode):
+        #   scratch       → agent authors .h+.cpp+.comp from scratch. The pnnx
+        #                   baseline is still consulted by `_parse_baseline_params`
+        #                   so the profile carries pnnx-emitted analog + params
+        #                   (avoids default-op-type semantic drift), but we DO NOT
+        #                   subclass ncnn's built-in <Op>_vulkan. This is the goal
+        #                   configuration — every completed run means the LLM
+        #                   actually wrote a working GLSL shader.
+        #   native_first  → try native-subclass first; on non-verify fall through
+        #                   to from-scratch. Useful for validation-vs-agent A/B.
+        #   native_only   → legacy: only run the native path (miniset/subset audit
+        #                   used this; agent shader authoring rate is 0).
         if self.backend == "vulkan":
-            native = self._native_vulkan_run()
-            if native is not None:
-                return native
+            mode = getattr(self.cfg, "vulkan_mode", "scratch")
+            if mode not in ("scratch", "native_first", "native_only"):
+                raise ValueError(f"unknown cfg.vulkan_mode={mode!r}")
+            if mode == "scratch":
+                # Consult the pnnx baseline once so the profile has the right
+                # analog + params, then throw the native subclass away and let
+                # the LLM loop take over below.
+                self._prime_profile_from_pnnx_baseline()
+                print(f"[kernel] vulkan mode=scratch → agent will author "
+                      f"{self.profile.header} + {self.profile.file} + "
+                      f"{self.profile.shader} (no native subclass)")
+            elif mode in ("native_first", "native_only"):
+                native = self._native_vulkan_run()
+                if native is not None:
+                    return native
+                if mode == "native_only":
+                    print(f"[kernel] vulkan mode=native_only → refusing to fall "
+                          f"back to from-scratch; returning failure summary")
+                    summary = {
+                        "status": "fail", "task_name": self.task_name,
+                        "backend": self.backend, "rounds": len(self.history),
+                        "kernel_profile": self.profile.to_dict(),
+                        "history": [h.to_dict() for h in self.history],
+                        "final_result": {},
+                        "error": "native_only mode: no native vulkan subclass verified",
+                    }
+                    write_json(self.run_dir / "summary.json", summary)
+                    return summary
+                # native_first fell through — LLM loop below authors from scratch
 
         result: KernelResult | None = None
         # e2e_repair: prefill code_book with the seeded code so the first round's
@@ -683,4 +782,31 @@ class KernelAgent:
             "final_result": result.to_dict() if result else {},
         }
         write_json(self.run_dir / "summary.json", summary)
+
+        # BASE-KERNEL SoT CONTRACT: on a successful base run (not an e2e_repair
+        # variant), publish the final .h/.cpp + shared kernel_profile.json into
+        # `runs/<task>/base_kernel/artifacts/`. arm/vulkan/optimize readers pull
+        # from THIS dir instead of digging into round_XX/ or summary.json.
+        # Also mirror the backend-invariant subset of the profile into
+        # `analyze/kernel_profile.json` so future backends can seed their own
+        # profile without re-running the analyzer.
+        if (self.backend == "base" and self.run_subdir_suffix == ""
+                and result and result.ok and self.profile):
+            self._publish_base_artifacts(result)
         return summary
+
+    def _publish_base_artifacts(self, result: KernelResult) -> None:
+        """Copy the final base .h/.cpp + profile into the shared artifacts dir.
+        Also strip backend-specific fields from the profile and write it to
+        analyze/kernel_profile.json for cross-backend reuse."""
+        art = paths.base_kernel_artifacts_dir(RUNS_ROOT, self.task_name)
+        art.mkdir(parents=True, exist_ok=True)
+        code = (result.response_code or {})
+        for name, body in code.items():
+            if name.endswith((".h", ".hpp", ".cpp", ".cc", ".cxx")):
+                (art / name).write_text(body, encoding="utf-8")
+        prof_dict = self.profile.to_dict()
+        write_json(art / "kernel_profile.json", prof_dict)
+        # Shared analyze/kernel_profile.json — backend-invariant fields only
+        shared = paths.strip_backend_fields(prof_dict)
+        write_json(paths.kernel_profile_shared_json(RUNS_ROOT, self.task_name), shared)

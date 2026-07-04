@@ -144,16 +144,29 @@ def retrieve_layer_example(ncnn_root: Path, analog: str, max_files: int = 1,
     base   -> src/layer/<analog>.{h,cpp}
     arm    -> src/layer/arm/<analog>_arm.{h,cpp}  PLUS the base src/layer/<analog>.{h,cpp}
               (the arm layer subclasses the base, so both are useful context)
+    vulkan -> src/layer/vulkan/<analog>_vulkan.{h,cpp}
+              PLUS src/layer/vulkan/shader/<analog>.comp (the actual shader math)
+              PLUS the base src/layer/<analog>.{h,cpp}
+              (host code + shader dialect + parent-class semantics — all three)
+              If a pack4 variant exists we ALSO include <analog>_pack4.comp so the
+              LLM has seen the sfpvec4/buffer_ld4 pattern even though v1 authors
+              elempack=1 shaders (helps with SPIR-V mental model + future pack
+              extensions). Falls back to absval on any lookup miss so the prompt
+              never contains "(no example retrieved)" for vulkan runs.
     """
     layer_dir = Path(ncnn_root) / "src" / "layer"
     stem = (analog or "absval").strip().lower().replace("::", "").replace(" ", "")
-    # an arm analog may already carry the _arm suffix; normalize to the base stem
-    base_stem = stem[:-4] if stem.endswith("_arm") else stem
+    # an arm/vulkan analog may already carry the backend suffix; normalize
+    for suf in ("_arm", "_vulkan"):
+        if stem.endswith(suf):
+            stem = stem[: -len(suf)]
+            break
+    base_stem = stem
     out: dict[str, str] = {}
 
-    def _read_into(d: Path, name_stem: str) -> bool:
+    def _read_into(d: Path, name_stem: str, exts: tuple[str, ...] = (".h", ".cpp")) -> bool:
         hit = False
-        for ext in (".h", ".cpp"):
+        for ext in exts:
             f = d / f"{name_stem}{ext}"
             if f.exists():
                 out[f.name] = f.read_text(encoding="utf-8", errors="replace")
@@ -164,6 +177,21 @@ def retrieve_layer_example(ncnn_root: Path, analog: str, max_files: int = 1,
         if not _read_into(layer_dir / "arm", f"{base_stem}_arm"):
             _read_into(layer_dir / "arm", "absval_arm")   # fallback example
         _read_into(layer_dir, base_stem)                  # base for parent-class context
+    elif backend == "vulkan":
+        vk_dir = layer_dir / "vulkan"
+        shader_dir = vk_dir / "shader"
+        # 1) host-side <analog>_vulkan.{h,cpp} — pipeline lifecycle + dispatch
+        got_host = _read_into(vk_dir, f"{base_stem}_vulkan")
+        if not got_host:
+            _read_into(vk_dir, "absval_vulkan")           # fallback host example
+        # 2) shader body — the actual compute in ncnn shader dialect
+        got_shader = _read_into(shader_dir, base_stem, exts=(".comp",))
+        if not got_shader:
+            _read_into(shader_dir, "absval", exts=(".comp",))
+        # 3) pack4 shader (extra vocabulary — sfpvec4 / buffer_ld4)
+        _read_into(shader_dir, f"{base_stem}_pack4", exts=(".comp",))
+        # 4) base CPU layer — reference semantics the shader must match
+        _read_into(layer_dir, base_stem)
     else:
         if not _read_into(layer_dir, base_stem):
             _read_into(layer_dir, "absval")
@@ -380,24 +408,32 @@ def verify_kernel(
         if name.endswith((".cpp", ".cc", ".cxx")):
             extra_sources.append(str(p))
 
-    # vulkan: the candidate also emits a separate .comp shader (compiled at runtime
-    # by the VulkanLayerOracle). Locate it among the written files.
+    # vulkan: the candidate also emits one OR MORE .comp shaders (each compiled
+    # at runtime by the VulkanLayerOracle). The PRIMARY shader is the one named
+    # by `profile.shader`; any additional .comp files in the code_book are
+    # `extra_shaders` (multi-shader ops like BinaryOp / Convolution / etc.).
     shader_path = None
+    extra_shaders: list[str] = []
     native_vk = profile.backend == "vulkan" and getattr(profile, "native_vulkan", False)
     if profile.backend == "vulkan" and not native_vk:
+        all_comps = [round_dir / n for n in code_book if n.endswith(".comp")]
         if profile.shader and (round_dir / profile.shader).exists():
             shader_path = round_dir / profile.shader
-        else:
-            shader_path = next((round_dir / n for n in code_book if n.endswith(".comp")), None)
+        elif all_comps:
+            shader_path = all_comps[0]
         if shader_path is None:
             res.compile_error = f"vulkan kernel missing its .comp shader ({profile.shader})"
             res.messages.append("missing .comp")
             return res
+        extra_shaders = [str(p) for p in all_comps if p != shader_path]
 
     # backend-specific oracle kwargs: vulkan passes the shader (None for a native
     # subclass, which inherits ncnn's baked shader); base/arm pass packing.
     if profile.backend == "vulkan":
-        backend_kwargs = {"shader": (str(shader_path) if shader_path else None)}
+        backend_kwargs = {
+            "shader": (str(shader_path) if shader_path else None),
+            "extra_shaders": extra_shaders,
+        }
     else:
         backend_kwargs = {"packing": packing}
 
@@ -439,11 +475,35 @@ def verify_kernel(
     # probe dir (always populated before KernelAgent starts). When absent
     # (kernel-only / standalone), fall back to the old torch_to_ncnn_input
     # heuristic per input.
+    # Candidate _ncnn.py locations, in priority order. The OperatorAgent's
+    # baseline probe (populated when OperatorAgent has run for this task) is
+    # the most authoritative. Failing that, look at the per-backend lazy pnnx
+    # probes that KernelAgent may have written during a kernel-only run —
+    # kernel_vulkan/_pnnx_probe is what _ensure_baseline_probe drops for the
+    # vulkan-native-subclass path (see kernel_agent.py). Base/arm entries are
+    # placeholders in case those backends adopt the same lazy probe later; they
+    # cost nothing when the dir is missing.
+    # NEW-layout canonical location + legacy fallbacks. `analyze/pnnx_probe`
+    # is where KernelAgent._ensure_baseline_probe writes today (shared across
+    # backends). `operator/_baseline_probe` is OperatorAgent's legacy dir
+    # (still active). The `kernel*/_pnnx_probe` entries are pre-migration
+    # legacy and drop out naturally once scripts/migrate_runs_layout.py
+    # has been run.
+    _PROBE_SUBS = ("analyze/pnnx_probe",
+                   "operator/_baseline_probe",
+                   "kernel_vulkan/_pnnx_probe",
+                   "kernel/_pnnx_probe",
+                   "kernel_arm/_pnnx_probe",
+                   "base_kernel/_pnnx_probe",
+                   "backends/vulkan/kernel/_pnnx_probe",
+                   "backends/arm/kernel/_pnnx_probe")
     ncnn_py_path = None
-    probe_glob = (RUNS_ROOT / profile.task_name / "operator"
-                  / "_baseline_probe").rglob("*_ncnn.py")
-    for p in probe_glob:
-        ncnn_py_path = str(p); break
+    for sub in _PROBE_SUBS:
+        for p in (RUNS_ROOT / profile.task_name / sub).rglob("*_ncnn.py"):
+            ncnn_py_path = str(p)
+            break
+        if ncnn_py_path:
+            break
     activation_inputs = [t for i, t in enumerate(inputs) if i not in wfi]
     activation_names = [f"in{i}" for i in range(len(activation_inputs))]
     if ncnn_py_path:
@@ -571,7 +631,14 @@ def verify_kernel(
         return res
     if not verdict.ok:  # compiled but runner crashed at runtime
         res.numeric_ok = False
-        res.numeric_log = "kernel crashed at runtime:\n" + "\n".join(verdict.run_log.splitlines()[-12:])
+        # Include verdict.error verbatim (carries `category=...` marker + the
+        # sliced glslang error block on shader_compile paths) so the debugger
+        # prompt classifier + shader-focused hints fire. Then attach last-12
+        # stderr lines as fallback context for pipeline/dispatch failures.
+        err_line = verdict.error or ""
+        tail = "\n".join((verdict.run_log or "").splitlines()[-12:])
+        res.numeric_log = ("kernel crashed at runtime:\n" + err_line
+                           + ("\n\n" + tail if tail else ""))
         res.messages.append("runtime crash")
         return res
     res.max_diff = verdict.max_diff
@@ -601,7 +668,20 @@ def verify_kernel(
     # Skip when the op has ANY weights (either nn.Module state_dict keys OR functional
     # weights routed from inputs) — slicing only the activation breaks the math.
     has_weights = bool(profile.weight_keys) or bool(getattr(profile, "weights_from_inputs", None))
-    if res.numeric_ok and run_numeric and not has_weights:
+    # Native-vulkan subclasses (Cand_X_vulkan : public ncnn::<X>_vulkan {}) hard-code
+    # the ncnn params they were loaded with (Reshape's target `w=32768,h=16`,
+    # Softmax's axis, ...). A same-rank size-variant that changes the input's
+    # element count reasonably fails a Reshape whose target is fixed — that's not
+    # a port bug, it's the model contract. Skip multi-shape scrutiny for the
+    # native path; the model's own shape has already been verified against PyTorch.
+    #
+    # FROM-SCRATCH vulkan (agent-written .comp shader): multi-shape scrutiny is
+    # EXPLICITLY ENABLED — it is the primary net against the shader-authoring
+    # failure modes (hard-coded workgroup dims, forgotten psc(w/h/c), 1D dispatch
+    # over a 3D shape, cstep vs w*h*d confusion). We keep the base gates
+    # (`not has_weights`, `run_numeric`) but do NOT gate on backend.
+    is_native_vulkan = bool(getattr(profile, "native_vulkan", False))
+    if res.numeric_ok and run_numeric and not has_weights and not is_native_vulkan:
         bad = _multishape_check(oracle, profile, cpp_path, params, model_py,
                                 extra_sources, extra_includes, backend_kwargs, tol,
                                 in0_squeezed=in0_squeezed)

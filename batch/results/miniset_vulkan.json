@@ -1,7 +1,7 @@
 {
   "Add": {
     "category": "",
-    "elapsed_s": 8.7,
+    "elapsed_s": 14.4,
     "returncode": 0,
     "timed_out": false,
     "status": "success",
@@ -13,7 +13,7 @@
   },
   "Mul": {
     "category": "",
-    "elapsed_s": 8.5,
+    "elapsed_s": 3.2,
     "returncode": 0,
     "timed_out": false,
     "status": "success",
@@ -25,31 +25,31 @@
   },
   "Conv": {
     "category": "",
-    "elapsed_s": 260.3,
+    "elapsed_s": 523.1,
     "returncode": 0,
     "timed_out": false,
-    "status": "success",
+    "status": "fail",
     "backend": "vulkan",
-    "rounds": 8,
+    "rounds": 16,
     "compile": true,
-    "numeric": "passed",
-    "max_diff": 0.0
+    "numeric": "failed",
+    "max_diff": null
   },
   "And": {
     "category": "",
-    "elapsed_s": 39.9,
+    "elapsed_s": 325.5,
     "returncode": 0,
     "timed_out": false,
-    "status": "success",
+    "status": "fail",
     "backend": "vulkan",
-    "rounds": 1,
+    "rounds": 16,
     "compile": true,
-    "numeric": "passed",
-    "max_diff": 0.0
+    "numeric": "failed",
+    "max_diff": null
   },
   "Greater": {
     "category": "",
-    "elapsed_s": 20.1,
+    "elapsed_s": 18.9,
     "returncode": 0,
     "timed_out": false,
     "status": "success",
@@ -61,7 +61,7 @@
   },
   "Gemm": {
     "category": "",
-    "elapsed_s": 5.2,
+    "elapsed_s": 12.8,
     "returncode": 0,
     "timed_out": false,
     "status": "success",
@@ -73,19 +73,19 @@
   },
   "BatchNormalization": {
     "category": "",
-    "elapsed_s": 5.6,
+    "elapsed_s": 407.0,
     "returncode": 0,
     "timed_out": false,
-    "status": "success",
+    "status": "fail",
     "backend": "vulkan",
-    "rounds": 1,
+    "rounds": 16,
     "compile": true,
-    "numeric": "passed",
-    "max_diff": 0.0
+    "numeric": "failed",
+    "max_diff": null
   },
   "AveragePool": {
     "category": "",
-    "elapsed_s": 5.9,
+    "elapsed_s": 13.9,
     "returncode": 0,
     "timed_out": false,
     "status": "success",
@@ -97,31 +97,27 @@
   },
   "ReduceMax": {
     "category": "",
-    "elapsed_s": 7.1,
-    "returncode": 0,
+    "elapsed_s": 2.2,
+    "returncode": 1,
     "timed_out": false,
-    "status": "success",
+    "status": "fail",
     "backend": "vulkan",
-    "rounds": 1,
+    "rounds": 15,
     "compile": true,
-    "numeric": "passed",
-    "max_diff": 0.0
+    "numeric": "failed",
+    "max_diff": null
   },
   "ReduceSum": {
-    "category": "",
-    "elapsed_s": 6.0,
-    "returncode": 0,
+    "category": "Reduction",
+    "elapsed_s": 1.7,
+    "returncode": 1,
     "timed_out": false,
-    "status": "success",
-    "backend": "vulkan",
-    "rounds": 1,
-    "compile": true,
-    "numeric": "passed",
-    "max_diff": 1.52587890625e-05
+    "status": "crash",
+    "tail": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/layer_oracle/vulkan_oracle.py\", line 200, in <genexpr>\n    argv += [\"--param\", \",\".join(self._fmt_param(k, v) for k, v in params.items())]\n                                 ^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/layer_oracle/vulkan_oracle.py\", line 298, in _fmt_param\n    return f\"{key}={int(value)}\"\n                    ^^^^^^^^^^\nTypeError: int() argument must be a string, a bytes-like object or a real number, not 'list'\n"
   },
   "Abs": {
     "category": "",
-    "elapsed_s": 7.1,
+    "elapsed_s": 2.8,
     "returncode": 0,
     "timed_out": false,
     "status": "success",

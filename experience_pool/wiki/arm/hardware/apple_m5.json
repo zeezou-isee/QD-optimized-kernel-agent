@@ -1,0 +1,44 @@
+{
+  "identity": {
+    "brand": "Apple M5",
+    "arch": "arm64",
+    "isa": "ARMv8.6-A + SME2"
+  },
+  "cores": {
+    "p_cores": 4,
+    "e_cores": 6,
+    "note": "sysctl hw.perflevel0 = Super (P), hw.perflevel1 = Efficiency (E). Optimize for P-core (perflevel0) numbers unless targeting background workloads."
+  },
+  "cache": {
+    "l1d_bytes": 131072,
+    "l1i_bytes": 196608,
+    "l2_bytes": 16777216,
+    "l3_bytes": 0,
+    "cache_line_bytes": 128,
+    "note": "P-core L1D = 128 KiB, L2 = 16 MiB (shared across 4 P-cores). Apple silicon uses a 128-byte cache line vs the more common 64. No dedicated L3 exposed via sysctl."
+  },
+  "simd": {
+    "neon_vector_bits": 128,
+    "vector_regs": 32,
+    "fp32_per_vector": 4,
+    "fp16_per_vector": 8,
+    "int8_per_vector": 16
+  },
+  "features": {
+    "has_dotprod": true,
+    "has_fp16": true,
+    "has_bf16": true,
+    "has_i8mm": true,
+    "has_sme2": true,
+    "note": "FEAT_DotProd/FP16/BF16/I8MM/SME2 all present (sysctl hw.optional.arm)."
+  },
+  "pipeline": {
+    "fmla_latency": 3,
+    "fmla_throughput": 4,
+    "note": "Apple firestorm-lineage estimate: fmla.4s latency ~3 cycles, ~4 FMA units per P-core cycle (peak 32 fp32-flops/cycle/core). Verify with microbench before using as a hard budget."
+  },
+  "provenance": {
+    "source": "sysctl on U-0HC71Q42-2257.local (2026-07-04)",
+    "cross_reference": "hw.perflevel0.l1dcachesize, hw.cachelinesize, hw.optional.arm.FEAT_*"
+  }
+}

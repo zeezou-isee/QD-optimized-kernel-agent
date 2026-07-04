@@ -9,11 +9,11 @@ from .parser import parse_layer, ParseResult
 from .md_doc_loader import load_doc_table
 from .lookup import (
     load_dict, get_interface, render_for_prompt,
-    guess_layer_from_task, derive_params_from_dict,
+    guess_layer_from_task, derive_params_from_dict, layer_to_family,
 )
 
 __all__ = [
     "parse_layer", "ParseResult", "load_doc_table",
     "load_dict", "get_interface", "render_for_prompt",
-    "guess_layer_from_task", "derive_params_from_dict",
+    "guess_layer_from_task", "derive_params_from_dict", "layer_to_family",
 ]

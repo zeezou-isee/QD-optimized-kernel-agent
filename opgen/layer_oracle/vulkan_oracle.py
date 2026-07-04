@@ -47,6 +47,49 @@ _OPGEN = _THIS.parent                              # .../opgen
 _KERNELGEN = _find_kernelgen(_THIS)               # .../kernelgen
 
 RC_NO_VULKAN_DEVICE = 42
+# Structured runner-side error codes (must stay in sync with
+# vulkan_oracle_runner.cpp and cand_vulkan_shader.h). See _classify_runner_rc.
+RC_SHADER_COMPILE_FAIL = 51
+RC_PIPELINE_CREATE_FAIL = 52
+RC_DISPATCH_FAIL = 53
+
+
+def _shader_error_block(run_log: str) -> str:
+    """Slice the SHADER_COMPILE_FAIL fenced block(s) out of a run_log, if any.
+
+    The runner + cand_vulkan_shader.h wrap every shader-side error in
+    `=== SHADER_COMPILE_FAIL ... ===` / `=== END_SHADER_COMPILE_FAIL ===`
+    fences. Grabbing just those keeps the debugger-prompt feedback focused
+    on shader-side glslang errors when the failure IS shader-side (rc=51),
+    and lets the callers show them as a distinct block in the prompt.
+    """
+    parts, i = [], 0
+    START = "=== SHADER_COMPILE_FAIL"
+    END = "=== END_SHADER_COMPILE_FAIL ==="
+    while True:
+        s = run_log.find(START, i)
+        if s < 0:
+            break
+        e = run_log.find(END, s)
+        if e < 0:
+            parts.append(run_log[s:s + 4000])
+            break
+        parts.append(run_log[s: e + len(END)])
+        i = e + len(END)
+    return "\n\n".join(parts)
+
+
+def _classify_runner_rc(rc: int) -> str:
+    """Map a runner exit code to a coarse error category for the debugger prompt."""
+    if rc == RC_SHADER_COMPILE_FAIL:
+        return "shader_compile"
+    if rc == RC_PIPELINE_CREATE_FAIL:
+        return "pipeline_create"
+    if rc == RC_DISPATCH_FAIL:
+        return "gpu_dispatch"
+    if rc == RC_NO_VULKAN_DEVICE:
+        return "no_vulkan_device"
+    return "runner_other"
 
 
 @dataclass
@@ -99,19 +142,29 @@ class VulkanLayerOracle:
     def compile(self, candidate_cpp: str | Path, class_name: str, header: str,
                 shader: str | Path | None,
                 extra_sources: Sequence[str | Path] = (),
-                extra_includes: Sequence[str | Path] = ()) -> tuple[Path, str]:
+                extra_includes: Sequence[str | Path] = (),
+                extra_shaders: Sequence[str | Path] = ()) -> tuple[Path, str]:
         """Build runner + candidate.cpp [+ extra_sources] against vulkan libncnn.
 
-        `shader` is the candidate's .comp file (injected as CANDIDATE_SHADER and
-        compiled at runtime) for the FROM-SCRATCH path. Pass None for the
-        NATIVE-SUBCLASS path (`Cand_X_vulkan : public ncnn::X_vulkan`), which
-        inherits ncnn's built-in create_pipeline + baked SPIR-V and needs no
-        candidate shader. The runner exe path is returned.
+        `shader` is the candidate's PRIMARY .comp file (injected as
+        CANDIDATE_SHADER and reachable via compile_candidate_shader()) for the
+        FROM-SCRATCH path. Pass None for the NATIVE-SUBCLASS path
+        (`Cand_X_vulkan : public ncnn::X_vulkan`), which inherits ncnn's
+        built-in create_pipeline + baked SPIR-V and needs no candidate shader.
+
+        `extra_shaders` are ADDITIONAL .comp files the LLM wrote for the SAME
+        op (e.g. BinaryOp: primary=binaryop.comp, extras=[binaryop_broadcast.comp,
+        binaryop_pack4.comp]). They are staged next to the primary in a shared
+        SHADER DIRECTORY, and CANDIDATE_SHADER_DIR is passed as a macro so the
+        candidate can call compile_candidate_shader_by_name(opt, "binaryop_broadcast", ...).
+
+        The runner exe path is returned.
         """
         self._ensure_libncnn()
         candidate_cpp = Path(candidate_cpp).resolve()
         shader = Path(shader).resolve() if shader is not None else None
         extra_src = [Path(s).resolve() for s in extra_sources]
+        extra_shd = [Path(s).resolve() for s in extra_shaders]
         for _p in [candidate_cpp, *extra_src]:
             _strip_creator_inplace(_p)
 
@@ -120,16 +173,33 @@ class VulkanLayerOracle:
         build = proj / "build"
         runner = build / "runner"
 
+        # Stage the shader directory so ALL candidate shaders (primary + extras)
+        # sit next to each other under a single path we can hand to the runner
+        # via CANDIDATE_SHADER_DIR. We COPY (not symlink) so the mtime-based
+        # cache invalidation below picks up edits reliably.
+        shader_dir = proj / "shaders"
+        shader_dir.mkdir(parents=True, exist_ok=True)
+        staged_shaders: list[Path] = []
+        for s in ([shader] if shader is not None else []) + extra_shd:
+            dst = shader_dir / Path(s).name
+            try:
+                if not dst.exists() or dst.stat().st_mtime < s.stat().st_mtime:
+                    shutil.copy2(s, dst)
+            except OSError:
+                pass
+            staged_shaders.append(dst)
+        primary_staged = staged_shaders[0] if shader is not None else None
+
         # rebuild if exe missing or any input newer than exe
         inputs = [candidate_cpp, self.runner_src, _THIS / "cand_vulkan_shader.h"]
-        if shader is not None:
-            inputs.append(shader)
+        inputs += staged_shaders
         inputs += [s for s in extra_src if s.exists()]
         newest = max(p.stat().st_mtime for p in inputs if p.exists())
         if runner.exists() and runner.stat().st_mtime >= newest:
             return runner, "(cached)"
 
-        cml = self._cmakelists(candidate_cpp, class_name, header, shader, extra_src, extra_includes)
+        cml = self._cmakelists(candidate_cpp, class_name, header, primary_staged,
+                               extra_src, extra_includes, shader_dir if staged_shaders else None)
         (proj / "CMakeLists.txt").write_text(cml, encoding="utf-8")
 
         cfg = [self.cmake, "-S", str(proj), "-B", str(build),
@@ -148,7 +218,9 @@ class VulkanLayerOracle:
         return runner, log
 
     def _cmakelists(self, candidate_cpp: Path, class_name: str, header: str,
-                    shader: Path | None, extra_src: list[Path], extra_includes: Sequence[str | Path]) -> str:
+                    shader: Path | None, extra_src: list[Path],
+                    extra_includes: Sequence[str | Path],
+                    shader_dir: Path | None = None) -> str:
         srcs = " ".join(f'"{s}"' for s in [self.runner_src, candidate_cpp, *extra_src])
         # ncnn source-tree includes so a NATIVE-SUBCLASS candidate can
         # `#include "vulkan/<op>_vulkan.h"` (internal layer headers are NOT
@@ -162,6 +234,12 @@ class VulkanLayerOracle:
             *[Path(x) for x in extra_includes],
         ])
         shader_def = f'\n    "CANDIDATE_SHADER=\\"{shader}\\""' if shader is not None else ""
+        # CANDIDATE_SHADER_DIR points at the directory holding EVERY .comp we
+        # staged (primary + extras). compile_candidate_shader_by_name reads
+        # from it; primary compile_candidate_shader() still reads CANDIDATE_SHADER
+        # directly, so single-shader ops behave identically to before.
+        shader_dir_def = (f'\n    "CANDIDATE_SHADER_DIR=\\"{shader_dir}\\""'
+                         if shader_dir is not None else "")
         return f"""cmake_minimum_required(VERSION 3.10)
 project(vk_oracle CXX)
 set(CMAKE_CXX_STANDARD 11)
@@ -172,7 +250,7 @@ add_executable(runner {srcs})
 target_include_directories(runner PRIVATE {incs})
 target_compile_definitions(runner PRIVATE
     "CANDIDATE_HEADER=\\"{header}\\""
-    "CANDIDATE_CLASS={class_name}"{shader_def})
+    "CANDIDATE_CLASS={class_name}"{shader_def}{shader_dir_def})
 target_link_libraries(runner ncnn)
 """
 
@@ -185,10 +263,12 @@ target_link_libraries(runner ncnn)
             weight_flags: Sequence[int] = (),
             extra_sources: Sequence[str | Path] = (),
             extra_includes: Sequence[str | Path] = (),
+            extra_shaders: Sequence[str | Path] = (),
             packing: int = 0) -> OracleResult:
         try:
             runner, clog = self.compile(candidate_cpp, class_name, header, shader,
-                                        extra_sources=extra_sources, extra_includes=extra_includes)
+                                        extra_sources=extra_sources, extra_includes=extra_includes,
+                                        extra_shaders=extra_shaders)
         except Exception as exc:  # noqa: BLE001
             return OracleResult(ok=False, error=str(exc), compile_log=str(exc))
 
@@ -213,17 +293,38 @@ target_link_libraries(runner ncnn)
         if packing > 0:
             argv += ["--packing", str(packing)]
 
+        # Drop the exact argv + full run_log next to the input bins so failures
+        # are reproducible outside the batch pipeline (numeric_log truncates to
+        # the last 12 lines of stderr; the argv is what lets us re-invoke).
+        try:
+            (wd / "argv.txt").write_text("\n".join(argv), encoding="utf-8")
+        except Exception:
+            pass
         proc = subprocess.run(argv, capture_output=True, text=True, env=self._runner_env())
         run_log = " ".join(argv) + "\n" + proc.stdout + proc.stderr
+        try:
+            (wd / "run_log.txt").write_text(run_log, encoding="utf-8")
+        except Exception:
+            pass
 
         if proc.returncode == RC_NO_VULKAN_DEVICE:
             return OracleResult(ok=False, skipped=True, return_code=proc.returncode,
                                 compile_log=clog, run_log=run_log, runner=str(runner),
                                 error="no vulkan device (skipped)")
         if proc.returncode != 0 or not out_path.exists():
+            # Classify the failure so downstream repair prompts can frame the
+            # error correctly. Shader errors get the fenced glslang block
+            # spliced back into the error string so the debugger sees the
+            # actual .comp line numbers, not just "runner exited nonzero".
+            cat = _classify_runner_rc(proc.returncode)
+            err = f"vulkan runner failed rc={proc.returncode} category={cat}"
+            if cat == "shader_compile":
+                block = _shader_error_block(run_log)
+                if block:
+                    err += f"\n\n{block}"
             return OracleResult(ok=False, return_code=proc.returncode, compile_log=clog,
                                 run_log=run_log, runner=str(runner),
-                                error=f"vulkan runner failed (rc={proc.returncode})")
+                                error=err)
         out = read_bin(out_path)
         return OracleResult(ok=True, outputs=[out], return_code=0, compile_log=clog,
                             run_log=run_log, runner=str(runner))
@@ -239,12 +340,14 @@ target_link_libraries(runner ncnn)
                tol: float = 1e-3,
                extra_sources: Sequence[str | Path] = (),
                extra_includes: Sequence[str | Path] = (),
+               extra_shaders: Sequence[str | Path] = (),
                packing: int = 0,
                backend: str = "vulkan") -> OracleResult:
         res = self.run(candidate_cpp=candidate_cpp, class_name=class_name, header=header,
                        shader=shader, params=params, inputs=inputs, weights=weights,
                        weight_flags=weight_flags,
-                       extra_sources=extra_sources, extra_includes=extra_includes, packing=packing)
+                       extra_sources=extra_sources, extra_includes=extra_includes,
+                       extra_shaders=extra_shaders, packing=packing)
         if res.skipped:
             res.passed = None
             res.detail = "vulkan device unavailable (skipped)"

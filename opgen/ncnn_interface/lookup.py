@@ -9,6 +9,7 @@ Public surface:
     get_interface(name)                         -> record | None
     render_for_prompt(name, *, role)            -> str
     guess_layer_from_task(task_name)            -> str | None
+    layer_to_family(layer_name)                 -> str
 """
 
 from __future__ import annotations
@@ -235,6 +236,108 @@ def guess_layer_from_task(task_name: str,
                     return override
                 break
     return candidate
+
+
+# ---------------------------------------------------------------------------
+# ncnn layer name -> op family. DEPRECATED for OptimizeAgent (wiki v1 dropped
+# per-family playbook in favor of a generic primitives + bd_axes + regime
+# knowledge structure — routing is now by roofline regime, not by op family).
+# Kept for other agents that may still want family-level tagging.
+# ---------------------------------------------------------------------------
+_LAYER_TO_FAMILY: dict[str, str] = {
+    # elementwise_binary
+    "BinaryOp": "elementwise_binary",
+    "Bias": "elementwise_binary",
+    "Scale": "elementwise_binary",
+    "Eltwise": "elementwise_binary",
+    # elementwise_unary
+    "UnaryOp": "elementwise_unary",
+    "AbsVal": "elementwise_unary",
+    # activation
+    "ReLU": "activation",
+    "PReLU": "activation",
+    "Sigmoid": "activation",
+    "TanH": "activation",
+    "Swish": "activation",
+    "Mish": "activation",
+    "GELU": "activation",
+    "ELU": "activation",
+    "SELU": "activation",
+    "HardSigmoid": "activation",
+    "HardSwish": "activation",
+    "Softplus": "activation",
+    "Clip": "activation",
+    "Dropout": "activation",
+    # softmax
+    "Softmax": "softmax",
+    "LogSoftmax": "softmax",
+    # normalization
+    "BatchNorm": "normalization",
+    "LayerNorm": "normalization",
+    "GroupNorm": "normalization",
+    "InstanceNorm": "normalization",
+    "RMSNorm": "normalization",
+    "Normalize": "normalization",
+    # reduction
+    "Reduction": "reduction",
+    # conv
+    "Convolution": "conv",
+    "Convolution1D": "conv",
+    "Convolution3D": "conv",
+    "ConvolutionDepthWise": "conv",
+    "ConvolutionDepthWise1D": "conv",
+    "ConvolutionDepthWise3D": "conv",
+    # deconv
+    "Deconvolution": "deconv",
+    "DeconvolutionDepthWise": "deconv",
+    "Deconvolution1D": "deconv",
+    "Deconvolution3D": "deconv",
+    "DeconvolutionDepthWise1D": "deconv",
+    # gemm
+    "Gemm": "gemm",
+    "MatMul": "gemm",
+    "InnerProduct": "gemm",
+    # pooling
+    "Pooling": "pooling",
+    "Pooling1D": "pooling",
+    "Pooling3D": "pooling",
+    # layout
+    "Reshape": "layout",
+    "Permute": "layout",
+    "Flatten": "layout",
+    "Concat": "layout",
+    "Split": "layout",
+    "Slice": "layout",
+    "Padding": "layout",
+    "Crop": "layout",
+    "TileOnnx": "layout",
+    "Squeeze": "layout",
+    "Unsqueeze": "layout",
+    "ExpandDims": "layout",
+    # recurrent
+    "RNN": "recurrent",
+    "LSTM": "recurrent",
+    "GRU": "recurrent",
+}
+
+
+def layer_to_family(layer_name: str | None) -> str:
+    """Map an ncnn layer name to its op family (12-family taxonomy).
+
+    Returns "unknown" for anything not in the table, including None/"". Callers
+    (WikiLoader) treat "unknown" as "inject backend-level knowledge only, skip
+    the per-family playbook page".
+    """
+    if not layer_name:
+        return "unknown"
+    if layer_name in _LAYER_TO_FAMILY:
+        return _LAYER_TO_FAMILY[layer_name]
+    # case-insensitive fallback for callers passing file-stems
+    lc = layer_name.lower()
+    for k, v in _LAYER_TO_FAMILY.items():
+        if k.lower() == lc:
+            return v
+    return "unknown"
 
 
 # ---------------------------------------------------------------------------

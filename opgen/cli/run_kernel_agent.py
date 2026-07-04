@@ -19,11 +19,19 @@ import opgen as _opgen; _opgen.bootstrap_paths()
 
 from config import GraphConfig, RUNS_ROOT
 from kernel_agent import KernelAgent
+import paths
 
 
 def _load_base_kernel(task: str, base_dir: str | None) -> tuple[dict, dict]:
-    """For --backend arm: load verified base kernel code + profile from a prior
-    base run (runs/<task>/kernel/summary.json) or an explicit --base-kernel-dir."""
+    """For --backend arm/vulkan: load verified base kernel code + profile.
+
+    Resolution order:
+    1. Explicit --base-kernel-dir (user override).
+    2. NEW layout: runs/<task>/base_kernel/artifacts/ (published as a CONTRACT
+       by KernelAgent._publish_base_artifacts on successful base run).
+    3. Legacy: runs/<task>/base_kernel/summary.json (in-place summary read).
+    4. Pre-restructure legacy: runs/<task>/kernel/summary.json.
+    """
     if base_dir:
         d = Path(base_dir)
         code = {p.name: p.read_text(encoding="utf-8") for p in d.glob("*")
@@ -33,10 +41,24 @@ def _load_base_kernel(task: str, base_dir: str | None) -> tuple[dict, dict]:
         if pj.exists():
             prof = json.loads(pj.read_text(encoding="utf-8"))
         return code, prof
-    summ = RUNS_ROOT / task / "kernel" / "summary.json"
+
+    # 2. artifacts/ contract dir — the SoT for cross-backend consumption
+    art = paths.base_kernel_artifacts_dir(RUNS_ROOT, task)
+    if art.exists():
+        code = {p.name: p.read_text(encoding="utf-8") for p in art.glob("*")
+                if p.suffix in (".h", ".hpp", ".cpp", ".cc", ".cxx")}
+        if code:
+            prof = {}
+            pj = art / "kernel_profile.json"
+            if pj.exists():
+                prof = json.loads(pj.read_text(encoding="utf-8"))
+            return code, prof
+
+    # 3+4. summary.json fallback (new base_kernel dir first, then legacy kernel/)
+    summ = paths.kernel_summary(RUNS_ROOT, task, "base")
     if not summ.exists():
         raise FileNotFoundError(f"no base kernel found; run --backend base first or pass "
-                                f"--base-kernel-dir (looked at {summ})")
+                                f"--base-kernel-dir (looked at {art} and {summ})")
     data = json.loads(summ.read_text(encoding="utf-8"))
     code = (data.get("final_result") or {}).get("response_code") or {}
     prof = data.get("kernel_profile") or {}
@@ -59,6 +81,12 @@ def main() -> None:
     p.add_argument("--base-kernel-dir", default=None,
                    help="arm/vulkan: dir with the verified base cand_*.{h,cpp} + kernel_profile.json "
                         "(default: runs/<task>/kernel)")
+    p.add_argument("--vulkan-mode", choices=["scratch", "native_first", "native_only"],
+                   default="scratch",
+                   help="--backend vulkan: dispatch mode. scratch (default) = agent authors "
+                        ".h+.cpp+.comp shader from scratch; native_first = try native subclass, "
+                        "fall back to scratch on non-verify; native_only = never asks the LLM to "
+                        "write a shader (legacy miniset audit path).")
     args = p.parse_args()
 
     cfg = GraphConfig(
@@ -67,6 +95,7 @@ def main() -> None:
         model=args.model_name,
         max_rounds=args.max_rounds,
         run_numeric=not args.no_numeric,
+        vulkan_mode=args.vulkan_mode,
     )
     base_code, base_prof = ({}, {})
     if args.backend in ("arm", "vulkan"):

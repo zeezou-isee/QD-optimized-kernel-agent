@@ -38,6 +38,11 @@ SETS_PKG      = "batch.sets"
 RESULTS_DIR   = BATCH_DIR / "results"
 CLI_OPERATOR  = ROOT / "opgen" / "cli" / "run_operator_agent.py"
 CLI_KERNEL    = ROOT / "opgen" / "cli" / "run_kernel_agent.py"
+
+# Bootstrap opgen/ path so batch_runner can `import paths` for the new 5-stage
+# runs layout (opgen/paths.py — single source of truth for subdir names).
+sys.path.insert(0, str(ROOT / "opgen"))
+import paths  # noqa: E402
 RUNS          = ROOT / "opgen" / "runs"
 VENV_BIN      = ROOT / ".venv" / "bin"
 
@@ -148,9 +153,13 @@ def summarize(op: str) -> dict:
 
 
 def summarize_kernel(op: str, backend: str) -> dict:
-    """Read the KernelAgent's standalone summary.json for `op` (base or arm)."""
-    sub = "kernel" if backend == "base" else f"kernel_{backend}"
-    sj = RUNS / op / sub / "summary.json"
+    """Read the KernelAgent's standalone summary.json for `op` (base or arm/vulkan).
+
+    Resolves via paths.kernel_summary which prefers the new 5-stage layout
+    (base_kernel/ or backends/<backend>/kernel/) and falls back to the legacy
+    flat layout (kernel/, kernel_arm/, kernel_vulkan/) if the new dir is missing.
+    """
+    sj = paths.kernel_summary(RUNS, op, backend)
     if not sj.exists():
         return {}
     try:
@@ -190,7 +199,7 @@ def child_env() -> dict:
 
 def run_one(category: str, op: str, cfg: ModuleType,
             mode: str = "operator", backend: str = "base",
-            model: str | None = None) -> dict:
+            model: str | None = None, vulkan_mode: str | None = None) -> dict:
     """Spawn one agent (operator | kernel) for `op` and capture its summary.
 
     mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
@@ -208,6 +217,8 @@ def run_one(category: str, op: str, cfg: ModuleType,
             "--max-rounds", cfg.MAX_ROUNDS,
             "--backend", backend,
         ]
+        if backend == "vulkan" and vulkan_mode:
+            cmd += ["--vulkan-mode", vulkan_mode]
     else:
         cmd = [
             sys.executable, str(CLI_OPERATOR),
@@ -273,6 +284,13 @@ def main() -> None:
                         "Use this to test kernel-prompt changes in isolation.")
     p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
                    help="--kernel-only: which backend to verify (default base)")
+    p.add_argument("--vulkan-mode", choices=["scratch", "native_first", "native_only"],
+                   default=None,
+                   help="--backend vulkan: dispatch mode. scratch (default) = agent "
+                        "authors .h+.cpp+.comp shader from scratch; native_first = "
+                        "try native subclass then fall back to scratch; native_only "
+                        "= legacy (never asks the LLM to write shader). Passed "
+                        "through to opgen/kernel_cli.py --vulkan-mode.")
     p.add_argument("--model", default=None,
                    help="override cfg.MODEL (e.g. claude-opus-4-8 / deepseek-v4-pro). "
                         "When omitted, uses the MODEL declared in batch/sets/<set>.py.")
@@ -317,7 +335,8 @@ def main() -> None:
             continue
         print(f"[{i}/{total}] {cat}/{op}: running...", flush=True)
         mode = "kernel" if args.kernel_only else "operator"
-        row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model)
+        row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model,
+                      vulkan_mode=args.vulkan_mode)
         results[op] = row
         save_results(results_path, results)
         if args.kernel_only:

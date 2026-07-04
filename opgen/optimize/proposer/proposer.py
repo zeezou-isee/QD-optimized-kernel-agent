@@ -118,20 +118,40 @@ class LLMProposer:
         hardware: dict[str, Any],
         llm_query: Callable[[str, str], str],
         model: str = "deepseek-v4-pro",
+        backend: str = "base",
+        wiki: Any | None = None,        # WikiLoader; None => no wiki context
+        regime: str = "unknown",        # roofline regime; drives BD-axis injection
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel = dict(baseline_kernel)
         self.hardware = hardware
         self.llm = llm_query
         self.model = model
+        self.backend = backend
+        self.wiki = wiki
+        self.regime = regime
+
+    def _wiki_context(self) -> str:
+        """Retrieve generic primitives + bd_axes[regime] + backend knowledge;
+        empty string when disabled."""
+        if self.wiki is None:
+            return ""
+        try:
+            return self.wiki.context_block(self.regime) or ""
+        except Exception:  # noqa: BLE001
+            # A malformed wiki file must NOT crash the optimize loop.
+            return ""
 
     def propose(self, history: list) -> ParameterizedTemplate:
         from .prompts import proposer_prompt
         tried: list[str] = []
         for it in history:
             tried.extend(getattr(it, "techniques", []) or [])
-        prompt = proposer_prompt(self.task_name, self.baseline_kernel,
-                                 self.hardware, sorted(set(tried)))
+        prompt = proposer_prompt(
+            self.task_name, self.baseline_kernel, self.hardware,
+            sorted(set(tried)),
+            context=self._wiki_context(), backend=self.backend,
+        )
         response = self.llm(prompt, self.model)
         return parse_template(response, self.baseline_kernel)
 
@@ -149,8 +169,11 @@ class LLMProposer:
                 fs = it.get("failure_summary") or it.get("error")
                 if fs:
                     fails.append(f"[{it.get('directive', '?')}] {fs}")
-        prompt = vary_prompt(self.task_name, parent_code, self.hardware,
-                             directive, sorted(set(t for t in tried if t)),
-                             recent_failures=fails[-3:])
+        prompt = vary_prompt(
+            self.task_name, parent_code, self.hardware,
+            directive, sorted(set(t for t in tried if t)),
+            recent_failures=fails[-3:],
+            context=self._wiki_context(), backend=self.backend,
+        )
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)

@@ -2,5 +2,6 @@
 
 from .proposer import LLMProposer, parse_template
 from .prompts import proposer_prompt
+from .wiki import WikiLoader
 
-__all__ = ["LLMProposer", "parse_template", "proposer_prompt"]
+__all__ = ["LLMProposer", "parse_template", "proposer_prompt", "WikiLoader"]

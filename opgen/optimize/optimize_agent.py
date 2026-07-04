@@ -127,7 +127,9 @@ class OptimizeAgent:
         from inner import ConstraintEngine, detect, inner_search
 
         hw_specs = self.hardware or detect()
-        engine = ConstraintEngine(hw_specs)
+        wiki = self._build_wiki()
+        hw_extras = wiki.hardware_extras(self._hw_profile_key(hw_specs)) if wiki else {}
+        engine = ConstraintEngine(hw_specs, extras=hw_extras)
         ev = self.evaluator_obj or Evaluator(
             baseline_kernel=self.baseline_kernel_code, model_py=self.model_py,
             ncnn_root=self.ncnn_root, workdir=self.workdir,
@@ -135,7 +137,9 @@ class OptimizeAgent:
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
         )
-        proposer = self.proposer or self._build_proposer(hw_specs.to_dict())
+        proposer = self.proposer or self._build_proposer(
+            hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras,
+        )
 
         res = OptimizeResult()
         # measure the baseline as the reference best (it always exists & is correct).
@@ -189,12 +193,91 @@ class OptimizeAgent:
             res.stopped_reason = f"max_rounds ({self.max_rounds}) reached"
         return res
 
-    def _build_proposer(self, hw_dict: dict[str, Any]):
+    def _build_proposer(self, hw_dict: dict[str, Any],
+                        wiki: Any | None = None,
+                        hw_extras: dict[str, float] | None = None,
+                        regime: str | None = None):
         from proposer import LLMProposer
+        merged_hw = dict(hw_dict)
+        if hw_extras:
+            merged_hw.update(hw_extras)
+        # cache for downstream callers (e.g. _run_map_elites) that call this
+        # without arguments today.
+        if wiki is None and getattr(self, "_wiki_cached", None) is None:
+            wiki = self._build_wiki()
+            hw_extras = wiki.hardware_extras(self._hw_profile_key_from_dict(merged_hw)) if wiki else {}
+            if hw_extras:
+                merged_hw.update(hw_extras)
+        # regime: caller (map_elites) may pass it; otherwise try a cheap static
+        # estimate; default "unknown" (loader treats as mixed regime).
+        if regime is None:
+            regime = self.regime or self._infer_regime_static()
         return LLMProposer(
             task_name=self.task_name, baseline_kernel=self.baseline_kernel_code,
-            hardware=hw_dict, llm_query=self.llm_query, model=self.model,
+            hardware=merged_hw, llm_query=self.llm_query, model=self.model,
+            backend=self.backend, wiki=wiki, regime=regime,
         )
+
+    def _infer_regime_static(self) -> str:
+        """Static regime guess for the M1 linear loop (which doesn't build a
+        full RooflineResult). Falls back to 'unknown' on any error → the wiki
+        treats 'unknown' as 'mixed' and injects both coordinate systems.
+        """
+        if not self.model_py:
+            return "unknown"
+        try:
+            from policy.roofline import estimate_operator_profile, diagnose
+            op_prof = self.operator_profile or estimate_operator_profile(self.model_py)
+            rl = diagnose(op_prof, self.device_roofline)
+            return rl.regime or "unknown"
+        except Exception:  # noqa: BLE001
+            return "unknown"
+
+    # ------------------------------------------------------------------ wiki
+    def _build_wiki(self):
+        """Construct a WikiLoader once per run for the active backend. Returns
+        None on 'base' backend (no wiki content targets 'base'), or when the
+        environment variable KERNELGEN_WIKI is set to a disable value
+        (`off`/`0`/`false`/`no`) — the A/B control arm. Cached on self.
+        """
+        cached = getattr(self, "_wiki_cached", "unset")
+        if cached != "unset":
+            return cached
+        wiki = None
+        import os
+        disabled = os.environ.get("KERNELGEN_WIKI", "").strip().lower() in (
+            "off", "0", "false", "no", "disabled",
+        )
+        if self.backend in ("arm", "vulkan") and not disabled:
+            from proposer import WikiLoader
+            # experience_pool/wiki/ lives at the repo root, i.e. 3 dirs above
+            # this file (opgen/optimize/optimize_agent.py -> repo/experience_pool/wiki).
+            wiki_root = Path(__file__).resolve().parents[2] / "experience_pool" / "wiki"
+            wiki = WikiLoader(wiki_root, self.backend)
+            if not wiki.enabled:
+                wiki = None
+        self._wiki_cached = wiki
+        return wiki
+
+    def _resolve_op_family(self) -> str:
+        try:
+            from ncnn_interface import guess_layer_from_task, layer_to_family
+        except ImportError:
+            return "unknown"
+        layer = guess_layer_from_task(self.task_name)
+        return layer_to_family(layer)
+
+    @staticmethod
+    def _hw_profile_key(hw_specs) -> str:
+        """Map a HardwareSpecs instance to a wiki hardware-profile filename stem.
+        v0: single Apple M5 profile per backend. Extend by inspecting arch /
+        brand string as more profiles are added.
+        """
+        return "apple_m5"
+
+    @staticmethod
+    def _hw_profile_key_from_dict(hw: dict[str, Any]) -> str:
+        return "apple_m5"
 
     # ------------------------------------------------------------- map-elites (M2/M3)
     def _run_map_elites(self) -> OptimizeResult:
@@ -206,7 +289,9 @@ class OptimizeAgent:
                             run_best_first, compare)
 
         hw_specs = self.hardware or detect()
-        engine = ConstraintEngine(hw_specs)
+        wiki = self._build_wiki()
+        hw_extras = wiki.hardware_extras(self._hw_profile_key(hw_specs)) if wiki else {}
+        engine = ConstraintEngine(hw_specs, extras=hw_extras)
         ev = self.evaluator_obj or Evaluator(
             baseline_kernel=self.baseline_kernel_code, model_py=self.model_py,
             ncnn_root=self.ncnn_root, workdir=self.workdir,
@@ -214,14 +299,16 @@ class OptimizeAgent:
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
         )
-        proposer = self.proposer or self._build_proposer(hw_specs.to_dict())
-
-        # roofline diagnosis -> regime (selects BD coordinate system)
+        # roofline diagnosis first so we can pass regime into the proposer
+        # (wiki v1 keys BD-axis content by regime).
         op_prof = self.operator_profile
         if op_prof is None and self.model_py:
             op_prof = estimate_operator_profile(self.model_py)
         rl = diagnose(op_prof, self.device_roofline) if op_prof else None
         regime = self.regime or (rl.regime if rl else "memory_bound")
+        proposer = self.proposer or self._build_proposer(
+            hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras, regime=regime,
+        )
 
         res = OptimizeResult(policy="map_elites")
         base_t = ParameterizedTemplate(
