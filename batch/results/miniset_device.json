@@ -1,0 +1,303 @@
+{
+  "Abs": {
+    "op": "Abs",
+    "native_type": "UnaryOp",
+    "shapes": "[256,256,8]",
+    "results": {
+      "native": {
+        "latency_min": 1.01,
+        "latency_avg": 1.1,
+        "ipc": 0.234,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.18,
+        "latency_avg": 0.22,
+        "ipc": 0.308,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.18,
+        "latency_avg": 0.23,
+        "ipc": 0.229,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "Add": {
+    "op": "Add",
+    "native_type": "BinaryOp",
+    "shapes": "[64,64,3],[1,1,3]",
+    "results": {
+      "native": {
+        "latency_min": 0.01,
+        "latency_avg": 0.01,
+        "ipc": 2.914,
+        "symbol": "ncnn::binary_op_vector_fp16s(decimal16 const*, decimal16 const*, decimal16*, int, int, int, int, int)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 3.191,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.0,
+        "latency_avg": 0.01,
+        "ipc": 1.575,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "And": {
+    "op": "And",
+    "native_type": "torch.logical_and",
+    "shapes": "[32,1,32],[32,1,32]",
+    "results": {
+      "native": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 1.939,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 4.127,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 5.252,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "AveragePool": {
+    "op": "AveragePool",
+    "native_type": "Pooling",
+    "shapes": "[64,64,16]",
+    "results": {
+      "native": {
+        "latency_min": 0.04,
+        "latency_avg": 0.04,
+        "ipc": 2.971,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.03,
+        "latency_avg": 0.03,
+        "ipc": 4.699,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "BatchNormalization": {
+    "op": "BatchNormalization",
+    "native_type": "BatchNorm",
+    "shapes": "[128,128,32]",
+    "results": {
+      "native": {
+        "latency_min": 1.05,
+        "latency_avg": 1.14,
+        "ipc": 0.405,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastFree(void*)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.18,
+        "latency_avg": 0.22,
+        "ipc": 0.161,
+        "symbol": "__aarch64_ldadd4_acq_rel",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.72,
+        "latency_avg": 0.89,
+        "ipc": 0.452,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "Conv": {
+    "op": "Conv",
+    "native_type": "Convolution",
+    "shapes": "[32,32,3],[3,3,3],[16]",
+    "results": {
+      "native": {
+        "latency_min": 0.21,
+        "latency_avg": 0.22,
+        "ipc": 4.026,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.04,
+        "latency_avg": 0.04,
+        "ipc": 8.26,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "Gemm": {
+    "op": "Gemm",
+    "native_type": "Gemm",
+    "shapes": "[512,32]",
+    "results": {
+      "native": {
+        "latency_min": 0.12,
+        "latency_avg": 0.13,
+        "ipc": 1.464,
+        "symbol": "ncnn::get_optimal_tile_mnk_fp16sa(int, int, int, int, int, int, int&, int&, int&, int)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 5.49,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "Greater": {
+    "op": "Greater",
+    "native_type": "torch.gt",
+    "shapes": "[512,1,128],[512,1,128]",
+    "results": {
+      "native": {
+        "latency_min": 0.0,
+        "latency_avg": 0.0,
+        "ipc": 0.0,
+        "symbol": "unknown[+ffffffed262cc410]",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.05,
+        "latency_avg": 0.05,
+        "ipc": 0.926,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.15,
+        "latency_avg": 0.16,
+        "ipc": 3.655,
+        "symbol": "unknown[+ffffffed264f45f8]",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "Mul": {
+    "op": "Mul",
+    "native_type": "BinaryOp",
+    "shapes": "[256,1,256],[256,1,256]",
+    "results": {
+      "native": {
+        "latency_min": 0.1,
+        "latency_avg": 0.11,
+        "ipc": 1.524,
+        "symbol": "ncnn::binary_op_vector_fp16s(decimal16 const*, decimal16 const*, decimal16*, int, int, int, int, int)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.04,
+        "latency_avg": 0.05,
+        "ipc": 0.619,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.03,
+        "latency_avg": 0.04,
+        "ipc": 0.636,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "ReduceMax": {
+    "op": "ReduceMax",
+    "native_type": "Reduction",
+    "shapes": "[64,128,128]",
+    "results": {
+      "native": {
+        "latency_min": 0.95,
+        "latency_avg": 1.03,
+        "ipc": 0.0,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "ReduceSum": {
+    "op": "ReduceSum",
+    "native_type": "Reduction",
+    "shapes": "[32,64,128]",
+    "results": {
+      "native": {
+        "latency_min": 0.16,
+        "latency_avg": 0.17,
+        "ipc": 0.663,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.04,
+        "latency_avg": 0.04,
+        "ipc": 1.847,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.25,
+        "latency_avg": 0.28,
+        "ipc": 0.27,
+        "symbol": "memset",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  }
+}

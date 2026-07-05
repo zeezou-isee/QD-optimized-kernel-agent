@@ -97,6 +97,30 @@ def grid_size(regime: str) -> int:
     return len(a1) * len(a2)
 
 
+def posthoc_bd(profile: dict | None) -> str:
+    """Post-hoc refinement bin from MEASURED micro-arch metrics (Method M2.3
+    'refinement axes': parameter-dependent, only known AFTER measurement, and
+    sub-divide a niche WITHOUT changing its positioning).
+
+    Consumes an op_profiler-style dict (ipc / cache_miss_rate / operator_fraction)
+    — i.e. a REAL profile from the on-device simpleperf path. In the host search
+    (no PMU) this returns "" and is a no-op; it activates when a device profile is
+    attached to the best sample, closing the "profiler → search" loop.
+
+    Returns a short tag like "cache_hot+compute" (empty when no measured signal).
+    """
+    if not profile:
+        return ""
+    tags: list[str] = []
+    cm = profile.get("cache_miss_rate")
+    if isinstance(cm, (int, float)):
+        tags.append("cache_hot" if cm < 0.02 else "cache_cold")
+    ipc = profile.get("ipc")
+    if isinstance(ipc, (int, float)):
+        tags.append("compute" if ipc >= 2.0 else "stall")
+    return "+".join(tags)
+
+
 def classify_with_novelty(
     techniques: list[str],
     regime: str,

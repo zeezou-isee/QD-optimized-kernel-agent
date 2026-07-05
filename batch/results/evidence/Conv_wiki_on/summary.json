@@ -1,0 +1,174 @@
+{
+  "iterations": [],
+  "best_round": 0,
+  "best_kernel": {
+    "cand_conv.cpp": "#include \"cand_conv.h\"\n#include <math.h>\n#include <vector>\nnamespace ncnn {\n\nCand_Conv::Cand_Conv()\n{\n    one_blob_only = false;\n    support_inplace = false;\n}\n\nint Cand_Conv::load_param(const ParamDict& pd)\n{\n    num_output = pd.get(0, 0);\n    kernel_w = pd.get(1, 0);\n    kernel_h = pd.get(11, kernel_w);\n    dilation_w = pd.get(2, 1);\n    dilation_h = pd.get(12, dilation_w);\n    stride_w = pd.get(3, 1);\n    stride_h = pd.get(13, stride_w);\n    pad_left = pd.get(4, 1);\n    pad_right = pd.get(15, pad_left);\n    pad_top = pd.get(14, pad_left);\n    pad_bottom = pd.get(16, pad_top);\n    bias_term = pd.get(5, 1);\n    weight_data_size = pd.get(6, 0);\n    group = pd.get(7, 1);\n    return 0;\n}\n\nint Cand_Conv::load_model(const ModelBin& /*mb*/)\n{\n    return 0;\n}\n\nint Cand_Conv::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const\n{\n    const Mat& x = bottom_blobs[0];\n    const Mat& w = bottom_blobs[1];\n\n    const int W = x.w;\n    const int H = x.h;\n\n    int kw, kh, cin_per_group, Cout;\n    if (w.dims == 4)\n    {\n        kw = w.w;\n        kh = w.h;\n        cin_per_group = w.d;\n        Cout = w.c;\n    }\n    else if (w.dims == 3)\n    {\n        kw = w.w;\n        kh = w.h;\n        Cout = w.c;\n        cin_per_group = 1;\n    }\n    else\n    {\n        kw = w.w;\n        kh = 1;\n        Cout = w.h;\n        cin_per_group = 1;\n    }\n\n    const int g = group;\n    const int cout_per_group = Cout / g;\n\n    const int pad_h_t = pad_top;\n    const int pad_w_l = pad_left;\n\n    const int kernel_extent_w = dilation_w * (kw - 1) + 1;\n    const int kernel_extent_h = dilation_h * (kh - 1) + 1;\n\n    const int outw = (W + pad_left + pad_right - kernel_extent_w) / stride_w + 1;\n    const int outh = (H + pad_top + pad_bottom - kernel_extent_h) / stride_h + 1;\n    const int outHW = outw * outh;\n\n    Mat& top_blob = top_blobs[0];\n    top_blob.create(outw, outh, Cout, (size_t)4u, opt.blob_allocator);\n    if (top_blob.empty())\n        return -100;\n\n    const bool has_bias = bias_term && bottom_blobs.size() > 2;\n    const float* bias_ptr = 0;\n    Mat bias_flat;\n    if (has_bias)\n    {\n        bias_flat = bottom_blobs[2];\n        bias_ptr = (const float*)bias_flat;\n    }\n\n    const int per_oc = cin_per_group * kh * kw; // K dimension of GEMM\n\n    // im2col column buffer per group: [per_oc][outHW]\n    // Reused across groups to bound memory.\n    std::vector<float> col((size_t)per_oc * outHW);\n\n    // GEMM tiling knobs\n    const int MTILE = 1; // rows of weight (output channels) per tile\n    const int NTILE = 256; // columns (spatial positions) per tile\n\n    for (int grp = 0; grp < g; grp++)\n    {\n        const int ic_start = grp * cin_per_group;\n        const int oc_start = grp * cout_per_group;\n\n        // ---- im2col: build col[k][n], k over (icl,ky,kx), n over spatial ----\n        {\n            int krow = 0;\n            for (int icl = 0; icl < cin_per_group; icl++)\n            {\n                const int ic = ic_start + icl;\n                const float* xin = x.channel(ic);\n                for (int ky = 0; ky < kh; ky++)\n                {\n                    for (int kx = 0; kx < kw; kx++)\n                    {\n                        float* crow = &col[(size_t)krow * outHW];\n                        int n = 0;\n                        for (int oy = 0; oy < outh; oy++)\n                        {\n                            const int iy = oy * stride_h - pad_h_t + ky * dilation_h;\n                            const bool yvalid = (iy >= 0 && iy < H);\n                            for (int ox = 0; ox < outw; ox++)\n                            {\n                                float v = 0.f;\n                                if (yvalid)\n                                {\n                                    const int ix = ox * stride_w - pad_w_l + kx * dilation_w;\n                                    if (ix >= 0 && ix < W)\n                                        v = xin[iy * W + ix];\n                                }\n                                crow[n++] = v;\n                            }\n                        }\n                        krow++;\n                    }\n                }\n            }\n        }\n\n        // ---- GEMM: out[m][n] = sum_k weight[m][k] * col[k][n] (+bias) ----\n        for (int mt = 0; mt < cout_per_group; mt += MTILE)\n        {\n            const int mend = (mt + MTILE < cout_per_group) ? (mt + MTILE) : cout_per_group;\n\n            for (int nt = 0; nt < outHW; nt += NTILE)\n            {\n                const int nend = (nt + NTILE < outHW) ? (nt + NTILE) : outHW;\n\n                for (int m = mt; m < mend; m++)\n                {\n                    const int oc = oc_start + m;\n                    float* outptr = top_blob.channel(oc);\n                    const float* kptr = w.channel(oc); // [per_oc] contiguous\n                    const float b = has_bias ? bias_ptr[oc] : 0.f;\n\n                    for (int n = nt; n < nend; n++)\n                        outptr[n] = b;\n\n                    for (int k = 0; k < per_oc; k++)\n                    {\n                        const float wv = kptr[k];\n                        const float* crow = &col[(size_t)k * outHW];\n                        #pragma clang loop vectorize(enable)\n                        for (int n = nt; n < nend; n++)\n                            outptr[n] += wv * crow[n];\n                    }\n                }\n            }\n        }\n    }\n\n    return 0;\n}\n\nDEFINE_LAYER_CREATOR(Cand_Conv)\n} // namespace ncnn\n",
+    "cand_conv.h": "#ifndef CAND_CONV_H\n#define CAND_CONV_H\n#include \"layer.h\"\nnamespace ncnn {\nclass Cand_Conv : public Layer {\npublic:\n    Cand_Conv();\n    virtual int load_param(const ParamDict& pd);\n    virtual int load_model(const ModelBin& mb);\n    virtual int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const;\npublic:\n    int num_output;\n    int bias_term;\n    int weight_data_size;\n    int group;\n    int stride_w;\n    int stride_h;\n    int pad_left;\n    int pad_right;\n    int pad_top;\n    int pad_bottom;\n    int dilation_w;\n    int dilation_h;\n    int kernel_w;\n    int kernel_h;\n};\n} // namespace ncnn\n#endif\n"
+  },
+  "best_perf": {
+    "avg": 15.201666508801281,
+    "min": 15.201666508801281
+  },
+  "stopped_reason": "budget (16) reached",
+  "policy": "map_elites",
+  "extra": {
+    "regime": "memory_bound",
+    "roofline": {
+      "arithmetic_intensity": 0.2057877813504823,
+      "ridge": 8.0,
+      "regime": "memory_bound",
+      "min_latency_ms": null
+    },
+    "coverage": 2,
+    "rounds": 16,
+    "argmin_cell": [
+      "nchw",
+      "single"
+    ],
+    "baseline_cell": [
+      "nchw",
+      "none"
+    ],
+    "baseline_latency_ms": 16.90710394177586,
+    "archive": {
+      "cells": [
+        {
+          "cell": [
+            "nchw",
+            "none"
+          ],
+          "latency_ms": 16.90710394177586,
+          "kernel_code": {
+            "cand_conv.cpp": "#include \"cand_conv.h\"\n#include <math.h>\nnamespace ncnn {\n\nCand_Conv::Cand_Conv()\n{\n    one_blob_only = false;\n    support_inplace = false;\n}\n\nint Cand_Conv::load_param(const ParamDict& pd)\n{\n    num_output = pd.get(0, 0);\n    kernel_w = pd.get(1, 0);\n    kernel_h = pd.get(11, kernel_w);\n    dilation_w = pd.get(2, 1);\n    dilation_h = pd.get(12, dilation_w);\n    stride_w = pd.get(3, 1);\n    stride_h = pd.get(13, stride_w);\n    pad_left = pd.get(4, 1);\n    pad_right = pd.get(15, pad_left);\n    pad_top = pd.get(14, pad_left);\n    pad_bottom = pd.get(16, pad_top);\n    bias_term = pd.get(5, 1);\n    weight_data_size = pd.get(6, 0);\n    group = pd.get(7, 1);\n    return 0;\n}\n\nint Cand_Conv::load_model(const ModelBin& /*mb*/)\n{\n    // functional op: weights arrive as inputs, empty bin\n    return 0;\n}\n\nint Cand_Conv::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const\n{\n    const Mat& x = bottom_blobs[0];\n    const Mat& w = bottom_blobs[1];\n\n    // input dims\n    const int W = x.w;\n    const int H = x.h;\n    const int Cin = x.c;\n\n    // weight Mat: 4D -> w.w=kw, w.h=kh, w.d=Cin/group, w.c=Cout\n    int kw, kh, cin_per_group, Cout;\n    if (w.dims == 4)\n    {\n        kw = w.w;\n        kh = w.h;\n        cin_per_group = w.d;\n        Cout = w.c;\n    }\n    else if (w.dims == 3)\n    {\n        kw = w.w;\n        kh = w.h;\n        Cout = w.c;\n        cin_per_group = 1;\n    }\n    else\n    {\n        kw = w.w;\n        kh = 1;\n        Cout = w.h;\n        cin_per_group = 1;\n    }\n\n    const int g = group;\n    const int cout_per_group = Cout / g;\n\n    const int pad_h_t = pad_top;\n    const int pad_w_l = pad_left;\n\n    const int kernel_extent_w = dilation_w * (kw - 1) + 1;\n    const int kernel_extent_h = dilation_h * (kh - 1) + 1;\n\n    const int outw = (W + pad_left + pad_right - kernel_extent_w) / stride_w + 1;\n    const int outh = (H + pad_top + pad_bottom - kernel_extent_h) / stride_h + 1;\n\n    Mat& top_blob = top_blobs[0];\n    top_blob.create(outw, outh, Cout, (size_t)4u, opt.blob_allocator);\n    if (top_blob.empty())\n        return -100;\n\n    const bool has_bias = bias_term && bottom_blobs.size() > 2;\n    const float* bias_ptr = 0;\n    Mat bias_flat;\n    if (has_bias)\n    {\n        bias_flat = bottom_blobs[2];\n        bias_ptr = (const float*)bias_flat;\n    }\n\n    const int per_oc = cin_per_group * kh * kw;\n\n    for (int oc = 0; oc < Cout; oc++)\n    {\n        float* outptr = top_blob.channel(oc);\n        const float* kbase = w.channel(oc); // laid out as [cin_per_group][kh][kw]\n\n        const int grp = oc / cout_per_group;\n        const int ic_start = grp * cin_per_group;\n\n        for (int oy = 0; oy < outh; oy++)\n        {\n            for (int ox = 0; ox < outw; ox++)\n            {\n                float sum = 0.f;\n                if (has_bias)\n                    sum = bias_ptr[oc];\n\n                for (int icl = 0; icl < cin_per_group; icl++)\n                {\n                    const int ic = ic_start + icl;\n                    const float* xin = x.channel(ic);\n                    const float* kptr = kbase + icl * kh * kw;\n\n                    for (int ky = 0; ky < kh; ky++)\n                    {\n                        const int iy = oy * stride_h - pad_h_t + ky * dilation_h;\n                        if (iy < 0 || iy >= H)\n                            continue;\n                        for (int kx = 0; kx < kw; kx++)\n                        {\n                            const int ix = ox * stride_w - pad_w_l + kx * dilation_w;\n                            if (ix < 0 || ix >= W)\n                                continue;\n                            sum += xin[iy * W + ix] * kptr[ky * kw + kx];\n                        }\n                    }\n                }\n\n                outptr[oy * outw + ox] = sum;\n            }\n        }\n    }\n\n    (void)per_oc;\n    return 0;\n}\n\nDEFINE_LAYER_CREATOR(Cand_Conv)\n} // namespace ncnn\n",
+            "cand_conv.h": "#ifndef CAND_CONV_H\n#define CAND_CONV_H\n#include \"layer.h\"\nnamespace ncnn {\nclass Cand_Conv : public Layer {\npublic:\n    Cand_Conv();\n    virtual int load_param(const ParamDict& pd);\n    virtual int load_model(const ModelBin& mb);\n    virtual int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const;\npublic:\n    int num_output;\n    int bias_term;\n    int weight_data_size;\n    int group;\n    int stride_w;\n    int stride_h;\n    int pad_left;\n    int pad_right;\n    int pad_top;\n    int pad_bottom;\n    int dilation_w;\n    int dilation_h;\n    int kernel_w;\n    int kernel_h;\n};\n} // namespace ncnn\n#endif\n"
+          },
+          "params": {},
+          "techniques": [],
+          "source": "seed"
+        },
+        {
+          "cell": [
+            "nchw",
+            "single"
+          ],
+          "latency_ms": 15.201666508801281,
+          "kernel_code": {
+            "cand_conv.cpp": "#include \"cand_conv.h\"\n#include <math.h>\n#include <vector>\nnamespace ncnn {\n\nCand_Conv::Cand_Conv()\n{\n    one_blob_only = false;\n    support_inplace = false;\n}\n\nint Cand_Conv::load_param(const ParamDict& pd)\n{\n    num_output = pd.get(0, 0);\n    kernel_w = pd.get(1, 0);\n    kernel_h = pd.get(11, kernel_w);\n    dilation_w = pd.get(2, 1);\n    dilation_h = pd.get(12, dilation_w);\n    stride_w = pd.get(3, 1);\n    stride_h = pd.get(13, stride_w);\n    pad_left = pd.get(4, 1);\n    pad_right = pd.get(15, pad_left);\n    pad_top = pd.get(14, pad_left);\n    pad_bottom = pd.get(16, pad_top);\n    bias_term = pd.get(5, 1);\n    weight_data_size = pd.get(6, 0);\n    group = pd.get(7, 1);\n    return 0;\n}\n\nint Cand_Conv::load_model(const ModelBin& /*mb*/)\n{\n    return 0;\n}\n\nint Cand_Conv::forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const\n{\n    const Mat& x = bottom_blobs[0];\n    const Mat& w = bottom_blobs[1];\n\n    const int W = x.w;\n    const int H = x.h;\n\n    int kw, kh, cin_per_group, Cout;\n    if (w.dims == 4)\n    {\n        kw = w.w;\n        kh = w.h;\n        cin_per_group = w.d;\n        Cout = w.c;\n    }\n    else if (w.dims == 3)\n    {\n        kw = w.w;\n        kh = w.h;\n        Cout = w.c;\n        cin_per_group = 1;\n    }\n    else\n    {\n        kw = w.w;\n        kh = 1;\n        Cout = w.h;\n        cin_per_group = 1;\n    }\n\n    const int g = group;\n    const int cout_per_group = Cout / g;\n\n    const int pad_h_t = pad_top;\n    const int pad_w_l = pad_left;\n\n    const int kernel_extent_w = dilation_w * (kw - 1) + 1;\n    const int kernel_extent_h = dilation_h * (kh - 1) + 1;\n\n    const int outw = (W + pad_left + pad_right - kernel_extent_w) / stride_w + 1;\n    const int outh = (H + pad_top + pad_bottom - kernel_extent_h) / stride_h + 1;\n    const int outHW = outw * outh;\n\n    Mat& top_blob = top_blobs[0];\n    top_blob.create(outw, outh, Cout, (size_t)4u, opt.blob_allocator);\n    if (top_blob.empty())\n        return -100;\n\n    const bool has_bias = bias_term && bottom_blobs.size() > 2;\n    const float* bias_ptr = 0;\n    Mat bias_flat;\n    if (has_bias)\n    {\n        bias_flat = bottom_blobs[2];\n        bias_ptr = (const float*)bias_flat;\n    }\n\n    const int per_oc = cin_per_group * kh * kw; // K dimension of GEMM\n\n    // im2col column buffer per group: [per_oc][outHW]\n    // Reused across groups to bound memory.\n    std::vector<float> col((size_t)per_oc * outHW);\n\n    // GEMM tiling knobs\n    const int MTILE = 1; // rows of weight (output channels) per tile\n    const int NTILE = 256; // columns (spatial positions) per tile\n\n    for (int grp = 0; grp < g; grp++)\n    {\n        const int ic_start = grp * cin_per_group;\n        const int oc_start = grp * cout_per_group;\n\n        // ---- im2col: build col[k][n], k over (icl,ky,kx), n over spatial ----\n        {\n            int krow = 0;\n            for (int icl = 0; icl < cin_per_group; icl++)\n            {\n                const int ic = ic_start + icl;\n                const float* xin = x.channel(ic);\n                for (int ky = 0; ky < kh; ky++)\n                {\n                    for (int kx = 0; kx < kw; kx++)\n                    {\n                        float* crow = &col[(size_t)krow * outHW];\n                        int n = 0;\n                        for (int oy = 0; oy < outh; oy++)\n                        {\n                            const int iy = oy * stride_h - pad_h_t + ky * dilation_h;\n                            const bool yvalid = (iy >= 0 && iy < H);\n                            for (int ox = 0; ox < outw; ox++)\n                            {\n                                float v = 0.f;\n                                if (yvalid)\n                                {\n                                    const int ix = ox * stride_w - pad_w_l + kx * dilation_w;\n                                    if (ix >= 0 && ix < W)\n                                        v = xin[iy * W + ix];\n                                }\n                                crow[n++] = v;\n                            }\n                        }\n                        krow++;\n                    }\n                }\n            }\n        }\n\n        // ---- GEMM: out[m][n] = sum_k weight[m][k] * col[k][n] (+bias) ----\n        for (int mt = 0; mt < cout_per_group; mt += MTILE)\n        {\n            const int mend = (mt + MTILE < cout_per_group) ? (mt + MTILE) : cout_per_group;\n\n            for (int nt = 0; nt < outHW; nt += NTILE)\n            {\n                const int nend = (nt + NTILE < outHW) ? (nt + NTILE) : outHW;\n\n                for (int m = mt; m < mend; m++)\n                {\n                    const int oc = oc_start + m;\n                    float* outptr = top_blob.channel(oc);\n                    const float* kptr = w.channel(oc); // [per_oc] contiguous\n                    const float b = has_bias ? bias_ptr[oc] : 0.f;\n\n                    for (int n = nt; n < nend; n++)\n                        outptr[n] = b;\n\n                    for (int k = 0; k < per_oc; k++)\n                    {\n                        const float wv = kptr[k];\n                        const float* crow = &col[(size_t)k * outHW];\n                        #pragma clang loop vectorize(enable)\n                        for (int n = nt; n < nend; n++)\n                            outptr[n] += wv * crow[n];\n                    }\n                }\n            }\n        }\n    }\n\n    return 0;\n}\n\nDEFINE_LAYER_CREATOR(Cand_Conv)\n} // namespace ncnn\n",
+            "cand_conv.h": "#ifndef CAND_CONV_H\n#define CAND_CONV_H\n#include \"layer.h\"\nnamespace ncnn {\nclass Cand_Conv : public Layer {\npublic:\n    Cand_Conv();\n    virtual int load_param(const ParamDict& pd);\n    virtual int load_model(const ModelBin& mb);\n    virtual int forward(const std::vector<Mat>& bottom_blobs, std::vector<Mat>& top_blobs, const Option& opt) const;\npublic:\n    int num_output;\n    int bias_term;\n    int weight_data_size;\n    int group;\n    int stride_w;\n    int stride_h;\n    int pad_left;\n    int pad_right;\n    int pad_top;\n    int pad_bottom;\n    int dilation_w;\n    int dilation_h;\n    int kernel_w;\n    int kernel_h;\n};\n} // namespace ncnn\n#endif\n"
+          },
+          "params": {
+            "MTILE": 1,
+            "NTILE": 256
+          },
+          "techniques": [
+            "im2col",
+            "gemm",
+            "tiling",
+            "vectorize"
+          ],
+          "source": "search"
+        }
+      ],
+      "visits": [
+        [
+          [
+            "nchw",
+            "none"
+          ],
+          1
+        ],
+        [
+          [
+            "nchw",
+            "single"
+          ],
+          3
+        ]
+      ]
+    },
+    "iterations": [
+      {
+        "round": 0,
+        "directive": "diversify",
+        "cell": [
+          "nchw",
+          "single"
+        ],
+        "kept": true,
+        "novel": null,
+        "cand_latency": 16.22589596081525,
+        "best_latency": 16.22589596081525,
+        "coverage": 2,
+        "evaluated": 4,
+        "pruned": 0,
+        "failure_summary": ""
+      },
+      {
+        "round": 1,
+        "directive": "diversify",
+        "cell": [
+          "nchw",
+          "single"
+        ],
+        "kept": false,
+        "novel": null,
+        "cand_latency": null,
+        "best_latency": 16.22589596081525,
+        "coverage": 2,
+        "evaluated": 4,
+        "pruned": 0,
+        "failure_summary": "4/4 candidates failed; dominant=E1_COMPILE. e.g. compile failed"
+      },
+      {
+        "round": 2,
+        "directive": "diversify",
+        "cell": [
+          "nchw",
+          "single"
+        ],
+        "kept": true,
+        "novel": null,
+        "cand_latency": 16.15224953275174,
+        "best_latency": 16.15224953275174,
+        "coverage": 2,
+        "evaluated": 4,
+        "pruned": 0,
+        "failure_summary": ""
+      },
+      {
+        "round": 3,
+        "directive": "diversify",
+        "cell": [
+          "nchw",
+          "single"
+        ],
+        "kept": true,
+        "novel": null,
+        "cand_latency": 15.201666508801281,
+        "best_latency": 15.201666508801281,
+        "coverage": 2,
+        "evaluated": 4,
+        "pruned": 0,
+        "failure_summary": ""
+      }
+    ],
+    "baseline_comparison": {
+      "verdict": "qd",
+      "reason": "QD faster via non-mainstream niche (diversity paid off)",
+      "qd_latency": 15.201666508801281,
+      "best_first_latency": 15.569833456538618,
+      "qd_rounds": 16,
+      "best_first_rounds": 16,
+      "qd_argmin_cell": [
+        "nchw",
+        "single"
+      ],
+      "argmin_from_nonmainstream": true
+    },
+    "axis_extension": {
+      "promotions": [],
+      "novel_niche_wins": [],
+      "sigma_size": null
+    }
+  }
+}

@@ -22,7 +22,7 @@ from pathlib import Path
 from schemas import BasinValue, MeasureSample, ParameterizedTemplate, materialize
 from inner import ConstraintEngine, inner_search
 from .archive import Archive, Elite
-from .bd import classify, classify_with_novelty
+from .bd import classify, classify_with_novelty, posthoc_bd
 from .roofline import RooflineResult
 from . import sigma as _sigma
 
@@ -204,8 +204,16 @@ def run_map_elites(
         else:
             stale += 1
 
+        # post-hoc BD refinement (Method M2.3): if the best sample carries a
+        # MEASURED micro-arch profile (on-device simpleperf path), derive a
+        # refinement bin that sub-divides the niche. No-op in host search (no PMU).
+        _bs = getattr(basin, "best_sample", None)
+        _prof = getattr(_bs, "profile", None) if _bs is not None else None
+        refine = posthoc_bd(_prof)
+
         iters.append({"round": len(iters), "directive": directive, "cell": list(cell),
-                      "kept": kept, "novel": novel or None, "cand_latency": basin.best_latency_ms,
+                      "kept": kept, "novel": novel or None, "posthoc_refine": refine or None,
+                      "cand_latency": basin.best_latency_ms,
                       "best_latency": best_lat, "coverage": arc.coverage(),
                       "evaluated": basin.n_evaluated, "pruned": basin.n_pruned,
                       "failure_summary": _summarize_failures(basin)})

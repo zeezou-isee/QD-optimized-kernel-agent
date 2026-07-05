@@ -44,6 +44,7 @@ namespace ncnn { inline bool& _cand_shader_compile_failed() { static bool v = fa
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -213,6 +214,8 @@ int main(int argc, char** argv)
     std::vector<int> wflags;   // per-weight bin layout: 0=tagged(type0), 1=raw(type1)
     std::string out = "out.bin", param_str;
     int packing = 0;   // reserved; v1 runs elempack=1 on GPU
+    int bench_iters = 0;   // --bench N: after the correctness run, time N GPU
+                           // forwards and print BENCH_MIN_MS (device latency)
     for (int i = 1; i < argc; i++)
     {
         std::string a = argv[i];
@@ -222,6 +225,7 @@ int main(int argc, char** argv)
         else if (a == "--param" && i + 1 < argc) param_str = argv[++i];
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
+        else if (a == "--bench" && i + 1 < argc) bench_iters = atoi(argv[++i]);
     }
     (void)packing;
     while (wflags.size() < weights.size()) wflags.push_back(0);
@@ -470,6 +474,48 @@ int main(int argc, char** argv)
                 write_mat(out_cpu, out.c_str());
             }
         }
+    }
+
+    // --- optional device-latency bench (--bench N): warmup + N timed GPU
+    // forwards, min per-iter ms → BENCH_MIN_MS. Uploads inputs once; re-runs the
+    // op on the GPU blob (for inplace ops this re-applies the op, which still
+    // measures the kernel's per-launch cost). Host-timed around submit_and_wait. ---
+    if (rc == 0 && bench_iters > 0)
+    {
+        std::vector<VkMat> gin(in_cpus.size());
+        {
+            VkCompute up(vkdev);
+            for (size_t i = 0; i < in_cpus.size(); i++) { up.record_upload(in_cpus[i], gin[i], opt); pack_input(gin[i], up); }
+            up.submit_and_wait();
+        }
+        const int warmup = 3;
+        double best_ms = 1e30;
+        for (int it = 0; it < warmup + bench_iters; it++)
+        {
+            VkCompute cmd(vkdev);
+            auto t0 = std::chrono::steady_clock::now();
+            int ret = 0;
+            if (op->one_blob_only)
+            {
+                if (op->support_inplace) ret = op->forward_inplace(gin[0], cmd, opt);
+                else { VkMat o; ret = op->forward(gin[0], o, cmd, opt); }
+            }
+            else
+            {
+                std::vector<VkMat> o(1);
+                if (op->support_inplace) { o = gin; ret = op->forward_inplace(o, cmd, opt); }
+                else ret = op->forward(gin, o, cmd, opt);
+            }
+            if (ret == 0) ret = cmd.submit_and_wait();
+            auto t1 = std::chrono::steady_clock::now();
+            if (ret != 0) { fprintf(stderr, "bench iter %d failed ret=%d\n", it, ret); break; }
+            if (it >= warmup)
+            {
+                double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+                if (ms < best_ms) best_ms = ms;
+            }
+        }
+        printf("BENCH_MIN_MS=%.4f\n", best_ms);
     }
 
     op->destroy_pipeline(opt);

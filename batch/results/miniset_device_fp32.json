@@ -1,0 +1,133 @@
+{
+  "Abs": {
+    "op": "Abs",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,256,8]",
+    "results": {
+      "native": {
+        "latency_min": 4.63,
+        "latency_avg": 5.16,
+        "ipc": 0.0,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 2.31,
+        "latency_avg": 2.7,
+        "ipc": 0.0,
+        "symbol": "__aarch64_ldadd4_acq_rel",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 2.26,
+        "latency_avg": 2.71,
+        "ipc": 0.0,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "AveragePool": {
+    "op": "AveragePool",
+    "native_type": "Pooling",
+    "shapes": "[512,64,16]",
+    "results": {
+      "native": {
+        "latency_min": 0.21,
+        "latency_avg": 0.23,
+        "ipc": 1.69,
+        "symbol": "ncnn::Padding::Padding()",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.24,
+        "latency_avg": 0.25,
+        "ipc": 0.545,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "BatchNormalization": {
+    "op": "BatchNormalization",
+    "native_type": "BatchNorm",
+    "shapes": "[1024,128,32]",
+    "results": {
+      "native": {
+        "latency_min": 4.63,
+        "latency_avg": 5.2,
+        "ipc": null,
+        "symbol": "__aarch64_ldadd4_acq_rel",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 2.33,
+        "latency_avg": 2.71,
+        "ipc": 0.0,
+        "symbol": "__kernel_clock_gettime",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 2.33,
+        "latency_avg": 2.72,
+        "ipc": 0.0,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "ReduceSum": {
+    "op": "ReduceSum",
+    "native_type": "Reduction",
+    "shapes": "[256,64,128]",
+    "results": {
+      "native": {
+        "latency_min": 3.59,
+        "latency_avg": 3.85,
+        "ipc": 0.0,
+        "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_base": {
+        "latency_min": 0.44,
+        "latency_avg": 0.48,
+        "ipc": 1.102,
+        "symbol": "memset",
+        "trustworthy": false,
+        "error": null
+      },
+      "our_arm": {
+        "latency_min": 0.45,
+        "latency_avg": 0.5,
+        "ipc": 1.429,
+        "symbol": "memset",
+        "trustworthy": false,
+        "error": null
+      }
+    }
+  },
+  "ReduceMax": {
+    "op": "ReduceMax",
+    "native_type": "Reduction",
+    "shapes": "[512,128,128]",
+    "results": {
+      "native": {
+        "latency_min": null,
+        "latency_avg": null,
+        "ipc": null,
+        "symbol": null,
+        "trustworthy": null,
+        "error": "record 超时(设备无响应或 loop 过大)"
+      }
+    }
+  }
+}

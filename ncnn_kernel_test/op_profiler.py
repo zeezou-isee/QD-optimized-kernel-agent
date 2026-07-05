@@ -39,7 +39,10 @@ _FRAMEWORK_RE = re.compile(
     r"ncnn::Net|load_model|load_param|ParamDict|Extractor|create_layer|"
     r"create_pipeline|ncnn::Mat|do_forward_layer|get_physical|cpu_info|"
     r"cpu_count|try_initialize|Layer_final|cast_fp(16|32)|Packing_arm|"
-    r"xml::|sha256|std::__ndk1::vector"
+    r"xml::|sha256|std::__ndk1::vector|"
+    # framework/plumbing hotspots that dominate on trivial (memory-bound) ops
+    r"chrono|steady_clock|clock_gettime|gettimeofday|ncnn::Option|::Option\(|"
+    r"memcmp|memmove|benchmark|benchncnn|::Allocator|fast_malloc|fast_free"
 )
 
 
