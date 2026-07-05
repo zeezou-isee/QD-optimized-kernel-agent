@@ -75,6 +75,7 @@ class OptimizeAgent:
         experience_pool_path: str | Path | None = None,   # 兵器谱 warm-start + persist
         run_baseline_comparison: bool = False,  # §7.5 best-first control arm
         op_class: str = "",
+        n_promote: int = 3,                     # axis-extension: cross-task wins to grow Σ
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -108,6 +109,7 @@ class OptimizeAgent:
         self.experience_pool_path = experience_pool_path
         self.run_baseline_comparison = run_baseline_comparison
         self.op_class = op_class
+        self.n_promote = n_promote
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -329,11 +331,17 @@ class OptimizeAgent:
         def vary_fn(parent, directive, history):
             return proposer.vary(parent, directive, history)
 
+        # axis-extension (Method M2.5.2): write-back only when wiki is ON —
+        # `wiki is None` (KERNELGEN_WIKI=off ablation) keeps Σ read-only, so the
+        # ablation arm neither reads nor grows the space.
+        wiki_root = getattr(wiki, "wiki_root", None) if wiki else None
         me = run_map_elites(
             baseline_template=base_t, baseline_latency=base_lat, evaluator=ev,
             engine=engine, vary_fn=vary_fn, regime=regime, roofline=rl, seeds=seeds,
             budget=self.map_budget, inner_budget=self.inner_budget,
-            coverage_target=self.coverage_target, patience=self.patience)
+            coverage_target=self.coverage_target, patience=self.patience,
+            backend=self.backend, wiki_root=wiki_root,
+            task_name=self.op_class or self.task_name, n_promote=self.n_promote)
 
         # optional best-first control arm (§7.5)
         cmp = None
@@ -362,7 +370,9 @@ class OptimizeAgent:
                      "argmin_cell": me.get("grid_argmin_cell"),
                      "baseline_cell": list(baseline_cell), "baseline_latency_ms": base_lat,
                      "archive": me.get("archive"), "iterations": me.get("iterations"),
-                     "baseline_comparison": cmp}
+                     "baseline_comparison": cmp,
+                     # axis-extension telemetry (Method M2.5.2 / Figure E)
+                     "axis_extension": me.get("axis_extension")}
         return res
 
     # ------------------------------------------------------------------ legacy

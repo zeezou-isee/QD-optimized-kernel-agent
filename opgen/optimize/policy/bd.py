@@ -14,9 +14,17 @@ Coordinate B (compute_bound): axis1 = 算法族,             axis2 = 计算映�
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
 from .roofline import COMPUTE_BOUND, MEMORY_BOUND
 
-# axis vocabularies (the niche grid is the cartesian product of axis1 × axis2)
+# axis vocabularies (the niche grid is the cartesian product of axis1 × axis2).
+# These are the HARDCODED FALLBACK — the source of truth is now the externalized
+# Σ registry (policy/sigma.py + experience_pool/wiki/sigma/<backend>.json), which
+# `classify_with_novelty` loads. `axes()`/`classify()` keep using these tuples so
+# the legacy API + tests stay green with zero config; the Σ-aware path
+# (classify_with_novelty) supersedes them when a wiki_root is available.
 _A_LAYOUT = ("nchw", "nhwc", "packed")
 _A_TILING = ("none", "single", "double")
 _B_ALGO = ("direct", "gemm", "winograd", "fft", "dw")
@@ -72,7 +80,12 @@ def _classify_compute(tags: list[str]) -> tuple[str, str]:
 
 
 def classify(techniques: list[str], regime: str) -> tuple[str, str]:
-    """Map a template's structural tags onto its (axis1, axis2) niche cell."""
+    """Map a template's structural tags onto its (axis1, axis2) niche cell.
+
+    Legacy keyword-only path (no Σ, no novelty). Kept for the existing callers
+    (baseline elite, tests). New code should prefer `classify_with_novelty`,
+    which is Σ-driven and reports out-of-vocabulary structural labels.
+    """
     tags = list(techniques or [])
     if regime == COMPUTE_BOUND:
         return _classify_compute(tags)
@@ -82,3 +95,57 @@ def classify(techniques: list[str], regime: str) -> tuple[str, str]:
 def grid_size(regime: str) -> int:
     (_, a1), (_, a2) = axes(regime)
     return len(a1) * len(a2)
+
+
+def classify_with_novelty(
+    techniques: list[str],
+    regime: str,
+    *,
+    backend: str = "base",
+    bd_labels: dict[str, str] | None = None,
+    wiki_root: Path | str | None = None,
+) -> tuple[tuple[str, str], dict[str, str]]:
+    """Σ-aware classification with axis-extension detection (Method M2.4/M2.5.2).
+
+    Returns ((axis1_value, axis2_value), novel) where `novel` maps
+    axis_name -> proposed_value for any axis whose value is OUTSIDE the current
+    Σ(backend, regime) vocabulary — i.e. the LLM proposed a genuinely new
+    structural label. Such a candidate can still be located (it OPENS a new
+    niche at its declared coordinate); if it later wins that niche it feeds the
+    axis-extension write-back (map_elites → sigma.record_win).
+
+    Coordinate resolution per axis:
+      1. explicit `bd_labels[axis_name]` if the LLM declared it —
+         in-Σ value → use as-is; out-of-Σ value → use as-is + flag novel.
+      2. else keyword-classify from `techniques` against Σ's keyword map
+         (always yields an in-Σ value; never novel).
+
+    Falls back to the hardcoded vocab (via sigma.load's synthesized Σ) when no
+    wiki_root / no JSON — so this never crashes and matches `classify()` when the
+    LLM gave no explicit labels.
+    """
+    from . import sigma as _sigma  # local import avoids import cycle at module load
+
+    tags = list(techniques or [])
+    labels = dict(bd_labels or {})
+
+    if wiki_root is not None:
+        sg = _sigma.load(wiki_root, backend)
+    else:
+        # No wiki root: synthesize Σ from the hardcoded fallback so the keyword
+        # map still exists. (sigma.load with a nonexistent path does exactly this.)
+        sg = _sigma.load(Path("/nonexistent-wiki-root"), backend)
+
+    cell: list[str] = []
+    novel: dict[str, str] = {}
+    for which in ("axis1", "axis2"):
+        axis_name = sg.axis_name(regime, which)
+        declared = labels.get(axis_name) or labels.get(which)
+        if declared:
+            declared = str(declared).strip().lower()
+            cell.append(declared)
+            if not sg.is_known(regime, which, declared):
+                novel[axis_name] = declared
+        else:
+            cell.append(sg.classify_axis(regime, which, tags))
+    return (cell[0], cell[1]), novel

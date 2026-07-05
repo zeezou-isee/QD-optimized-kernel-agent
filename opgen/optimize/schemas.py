@@ -52,6 +52,13 @@ class ParameterizedTemplate:
     rationale: str = ""              # LLM-stated "why this should be faster"
     techniques: list[str] = field(default_factory=list)   # ["tiling","unroll","vectorize"]
     constraints: list[str] = field(default_factory=list)  # LLM-derived physical bounds
+    # Explicit BD-axis labels the LLM declares for this proposal (Method M2.4:
+    # "LLM as Σ→instance projector"). e.g. {"algo_family":"winograd",
+    # "compute_mapping":"dotprod"}. A value OUTSIDE the current Σ vocabulary is a
+    # deliberate axis-extension proposal (novel structural label) — see
+    # policy/bd.classify_with_novelty + policy/sigma.record_win. Empty => fall
+    # back to keyword classification from `techniques`.
+    bd_labels: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

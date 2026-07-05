@@ -33,7 +33,7 @@ Return exactly TWO parts:
    (the harness compiles them under those exact names). Placeholders are written
    literally as <NAME> and will be textually replaced by integers before compile.
 
-2) A single fenced ```json block describing the knobs, constraints and rationale:
+2) A single fenced ```json block describing the knobs, constraints, BD labels and rationale:
 
    ```json
    {
@@ -46,6 +46,7 @@ Return exactly TWO parts:
        "VEC_WIDTH <= FP32_PER_VEC"
      ],
      "techniques": ["unroll", "vectorize"],
+     "bd_labels": {"<axis1_name>": "<value>", "<axis2_name>": "<value>"},
      "rationale": "why this should reduce latency on the target CPU"
    }
    ```
@@ -55,6 +56,12 @@ Rules:
 - "values" are a SMALL discrete set (2–4 each); the search explores them.
 - Constraints are arithmetic/comparison expressions over the param names and the
   hardware symbols listed in the "Target hardware" section. No function calls.
+- **"bd_labels" places this proposal in the search space.** Use the EXACT axis
+  names and pick from the value menus shown in the "Search-space axes (Σ)"
+  section below. If you believe a genuinely NEW structural family is warranted
+  (one not in the menu), you MAY declare a new value there — it will open a new
+  niche and, if it wins across tasks, be promoted into the space. Prefer the
+  existing menu unless a new family is clearly justified in "rationale".
 - The materialized kernel (any legal combination) MUST compile and be numerically
   equivalent to the baseline — correctness is gated by an oracle before timing.
 """
@@ -165,6 +172,17 @@ def _context_section(context: str) -> str:
     return f"\n# Backend & operator playbook\n{context}\n"
 
 
+def _sigma_section(sigma_block: str) -> str:
+    """The machine-readable Σ axis vocabulary for this (backend, regime), so the
+    LLM projects its proposal onto known axes (Method M2.4). Empty when Σ is
+    unavailable — the LLM then just uses free-form techniques (keyword fallback).
+    """
+    sigma_block = (sigma_block or "").strip()
+    if not sigma_block:
+        return ""
+    return f"\n# Search-space axes (Σ) — declare bd_labels from these\n{sigma_block}\n"
+
+
 def vary_prompt(
     task_name: str,
     parent_kernel: dict[str, str],
@@ -174,6 +192,7 @@ def vary_prompt(
     recent_failures: list[str] | None = None,
     context: str = "",
     backend: str = "base",
+    sigma_block: str = "",
 ) -> str:
     """Prompt for MAP-Elites variation: mutate a PARENT elite per a directive."""
     files = "\n\n".join(
@@ -189,7 +208,7 @@ def vary_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_context_section(context)}
+{_context_section(context)}{_sigma_section(sigma_block)}
 # Parent kernel (the elite you are mutating)
 {files}
 
@@ -205,7 +224,8 @@ def vary_prompt(
 Emit a PARAMETERIZED template (knobs as <PLACEHOLDER>s) plus the json metadata.
 List in "techniques" the structural tags of THIS variant (e.g. ["vectorize"],
 ["winograd","dotprod"], ["tiling","double"]) — these decide its niche, so be
-accurate.
+accurate. ALSO set "bd_labels" from the Σ axes above (this is what actually
+places the niche; techniques are a secondary hint).
 {_OUTPUT_CONTRACT}
 """
 
@@ -217,6 +237,7 @@ def proposer_prompt(
     tried: list[str],
     context: str = "",
     backend: str = "base",
+    sigma_block: str = "",
 ) -> str:
     """Build the proposer prompt from the baseline kernel + hardware + history."""
     files = "\n\n".join(
@@ -230,7 +251,7 @@ def proposer_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_context_section(context)}
+{_context_section(context)}{_sigma_section(sigma_block)}
 # Baseline kernel (already correct; this is your starting point)
 {files}
 
@@ -242,6 +263,7 @@ Refactor the baseline into a PARAMETERIZED template: pick ONE coherent
 optimization direction (that differs from what was already tried), expose its
 tunable knobs as <PLACEHOLDER>s, give a few discrete candidate values per knob,
 and derive the physical constraint equations that keep every combination legal
-on the target hardware. Do NOT pick final numbers — the search does that.
+on the target hardware. Declare "bd_labels" from the Σ axes above. Do NOT pick
+final numbers — the search does that.
 {_OUTPUT_CONTRACT}
 """

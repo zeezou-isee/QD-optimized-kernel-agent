@@ -1,0 +1,106 @@
+{
+  "backend": "base",
+  "version": 1,
+  "regimes": {
+    "memory_bound": {
+      "axis1": {
+        "name": "layout_family",
+        "values": [
+          "nchw",
+          "nhwc",
+          "packed"
+        ],
+        "keywords": {
+          "packed": [
+            "nc4hw4",
+            "pack",
+            "packed"
+          ],
+          "nhwc": [
+            "nhwc"
+          ],
+          "nchw": []
+        }
+      },
+      "axis2": {
+        "name": "tiling_strategy",
+        "values": [
+          "none",
+          "single",
+          "double"
+        ],
+        "keywords": {
+          "double": [
+            "double",
+            "register",
+            "two-level",
+            "2-level"
+          ],
+          "single": [
+            "tile",
+            "tiling",
+            "block",
+            "blocking"
+          ],
+          "none": []
+        }
+      }
+    },
+    "compute_bound": {
+      "axis1": {
+        "name": "algo_family",
+        "values": [
+          "direct",
+          "gemm",
+          "winograd",
+          "fft",
+          "dw"
+        ],
+        "keywords": {
+          "winograd": [
+            "winograd"
+          ],
+          "gemm": [
+            "im2col",
+            "gemm",
+            "sgemm"
+          ],
+          "fft": [
+            "fft"
+          ],
+          "dw": [
+            "depthwise",
+            "dw"
+          ],
+          "direct": []
+        }
+      },
+      "axis2": {
+        "name": "compute_mapping",
+        "values": [
+          "scalar",
+          "vec",
+          "dotprod"
+        ],
+        "keywords": {
+          "dotprod": [
+            "dotprod",
+            "sdot",
+            "udot"
+          ],
+          "vec": [
+            "neon",
+            "vec",
+            "simd",
+            "vectoriz",
+            "cooperative",
+            "vec4"
+          ],
+          "scalar": []
+        }
+      }
+    }
+  },
+  "pending": {},
+  "promoted": []
+}

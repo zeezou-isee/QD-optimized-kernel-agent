@@ -9,7 +9,7 @@ Pipeline (driven by an existence check on ncnn):
         [3b] NO                            -> GraphAgent (forced target, up to 15 rounds)
                                               fail -> abort
   [4] end_to_end_numeric   : Net runner vs PyTorch  (FUNCTIONAL)
-  [5] PRODUCTION           : compile + correctness [+ benchmark]
+  [5] PRODUCTION           : compile + correctness [+ on-device simpleperf profile]
   [6] (optional) OptimizeAgent: REAL two-layer kernel optimizer (LLM proposer +
         inner search / MAP-Elites QD) on the authored kernel. Each candidate is
         verified (对拍 baseline) + timed in a fast LayerOracle loop; the winner is
@@ -578,11 +578,11 @@ class OperatorAgent:
 
     def _run_production_step(self, model_py: str, graph_sum: dict,
                             op_class: str | None = None) -> dict:
-        """Reusable production step. Returns {compile, correctness, benchmark?,
+        """Reusable production step. Returns {compile, correctness, profile?,
         _mandatory_ok}. Suitable as part of the optimization evaluator too.
 
-        `op_class` (= Cand_<Op>) re-points the benchmarked model's output layer to
-        OUR kernel so benchncnn measures it, not ncnn's built-in (needed when the
+        `op_class` (= Cand_<Op>) re-points the profiled model's output layer to
+        OUR kernel so simpleperf measures it, not ncnn's built-in (needed when the
         op already existed in ncnn; idempotent otherwise).
         """
         from production_validation import ProductionValidator, torch_input_shapes_str
@@ -600,11 +600,21 @@ class OperatorAgent:
             art = (graph_sum.get("final_result") or {}).get("artifacts") or {}
             param = art.get(".ncnn.param")
             shapes = torch_input_shapes_str(model_py)
-            bm = pv.benchmark(param, shapes, retarget_to=op_class,
-                              expected_src_type=getattr(self, "_force_analog", None))
-            print(f"[orchestrator] benchmark: ran={bm.get('ran')} skipped={bm.get('skipped')} "
-                  f"retargeted={bm.get('retargeted')} reason={bm.get('reason','')} avg={bm.get('avg')}")
-            prod["benchmark"] = bm
+            # Single on-device path: profile_op runs benchncnn UNDER simpleperf, so
+            # each per-thread config carries BOTH micro-arch metrics (IPC / cache-
+            # miss / branch-miss / operator fraction) AND latency (min/max/avg).
+            # No separate benchmark() run — the optimizer's baseline comes from here.
+            prof = pv.profile_op(param, shapes, op_name=(op_class or self.task_name),
+                                 retarget_to=op_class,
+                                 expected_src_type=getattr(self, "_force_analog", None))
+            if prof.get("ran"):
+                c0 = (prof.get("configs") or [{}])[0]
+                print(f"[orchestrator] op profile: ran=True ipc={c0.get('ipc')} "
+                      f"cache_miss={c0.get('cache_miss_rate')} frac={c0.get('operator_fraction')} "
+                      f"latency_avg={c0.get('latency_avg')} trust={c0.get('trustworthy')}")
+            else:
+                print(f"[orchestrator] op profile: skipped reason={prof.get('reason','')}")
+            prod["profile"] = prof
         return prod
 
     # --------------------------------------------------------- optimization
@@ -637,7 +647,11 @@ class OperatorAgent:
             if h is not None: netoc.restore(h)
         netoc.rebuild_libncnn()
 
-        baseline_perf = (summary.get("phases", {}).get("production", {}) or {}).get("benchmark", {}) or {}
+        # optimizer baseline latency: taken from the profile phase (profile_op runs
+        # benchncnn under simpleperf; threads=1 is the cleanest single-op latency).
+        # No separate benchmark() run — the same on-device measurement feeds both.
+        prof = (summary.get("phases", {}).get("production", {}) or {}).get("profile", {}) or {}
+        baseline_perf = _perf_from_profile(prof)
 
         from llm_api import query_llm
         llm = self.llm_query or query_llm
@@ -801,6 +815,25 @@ class OperatorAgent:
                 "max_diff": float(diff.max()), "mean_diff": float(diff.mean()),
                 "detail": f"max_diff={float(diff.max()):.6f} out_name={out_name} "
                           f"in_names={in_names}"}
+
+
+def _perf_from_profile(prof: dict) -> dict:
+    """Map a profile_op() result to the optimizer's baseline_perf shape ({avg,min}).
+
+    profile_op runs benchncnn under simpleperf and attaches per-thread
+    latency_{avg,min,max} to each config. We use threads=1 (cleanest single-op
+    latency) when available, else the first config. Empty dict if no latency
+    (e.g. profiling was skipped) — the optimizer then has no baseline to beat.
+    """
+    configs = (prof or {}).get("configs") or []
+    if not configs:
+        return {}
+    chosen = next((c for c in configs if c.get("threads") == 1), configs[0])
+    avg = chosen.get("latency_avg")
+    if avg is None:
+        return {}
+    return {"avg": avg, "min": chosen.get("latency_min", avg),
+            "threads": chosen.get("threads")}
 
 
 def kprof_class_name(candidate: dict[str, str], baseline: dict[str, str]) -> str:

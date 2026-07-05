@@ -117,6 +117,10 @@ def main() -> None:
                    help="path to the 兵器谱 JSON (warm-start seeds + persist on finish)")
     p.add_argument("--baseline-compare", action="store_true",
                    help="also run a best-first control arm and report the verdict (§7.5)")
+    p.add_argument("--n-promote", type=int, default=3,
+                   help="axis-extension: a novel structural label must win/open a niche "
+                        "in this many DISTINCT tasks before it is promoted into Σ "
+                        "(experience_pool/wiki/sigma/<backend>.json). Default 3.")
     p.add_argument("--backend", choices=["base", "arm", "vulkan"], default="base",
                    help="base = portable C++; arm = NEON/NC4HW4 kernel; vulkan = GPU kernel "
                         "(.cpp + .comp, optimized & measured on a Vulkan device). "
@@ -151,7 +155,7 @@ def main() -> None:
         coverage_target=args.coverage_target, patience=args.patience,
         regime=args.regime, experience_pool_path=args.experience_pool,
         run_baseline_comparison=args.baseline_compare, op_class=args.task,
-        backend=args.backend, base_files=base_files,
+        backend=args.backend, base_files=base_files, n_promote=args.n_promote,
     )
     res: OptimizeResult = agent.run()
 

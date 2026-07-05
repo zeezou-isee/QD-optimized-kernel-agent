@@ -95,6 +95,14 @@ def parse_template(response: str, baseline_kernel: dict[str, str]) -> Parameteri
     cpp, hdr = _split_files(code)
     base_cpp, base_hdr = _split_files(baseline_kernel)
     class_name = _detect_class_name(code) or _detect_class_name(baseline_kernel)
+    # bd_labels: the LLM's explicit Σ-axis declaration (Method M2.4). Normalize
+    # keys/values to lowercase strings; tolerate the LLM omitting it.
+    raw_labels = meta.get("bd_labels") or {}
+    bd_labels: dict[str, str] = {}
+    if isinstance(raw_labels, dict):
+        for k, v in raw_labels.items():
+            if isinstance(v, str) and v.strip():
+                bd_labels[str(k).strip().lower()] = v.strip().lower()
     return ParameterizedTemplate(
         kernel_files=code,
         params=params,
@@ -104,6 +112,7 @@ def parse_template(response: str, baseline_kernel: dict[str, str]) -> Parameteri
         rationale=str(meta.get("rationale", "")),
         techniques=list(meta.get("techniques", []) or []),
         constraints=list(meta.get("constraints", []) or []),
+        bd_labels=bd_labels,
     )
 
 
@@ -142,6 +151,25 @@ class LLMProposer:
             # A malformed wiki file must NOT crash the optimize loop.
             return ""
 
+    def _sigma_block(self) -> str:
+        """The machine-readable Σ axis menu for (backend, regime), rendered for
+        the prompt so the LLM declares bd_labels from the real vocabulary
+        (Method M2.4). Empty when no wiki_root — the LLM then falls back to
+        free-form techniques (keyword classification)."""
+        if self.wiki is None or not getattr(self.wiki, "wiki_root", None):
+            return ""
+        try:
+            from policy import sigma as _sigma
+            # Σ only carries memory_bound / compute_bound; mixed/unknown → the
+            # conservative memory_bound menu (matches wiki's regime aliasing).
+            reg = (self.regime or "").strip().lower().replace("-", "_")
+            if reg not in ("memory_bound", "compute_bound"):
+                reg = "memory_bound"
+            sg = _sigma.load(self.wiki.wiki_root, self.backend)
+            return sg.render_for_prompt(reg)
+        except Exception:  # noqa: BLE001
+            return ""
+
     def propose(self, history: list) -> ParameterizedTemplate:
         from .prompts import proposer_prompt
         tried: list[str] = []
@@ -151,6 +179,7 @@ class LLMProposer:
             self.task_name, self.baseline_kernel, self.hardware,
             sorted(set(tried)),
             context=self._wiki_context(), backend=self.backend,
+            sigma_block=self._sigma_block(),
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, self.baseline_kernel)
@@ -174,6 +203,7 @@ class LLMProposer:
             directive, sorted(set(t for t in tried if t)),
             recent_failures=fails[-3:],
             context=self._wiki_context(), backend=self.backend,
+            sigma_block=self._sigma_block(),
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)

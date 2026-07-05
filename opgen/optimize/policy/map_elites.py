@@ -17,11 +17,14 @@ import random
 from collections import Counter
 from typing import Any, Callable, Protocol
 
+from pathlib import Path
+
 from schemas import BasinValue, MeasureSample, ParameterizedTemplate, materialize
 from inner import ConstraintEngine, inner_search
 from .archive import Archive, Elite
-from .bd import classify
+from .bd import classify, classify_with_novelty
 from .roofline import RooflineResult
+from . import sigma as _sigma
 
 
 def _summarize_failures(basin: BasinValue) -> str:
@@ -98,9 +101,22 @@ def run_map_elites(
     patience: int = 4,
     sigma: float = 0.0,
     rng_seed: int = 0,
+    # --- axis-extension (Method M2.5.2): growable Σ ---
+    backend: str = "base",
+    wiki_root: Path | str | None = None,     # None => Σ read-only (synthesized fallback, no write-back)
+    task_name: str = "",                     # for cross-task N_promote accounting
+    n_promote: int = _sigma.DEFAULT_N_PROMOTE,
 ) -> dict:
     rng = random.Random(rng_seed)
     arc = archive or Archive()
+
+    # Σ registry for this backend. Loaded when a wiki_root is given; only then can
+    # axis-extension persist a promotion back to disk (read-only ablation passes
+    # wiki_root=None → novel labels still open niches in-run, just not written back).
+    sg = _sigma.load(wiki_root, backend) if wiki_root is not None else None
+    axis_extension_events: list[dict] = []   # promotions this run (Figure E data)
+    novel_seen: list[dict] = []              # every novel-axis candidate that won a niche
+    sigma_dirty = False                      # Σ mutated (pending counter or promotion) → persist
 
     # --- cold start: floor seeds (不过滤) + baseline ---
     for s in (seeds or []):
@@ -147,8 +163,12 @@ def run_map_elites(
             continue
         seen_sigs.add(sig)
 
-        # structural BD prelocation (known before the inner search, §4.3)
-        cell = classify(template.techniques, regime)
+        # structural BD prelocation (known before the inner search, §4.3).
+        # Σ-aware: an LLM-declared bd_label outside Σ opens a NOVEL niche and is
+        # reported in `novel` (axis_name -> proposed value) for axis-extension.
+        cell, novel = classify_with_novelty(
+            template.techniques, regime, backend=backend,
+            bd_labels=getattr(template, "bd_labels", None), wiki_root=wiki_root)
 
         basin: BasinValue = inner_search(template, evaluator, engine, budget=inner_budget)
         rounds += basin.n_evaluated
@@ -166,11 +186,26 @@ def run_map_elites(
                 stale = 0
             else:
                 stale += 1
+
+            # AXIS-EXTENSION WRITE-BACK (Method M2.5.2): a correct candidate that
+            # WON/OPENED its cell (kept) AND carries a novel structural label
+            # feeds Σ growth. record_win accumulates a cross-task counter; at
+            # n_promote distinct tasks the value is promoted into Σ and persisted.
+            if kept and novel:
+                for axis_name, value in novel.items():
+                    novel_seen.append({"axis": axis_name, "value": value,
+                                       "cell": list(cell), "task": task_name})
+                    if sg is not None:
+                        ev = sg.record_win(regime, axis_name, value,
+                                           task=task_name, n_promote=n_promote)
+                        sigma_dirty = True   # pending counter advanced (or promoted)
+                        if ev:
+                            axis_extension_events.append(ev)
         else:
             stale += 1
 
         iters.append({"round": len(iters), "directive": directive, "cell": list(cell),
-                      "kept": kept, "cand_latency": basin.best_latency_ms,
+                      "kept": kept, "novel": novel or None, "cand_latency": basin.best_latency_ms,
                       "best_latency": best_lat, "coverage": arc.coverage(),
                       "evaluated": basin.n_evaluated, "pruned": basin.n_pruned,
                       "failure_summary": _summarize_failures(basin)})
@@ -182,6 +217,16 @@ def run_map_elites(
 
     if not stopped:
         stopped = f"budget ({budget}) reached"
+
+    # Persist Σ whenever a novel win mutated it — the `pending` cross-task
+    # counter must survive between runs so a label can accumulate to n_promote
+    # across DIFFERENT tasks, not just within one run. (No mutation → no write,
+    # keeps the JSON churn-free; read-only ablation has sg=None → never writes.)
+    if sg is not None and sigma_dirty:
+        try:
+            sg.save()
+        except OSError:
+            pass
 
     best = arc.argmin()
     return {
@@ -195,4 +240,10 @@ def run_map_elites(
         "iterations": iters,
         "archive": arc.to_dict(),
         "regime": regime,
+        # axis-extension telemetry (Method M2.5.2 / Figure E)
+        "axis_extension": {
+            "promotions": axis_extension_events,       # values promoted INTO Σ this run
+            "novel_niche_wins": novel_seen,            # every novel-axis niche win
+            "sigma_size": sg.size() if sg is not None else None,
+        },
     }
