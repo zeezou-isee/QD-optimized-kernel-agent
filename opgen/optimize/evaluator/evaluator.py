@@ -195,6 +195,18 @@ class Evaluator:
         return out
 
     # -------------------------------------------------------------- evaluate
+    @staticmethod
+    def _precision_hints(template: ParameterizedTemplate) -> tuple[bool, bool]:
+        """Derive (fp16_storage, fp16_arith) from template.techniques (P2 opt-in).
+        The LLM proposer declares tags like "fp16-storage" / "fp16" / "fp16-arith"
+        when it produces a half-precision variant; we forward them to the runner
+        so ncnn's fp16 code paths get enabled. arith implies storage."""
+        tags = " ".join(t.lower() for t in (template.techniques or []))
+        arith = ("fp16-arith" in tags) or ("fp16_arith" in tags) or ("fp16-arithmetic" in tags)
+        storage = arith or ("fp16-storage" in tags) or ("fp16_storage" in tags) or \
+                  ("fp16-packed" in tags) or (" fp16" in f" {tags}") or tags.startswith("fp16")
+        return storage, arith
+
     def evaluate(self, template: ParameterizedTemplate, point: dict[str, Any]) -> MeasureSample:
         """Materialize → compile → correctness → measure. Never raises on a bad
         candidate; failures come back as a MeasureSample with correct=False."""
@@ -210,6 +222,8 @@ class Evaluator:
             (self._cand_dir / name).write_text(src, encoding="utf-8")
         cpp_path = self._cand_dir / cpp
 
+        fp16_storage, fp16_arith = self._precision_hints(template)
+
         # compile
         try:
             art, clog = self.runner.compile_only(
@@ -217,7 +231,8 @@ class Evaluator:
                 header=hdr or self.header, inputs=self.inputs,
                 weights=self.weights, params=self.params or None,
                 extra_sources=self.extra_sources, extra_includes=self.extra_includes,
-                packing=self.packing, shader=self._shader_path())
+                packing=self.packing, fp16_storage=fp16_storage,
+                fp16_arith=fp16_arith, shader=self._shader_path())
         except Exception as exc:  # noqa: BLE001
             tail = str(exc)[-400:]
             return MeasureSample(point=point, correct=False,

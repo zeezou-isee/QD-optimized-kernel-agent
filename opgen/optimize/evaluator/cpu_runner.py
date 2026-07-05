@@ -28,6 +28,8 @@ class RunArtifacts:
     out_bin: Path
     params_argv: list[str]            # ["--param", "0=4,1=3"] or []
     packing: int = 0                  # arm NC4HW4 elempack (0 = off)
+    fp16_storage: bool = False        # runner: opt.use_fp16_packed/storage
+    fp16_arith: bool = False          # runner: opt.use_fp16_arithmetic (needs HAS_ASIMDHP)
 
 
 class CpuRunner:
@@ -56,6 +58,8 @@ class CpuRunner:
         extra_sources: Sequence[Path] = (),
         extra_includes: Sequence[Path] = (),
         packing: int = 0,
+        fp16_storage: bool = False,   # arm fp16-storage tier (halves bytes moved)
+        fp16_arith: bool = False,     # arm fp16-arith tier (needs ARMv8.2 FP16 / HAS_ASIMDHP)
         shader: Path | None = None,   # ignored by CpuRunner (vulkan-only); kept for a uniform call
     ) -> tuple[RunArtifacts, str]:
         """Compile the candidate kernel + lay out the I/O .bin files.
@@ -88,7 +92,8 @@ class CpuRunner:
 
         return RunArtifacts(runner_path=Path(runner), inputs_bins=argv_in,
                             weights_bins=argv_w, out_bin=out,
-                            params_argv=params_argv, packing=packing), clog
+                            params_argv=params_argv, packing=packing,
+                            fp16_storage=fp16_storage, fp16_arith=fp16_arith), clog
 
     # ----- single forward pass (no compile) ---------------------------------
     def run_once(self, art: RunArtifacts, timeout_s: float = 30.0) -> tuple[bool, float, str]:
@@ -108,6 +113,10 @@ class CpuRunner:
         argv += ["--out", str(art.out_bin)]
         if art.packing > 0:
             argv += ["--packing", str(art.packing)]
+        if art.fp16_arith:
+            argv += ["--fp16-arith"]
+        elif art.fp16_storage:
+            argv += ["--fp16-storage"]
 
         t0 = time.perf_counter()
         try:

@@ -145,12 +145,33 @@ def main() -> None:
     base_files = _load_baseline_kernel(args.task, None, "base", runs_root=runs_root) \
         if args.backend in ("arm", "vulkan") else {}
 
+    # weight_keys + params from the kernel profile — WITHOUT these the evaluator
+    # passes NO weights to the baseline, so weighted ops (BatchNorm/Conv/Gemm)
+    # crash at load_model ("load_model failed"). Prefer the analyze/ shared
+    # profile, fall back to the base_kernel artifacts profile.
+    weight_keys, params = [], {}
+    # legacy runs_arm/runs_vulkan trees keep the profile at kernel/kernel_profile.json
+    # or kernel_<backend>/kernel_profile.json — need those fallbacks too.
+    _task_root = runs_root / args.task
+    _profile_candidates = [
+        paths.kernel_profile_shared_json(runs_root, args.task),
+        paths.base_kernel_artifacts_dir(runs_root, args.task) / "kernel_profile.json",
+        _task_root / "kernel" / "kernel_profile.json",
+        _task_root / f"kernel_{args.backend}" / "kernel_profile.json",
+    ]
+    for pp in _profile_candidates:
+        if pp.exists():
+            prof = json.loads(pp.read_text(encoding="utf-8"))
+            weight_keys = list(prof.get("weight_keys") or [])
+            params = {int(k): v for k, v in (prof.get("params") or {}).items()}
+            break
+
     agent = OptimizeAgent(
         task_name=args.task, baseline_kernel_code=baseline,
         model_py=model_py, ncnn_root=ncnn_root, llm_query=query_llm,
         model=args.model_name, max_rounds=args.max_rounds,
         inner_budget=args.inner_budget, runs=args.runs, warmup=args.warmup,
-        improve_tol=args.improve_tol,
+        improve_tol=args.improve_tol, weight_keys=weight_keys, params=params,
         policy=args.policy, map_budget=args.map_budget,
         coverage_target=args.coverage_target, patience=args.patience,
         regime=args.regime, experience_pool_path=args.experience_pool,

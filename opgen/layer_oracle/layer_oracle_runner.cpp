@@ -168,6 +168,8 @@ int main(int argc, char** argv)
     std::vector<int> wflags;   // per-weight bin layout: 0=tagged (type 0), 1=raw (type 1)
     std::string out = "out.bin", param_str;
     int packing = 0;   // 0 = off (naive elempack=1); N>0 = pack inputs to elempack N (arm NC4HW4)
+    int fp16_storage = 0;    // 1 = enable ncnn opt.use_fp16_storage (half-precision weights/blobs)
+    int fp16_arith = 0;      // 1 = enable ncnn opt.use_fp16_arithmetic (requires HAS_ASIMDHP)
     for (int i = 1; i < argc; i++)
     {
         std::string a = argv[i];
@@ -177,6 +179,8 @@ int main(int argc, char** argv)
         else if (a == "--param" && i + 1 < argc) param_str = argv[++i];
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
+        else if (a == "--fp16-storage") fp16_storage = 1;
+        else if (a == "--fp16-arith")   { fp16_storage = 1; fp16_arith = 1; }
     }
     // default any unspecified weight flags to 0 (tagged) so the bin layout is
     // well-defined even when the caller passes fewer --weight-flag than --weight.
@@ -205,9 +209,13 @@ int main(int argc, char** argv)
     opt.lightmode = false;
     opt.num_threads = 1;
     opt.use_packing_layout = packing > 0;   // arm NC4HW4 path when --packing N
-    opt.use_fp16_packed = false;
-    opt.use_fp16_storage = false;
-    opt.use_fp16_arithmetic = false;
+    // fp16 tiers (opt-in via --fp16-storage / --fp16-arith). Kernels that declare
+    // support_fp16_storage in create_pipeline will consume half-precision blobs;
+    // kernels without it stay fp32 even when the flag is on (ncnn's Layer base
+    // handles the fp16<->fp32 conversion). Arithmetic requires ARMv8.2 FP16.
+    opt.use_fp16_packed = fp16_storage != 0;
+    opt.use_fp16_storage = fp16_storage != 0;
+    opt.use_fp16_arithmetic = fp16_arith != 0;
     opt.use_bf16_packed = false;
     opt.use_bf16_storage = false;
     opt.use_vulkan_compute = false;

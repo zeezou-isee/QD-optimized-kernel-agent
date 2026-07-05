@@ -44,6 +44,8 @@ class VkRunner:
         extra_sources: Sequence[Path] = (),
         extra_includes: Sequence[Path] = (),
         packing: int = 0,             # ignored (v1 vulkan runs elempack=1)
+        fp16_storage: bool = False,   # ignored (v1 vulkan runs fp32 only)
+        fp16_arith: bool = False,     # ignored (v1 vulkan runs fp32 only)
         shader: Path | None = None,
     ) -> tuple[RunArtifacts, str]:
         if shader is None:

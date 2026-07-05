@@ -1,0 +1,50 @@
+{
+  "chain": [
+    {
+      "op": "Abs",
+      "type": "UnaryOp",
+      "id": "abs_0",
+      "body": "0=0"
+    },
+    {
+      "op": "BatchNormalization",
+      "type": "BatchNorm",
+      "id": "bn_0",
+      "body": "0=32 1=1.000000e-5"
+    },
+    {
+      "op": "Abs",
+      "type": "UnaryOp",
+      "id": "abs_1",
+      "body": "0=0"
+    },
+    {
+      "op": "ReduceSum",
+      "type": "Reduction",
+      "id": "sum_0",
+      "body": "0=0 1=0 -23303=1,1 4=0 5=1"
+    }
+  ],
+  "input_shape": [
+    1,
+    32,
+    32,
+    32
+  ],
+  "runs": {
+    "native": {
+      "latency_min": 0.07,
+      "latency_avg": 0.09,
+      "ipc": 0.0,
+      "error": null,
+      "trustworthy": false
+    },
+    "ours-all": {
+      "latency_min": 0.06,
+      "latency_avg": 0.08,
+      "ipc": 0.0,
+      "error": null,
+      "trustworthy": false
+    }
+  }
+}

@@ -132,6 +132,37 @@ def _persona(backend: str) -> str:
     )
 
 
+def _precision_tier_block(backend: str, hw: dict[str, Any]) -> str:
+    """Precision-tier knob (P2): tell the LLM that fp16-storage and fp16-arith
+    are available on arm and how to opt in. This is the single highest-leverage
+    lever vs ncnn's default fp16+packed baseline — surfacing it explicitly in
+    the prompt (rather than hoping the wiki catches it) lands the tier on the
+    LLM's shortlist. Empty on non-arm backends."""
+    if backend != "arm":
+        return ""
+    asimdhp = int(hw.get("HAS_ASIMDHP", 0))
+    arith_line = (
+        "- fp16-arith IS available on this CPU (HAS_ASIMDHP=1). Declare "
+        "`\"fp16-arith\"` in techniques (implies fp16-storage) to use half-precision "
+        "compute + halve memory bytes."
+        if asimdhp else
+        "- fp16-arith is NOT available on this CPU (HAS_ASIMDHP=0). Only fp16-storage "
+        "is safe here — compute stays fp32 with an implicit fp16<->fp32 conversion."
+    )
+    return (
+        "\n# Precision tier (P2 opt-in) — arm\n"
+        "The runner exposes two half-precision knobs. Declare them in the "
+        "`techniques` list of your json metadata to enable ncnn's fp16 code path:\n"
+        "- `\"fp16-storage\"` sets `opt.use_fp16_storage=true` (weights + blobs in fp16, "
+        "halves bytes moved — a memory-bound win regardless of compute).\n"
+        f"{arith_line}\n"
+        "Always keep the ACCUMULATOR in fp32 (matmul/reduction/softmax) to avoid "
+        "`E6_NUMERICAL_INSTABILITY`. Kernels without `support_fp16_storage=true` in "
+        "`create_pipeline` will silently stay fp32 even when the tag is set — set the "
+        "support flag in the pipeline when your kernel handles half-precision blobs.\n"
+    )
+
+
 def _persona_vary(backend: str) -> str:
     if backend == "vulkan":
         return (
@@ -208,7 +239,7 @@ def vary_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_context_section(context)}{_sigma_section(sigma_block)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
 # Parent kernel (the elite you are mutating)
 {files}
 
@@ -251,7 +282,7 @@ def proposer_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_context_section(context)}{_sigma_section(sigma_block)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
 # Baseline kernel (already correct; this is your starting point)
 {files}
 
