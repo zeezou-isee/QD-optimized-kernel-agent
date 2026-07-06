@@ -120,10 +120,14 @@ opgen/
     inner/             hardware_specs, constraint_engine, coarse_grid, hill_climb, inner_search
     policy/            roofline, bd, archive (MAP-Elites), experience_pool, map_elites, best_first
     test_m1/2/3.py     76 unit tests (fake evaluator/proposer; no LLM/ncnn needed)
-  cli/                 run_kernel_agent / run_operator_agent / run_graph_agent / ...
+  cli/                 run_kernel_agent / run_operator_agent / run_graph_agent /
+                       run_perf_compare (our-vs-native speedup on device) / ...
   tools/               file/shell helpers
 batch/                 batch_runner.py (one runner for all sets) + sets/{miniset,subset,all}.py
                        + results/*.json (resumable; ops with a result are skipped)
+scripts/               device + analysis tools: bench_miniset_device / bench_vulkan_device /
+                       bench_e2e_chain (real-phone perf) + rollup_stats (compile/functional/
+                       speedup roll-up across ops)
 dataset/
   Mobilekernelbench/            183 PyTorch reference operators (12 categories)
   Mobilekernelbench_miniset/    11-op fast smoke set
@@ -224,6 +228,15 @@ DEEPSEEK_API_KEY=... python batch/batch_runner.py --set miniset --model deepseek
 python batch/batch_runner.py --set subset --ops Gemm,LayerNorm    # debug a few ops
 #   -> batch/results/<set>.json
 
+# --- benchmark OUR kernel vs ncnn NATIVE on the REAL phone (speedup ratio) ---
+# needs an adb-connected device; see "Measuring performance" below.
+python opgen/cli/run_perf_compare.py --task Abs --backend arm --perf-comp-base --scale 8
+#   -> batch/results/perf_compare.json  (speedup_shipped / speedup_fair per op)
+
+# --- roll up compile / functional / speedup stats across many ops ---
+python scripts/rollup_stats.py --source batch/results/all.json --backend arm
+#   -> batch/results/rollup.csv + rollup_summary.json
+
 # --- unit tests (no LLM / ncnn needed) ---
 python opgen/optimize/test_m1.py && python opgen/optimize/test_m2.py && python opgen/optimize/test_m3.py
 ```
@@ -231,6 +244,115 @@ python opgen/optimize/test_m1.py && python opgen/optimize/test_m2.py && python o
 Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 `--experience-pool <json>` (cross-op warm-start + persist), `--baseline-compare`
 (best-first control arm), `--install` (permanently register the verified op).
+
+---
+
+## Measuring performance vs ncnn native (real device)
+
+`opgen/cli/run_perf_compare.py` benchmarks **our generated kernel** against
+**ncnn's native built-in op** on the same backend, on a **real phone** (never a
+laptop for final perf), and computes the speedup ratio. It is standalone — it
+does not touch the OperatorAgent flow.
+
+```bash
+# arm CPU: our kernel vs native, only when ncnn natively supports the op
+python opgen/cli/run_perf_compare.py --task Abs --backend arm --perf-comp-base --scale 8
+python opgen/cli/run_perf_compare.py --ops Abs,Conv,Gemm --backend arm --perf-comp-base
+python opgen/cli/run_perf_compare.py --task Conv --backend vulkan --perf-comp-base
+```
+
+- **`--perf-comp-base`** — the gate. Without it, only OUR kernel is benchmarked.
+  With it, if the op is natively supported (reuses the OperatorAgent existence
+  check, `native_supported()`), the native op is also benchmarked and the ratio
+  computed. `speedup = native_latency / ours_latency` (**>1 = our kernel wins**).
+- **`--backend {base,arm,vulkan}`** — enforces a same-backend comparison (CPU for
+  base/arm via benchncnn+simpleperf, GPU for vulkan). Vulkan is flagged
+  `cross_runner` (ours = oracle-runner single dispatch, native = benchncnn gpu=0).
+- **Precision fairness (two tiers).** benchncnn hardcodes fp16+packing=true, so a
+  naive ratio pits ncnn's fp16 path against our fp32 kernel. Each op therefore
+  records BOTH: `speedup_shipped` (native fp16+packing vs ours fp32, "as-shipped")
+  and `speedup_fair` (both fp32). The fair tier needs the opt-in `fp16=`/`packing=`
+  args added to `benchncnn.cpp` (already patched; defaults unchanged) — rebuild
+  benchncnn after pulling.
+- Other flags: `--scale N` (grow the input's first dim so the kernel dominates
+  net latency), `--loop N`, `--record-timeout S` (raise for slow fp16 paths on big
+  shapes), `--out <json>`.
+- Output: `batch/results/perf_compare.json`, keyed `"<op>:<backend>"`, merged
+  incrementally (re-runnable).
+
+---
+
+## Ablation experiments
+
+Which agent modules can be turned on/off today, and how:
+
+| module | togglable? | how |
+|---|---|---|
+| **Wiki / knowledge injection** | ✅ + A/B harness | env `KERNELGEN_WIKI={on,off}`; `opgen/optimize/ab_run.py` runs each task twice and writes `ab_report.json` |
+| **QD (MAP-Elites) vs best-first** | ✅ | `--baseline-compare` runs a best-first control arm alongside QD; verdict in `summary.extra.baseline_comparison` |
+| **outer policy** | ✅ | `--policy {linear,map_elites}` (`run_optimize.py`) / `--optimize-policy` (orchestrator) |
+| **Experience pool warm-start** | ✅ | add/omit `--experience-pool <json>` (default = no warm-start) |
+| **GraphAgent** | ⚠️ auto only | skipped automatically by the existence check when the op is native; no manual force flag |
+| **ncnn interface-dict injection** | ❌ not yet | injected unconditionally (`ncnn_interface/`); needs a gate added to ablate |
+| **Profiler feedback (`posthoc_bd`)** | ❌ not yet | self-disables only when no device PMU profile is attached; no independent switch |
+| **fp16/packing prompt hints** | ❌ not yet | emitted unconditionally for the arm backend |
+
+```bash
+# wiki on/off ablation (dedicated harness): writes batch/results-style ab_report.json
+python opgen/optimize/ab_run.py
+
+# a single wiki-off run by hand
+KERNELGEN_WIKI=off python opgen/optimize/run_optimize.py --task Conv --backend arm --policy map_elites
+
+# QD vs best-first, on one op
+python opgen/optimize/run_optimize.py --task Conv --backend arm --policy map_elites --baseline-compare
+
+# experience-pool on vs off = with/without the flag (the pool json is created +
+# persisted at the path you give; point later runs at it for cross-op warm-start)
+python opgen/optimize/run_optimize.py --task Conv --backend arm --policy map_elites            # off
+python opgen/optimize/run_optimize.py --task Conv --backend arm --policy map_elites \
+       --experience-pool experience_pool/arm_sigma_pool.json                                    # on
+```
+
+> `ab_run.py` is **wiki-specific** (it hardcodes `KERNELGEN_WIKI` + `wiki_{on,off}`
+> dirs). The QD/best-first and experience-pool ablations run today via the flags
+> above but have no dedicated batch harness yet — pair the two runs manually or
+> generalize `ab_run.py`'s env-var + mode list. The three ❌ modules need a
+> toggle added at their injection sites before they can be ablated.
+
+---
+
+## Summarizing results (roll-up)
+
+The three headline metrics live in different places: per-op **compile** and
+**correctness** are in each `runs/<op>/operator/summary.json` (the batch `all.json`
+**fuses** them into one `production` bool), and **speedup** is in
+`perf_compare.json`. `scripts/rollup_stats.py` joins them into one table + rates:
+
+```bash
+# roll up the 190-op operator run, join arm speedups
+python scripts/rollup_stats.py --source batch/results/all.json --backend arm
+# or an explicit op list / a full scan of runs/*/operator/summary.json
+python scripts/rollup_stats.py --ops Abs,Conv,Gemm --backend arm
+python scripts/rollup_stats.py
+```
+
+What it does:
+- **Un-fuses compile vs correctness** — reads `phases.production.compile.ok` and
+  `phases.production.correctness.passed` as separate columns (impossible from
+  `all.json` alone, where they're a single `production` bool).
+- Pulls all functional checkpoints: `phases.kernel.status` (numeric vs PyTorch),
+  `end_to_end_numeric.passed` (whole `ncnn::Net`), `production.correctness.passed`.
+- **Joins speedup** from `perf_compare.json` by `op:backend`
+  (`speedup_shipped` / `speedup_fair` + latencies).
+- Outputs `batch/results/rollup.csv` (one row per op) + `rollup_summary.json`
+  (compile / kernel-numeric / e2e / correctness pass-rates, native-supported rate,
+  and speedup stats: median/mean/range + how many beat native at each tier), and
+  prints the summary.
+
+Typical flow for a full statistics pass: `batch_runner.py` (correctness across the
+set) → `run_perf_compare.py` (speedup on the device) → `rollup_stats.py` (join +
+rates).
 
 ---
 

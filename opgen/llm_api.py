@@ -36,6 +36,12 @@ try:
 except ImportError:  # pragma: no cover
     OpenAI = None
 
+try:
+    from llm_usage import record as _record_usage
+except ImportError:  # pragma: no cover
+    def _record_usage(**_kw):  # noqa: ANN003
+        pass
+
 _MAX_RETRIES = 5
 _RETRY_SLEEP = 2
 
@@ -114,6 +120,13 @@ def _query_idealab(prompt: str, model: str) -> str:
                      if b.get("type") == "text"]
             content = "".join(parts).strip()
             if content:
+                usage = body.get("usage") or {}
+                _record_usage(
+                    provider="idealab", key=key, model=api_model,
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
+                    cache_read_tokens=usage.get("cache_read_input_tokens", 0),
+                    cache_creation_tokens=usage.get("cache_creation_input_tokens", 0))
                 return content
             last_exc = RuntimeError(f"empty content (stop_reason={body.get('stop_reason')})")
         except urllib.error.HTTPError as exc:  # 4xx/5xx — read the proxy's error envelope
@@ -174,10 +187,16 @@ def query_llm(prompt: str, model: str = "deepseek-v4-pro") -> str:
                 temperature=0.4,
                 max_tokens=max_tokens,
                 stream=True,
+                stream_options={"include_usage": True},
                 extra_body=extra_body,
             )
             chunks: list[str] = []
+            usage_in = usage_out = 0
             for event in stream:
+                # Final "usage-only" chunk from OpenAI/DeepSeek/OpenRouter carries no choices.
+                if getattr(event, "usage", None):
+                    usage_in = getattr(event.usage, "prompt_tokens", 0) or 0
+                    usage_out = getattr(event.usage, "completion_tokens", 0) or 0
                 if not event.choices:
                     continue
                 delta = event.choices[0].delta
@@ -186,6 +205,8 @@ def query_llm(prompt: str, model: str = "deepseek-v4-pro") -> str:
                     chunks.append(piece)
             content = "".join(chunks).strip()
             if content:
+                _record_usage(provider=provider, key=api_key, model=api_model,
+                              input_tokens=usage_in, output_tokens=usage_out)
                 return content
             last_exc = RuntimeError("empty content (model returned no answer tokens)")
         except Exception as exc:  # noqa: BLE001

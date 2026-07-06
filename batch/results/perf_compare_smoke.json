@@ -1,0 +1,51 @@
+{
+  "Abs:arm": {
+    "op": "Abs",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,256,8]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T10:15:33",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 5.94,
+      "latency_avg": 9.08,
+      "ipc": 0.405,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 2.55,
+      "latency_avg": 3.79,
+      "ipc": 1.446,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.34,
+      "latency_avg": 2.28,
+      "ipc": 1.353,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.42,
+      "latency_avg": 2.19,
+      "ipc": 1.335,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 4.433,
+    "speedup_fair": 1.796
+  }
+}

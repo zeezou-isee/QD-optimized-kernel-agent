@@ -124,6 +124,7 @@ def profile_operator(
     trust_fraction: float = 0.15,
     timeout: int = 180,
     simpleperf_cmd: str = "simpleperf",
+    bench_extra: tuple = (),
 ) -> dict:
     """采集单个 ncnn 算子的算子级 PMU profile, 返回 dict。
 
@@ -143,6 +144,8 @@ def profile_operator(
     trust_fraction: 算子占比低于此值则整体 trustworthy=False。
     simpleperf_cmd: 设备上调用 simpleperf 的方式(默认 "simpleperf" 走 PATH;
                     若 simpleperf 是 push 到 device_dir 的副本则传 "./simpleperf")。
+    bench_extra  : 额外追加到 benchncnn 命令尾部的 key=value 参数元组
+                   (如 ("fp16=0","packing=0") 强制公平 fp32 对比)。默认空=行为不变。
 
     返回
     ----
@@ -154,7 +157,8 @@ def profile_operator(
         f"taskset {taskset_mask} {simpleperf_cmd} record -e {','.join(_EVENTS)} "
         f"-f {sample_freq} -o /data/local/tmp/perf_op.data "
         f"./benchncnn {loop} {threads} 2 -1 {cooldown} "
-        f"param={param} shape='{shape}' 2>&1"
+        f"param={param} shape='{shape}'"
+        f"{(' ' + ' '.join(bench_extra)) if bench_extra else ''} 2>&1"
     )
     base = {"op": op, "shape": shape, "threads": threads}
     try:

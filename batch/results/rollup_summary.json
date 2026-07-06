@@ -1,0 +1,35 @@
+{
+  "n_ops": 190,
+  "n_operator_runs": 182,
+  "compile_correctness": {
+    "pass": 173,
+    "of": 173,
+    "rate": 1.0
+  },
+  "kernel_numeric": {
+    "pass": 176,
+    "of": 182,
+    "rate": 0.967
+  },
+  "e2e_numeric": {
+    "pass": 173,
+    "of": 176,
+    "rate": 0.983
+  },
+  "production_correctness": {
+    "pass": 173,
+    "of": 173,
+    "rate": 1.0
+  },
+  "already_in_ncnn": {
+    "pass": 136,
+    "of": 176,
+    "rate": 0.7727
+  },
+  "speedup_shipped": {
+    "n": 0
+  },
+  "speedup_fair": {
+    "n": 0
+  }
+}
