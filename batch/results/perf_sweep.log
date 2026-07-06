@@ -1,0 +1,408 @@
+=== building clean benchncnn ONCE (shared native baseline) ===
+
+=== AveragePool [arm] native_type=Pooling supported=True (operator.existence_check) shapes=[512,64,16] ===
+  native_shipped: 0.3 ms
+  native_fair:    0.21 ms
+  ours_shipped:   0.09 ms
+  ours_fair:      0.11 ms
+
+=== Conv3D [arm] native_type=Convolution3D supported=True (operator.existence_check) shapes=[8,32,8,16,16] ===
+  native_shipped: None ms
+  native_fair:    None ms
+  ours_shipped:   None ms
+  ours_fair:      None ms
+
+=== Deconvolution_2D__asymmetric_input__asymmetric_kernel [arm] native_type=Deconvolution supported=True (operator.existence_check) shapes=[512,64,16] ===
+  native_shipped: 21.61 ms
+  native_fair:    52.5 ms
+  ours_shipped:   600.29 ms
+  ours_fair:      603.59 ms
+
+=== Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__ [arm] native_type=Deconvolution supported=True (operator.existence_check) shapes=[512,32,16] ===
+  native_shipped: 23.77 ms
+  native_fair:    22.2 ms
+  ours_shipped:   277.31 ms
+  ours_fair:      276.17 ms
+
+=== Dense_Convolution_1D [arm] native_type=Convolution1D supported=True (operator.existence_check) shapes=[2048,1,64] ===
+  native_shipped: 0.6 ms
+  native_fair:    0.33 ms
+  ours_shipped:   0.19 ms
+  ours_fair:      0.19 ms
+
+=== Erf [arm] native_type=Erf supported=True (operator.existence_check) shapes=[512,1,64] ===
+  native_shipped: 0.1 ms
+  native_fair:    0.12 ms
+  ours_shipped:   0.12 ms
+  ours_fair:      0.12 ms
+
+=== Log [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,64] ===
+  native_shipped: 0.29 ms
+  native_fair:    0.32 ms
+  ours_shipped:   0.32 ms
+  ours_fair:      0.32 ms
+
+=== Reciprocal [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[1024,1,64] ===
+  native_shipped: 0.09 ms
+  native_fair:    0.04 ms
+  ours_shipped:   0.04 ms
+  ours_fair:      0.03 ms
+
+=== ReduceL1 [arm] native_type=Reshape supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceL1_2d_input [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[1024,64] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.01 ms
+  ours_fair:      0.01 ms
+
+=== ReduceL1_multiple_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.0 ms
+  native_fair:    0.0 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceL2 [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.0 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceL2_2d_input [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[1024,64] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.01 ms
+  ours_fair:      0.01 ms
+
+=== ReduceL2_keepdims [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceL2_multiple_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.0 ms
+  native_fair:    0.0 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceLogSumExp [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== ReduceLogSumExp_2d_input [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[1024,64] ===
+  native_shipped: 0.3 ms
+  native_fair:    0.3 ms
+  ours_shipped:   0.13 ms
+  ours_fair:      0.13 ms
+
+=== ReduceLogSumExp_keepdims [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.01 ms
+  ours_fair:      0.01 ms
+
+=== ReduceLogSumExp_multiple_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[32,1,3] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.01 ms
+  ours_fair:      0.01 ms
+
+=== ReduceMax [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,128,128] ===
+  native_shipped: 18.9 ms
+  native_fair:    18.83 ms
+  ours_shipped:   2.7 ms
+  ours_fair:      2.7 ms
+
+=== ReduceMax_empty_axes [arm] native_type=ExpandDims supported=True (operator.existence_check) shapes=[512,128,128] ===
+  native_shipped: 1.98 ms
+  native_fair:    1.98 ms
+  ours_shipped:   1.98 ms
+  ours_fair:      1.98 ms
+
+=== ReduceMax_with_negative_values [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,128,128] ===
+  native_shipped: 19.34 ms
+  native_fair:    19.3 ms
+  ours_shipped:   2.19 ms
+  ours_fair:      2.19 ms
+
+=== ReduceMean [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,128,128] ===
+  native_shipped: 18.92 ms
+  native_fair:    18.87 ms
+  ours_shipped:   2.73 ms
+  ours_fair:      2.71 ms
+
+=== ReduceMean_keepdims [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[2048,256,64] ===
+  native_shipped: 79.39 ms
+  native_fair:    79.37 ms
+  ours_shipped:   13.43 ms
+  ours_fair:      12.85 ms
+
+=== ReduceMean_multiple_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,64,128] ===
+  native_shipped: 0.95 ms
+  native_fair:    0.95 ms
+  ours_shipped:   0.94 ms
+  ours_fair:      0.94 ms
+
+=== ReduceMin [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,64,64] ===
+  native_shipped: 4.37 ms
+  native_fair:    4.39 ms
+  ours_shipped:   0.45 ms
+  ours_fair:      0.46 ms
+
+=== ReduceMin_empty_axes [arm] native_type=ExpandDims supported=True (operator.existence_check) shapes=[256,32,64] ===
+  native_shipped: 0.08 ms
+  native_fair:    0.08 ms
+  ours_shipped:   0.07 ms
+  ours_fair:      0.07 ms
+
+=== ReduceMin_with_negative_values [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,128,128] ===
+  native_shipped: 19.43 ms
+  native_fair:    19.4 ms
+  ours_shipped:   2.17 ms
+  ours_fair:      2.2 ms
+
+=== ReduceProd [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[256,32,64] ===
+  native_shipped: 0.47 ms
+  native_fair:    0.46 ms
+  ours_shipped:   0.17 ms
+  ours_fair:      0.17 ms
+
+=== ReduceProd_1d [arm] native_type=ExpandDims supported=True (operator.existence_check) shapes=[32768] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.01 ms
+  ours_fair:      0.01 ms
+
+=== ReduceProd_keepdims [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[256,64,64] ===
+  native_shipped: 1.82 ms
+  native_fair:    1.8 ms
+  ours_shipped:   0.23 ms
+  ours_fair:      0.23 ms
+
+=== ReduceSum [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[256,64,128] ===
+  native_shipped: 3.69 ms
+  native_fair:    3.7 ms
+  ours_shipped:   0.67 ms
+  ours_fair:      0.67 ms
+
+=== ReduceSum_empty_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[64,32,64] ===
+  native_shipped: 0.02 ms
+  native_fair:    0.02 ms
+  ours_shipped:   0.02 ms
+  ours_fair:      0.02 ms
+
+=== ReduceSum_multiple_axes [arm] native_type=Reduction supported=True (operator.existence_check) shapes=[512,64,128] ===
+  native_shipped: 0.94 ms
+  native_fair:    0.94 ms
+  ours_shipped:   0.94 ms
+  ours_fair:      0.94 ms
+
+=== Relu [arm] native_type=ReLU supported=True (operator.existence_check) shapes=[8192,64] ===
+  native_shipped: 1.03 ms
+  native_fair:    0.3 ms
+  ours_shipped:   0.18 ms
+  ours_fair:      0.19 ms
+
+=== Reshape [arm] native_type=Reshape supported=True (operator.existence_check) shapes=[512,64,8] ===
+  native_shipped: 0.77 ms
+  native_fair:    0.06 ms
+  ours_shipped:   0.06 ms
+  ours_fair:      0.06 ms
+
+=== Round [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[4096,1,512] ===
+  native_shipped: 5.05 ms
+  native_fair:    2.07 ms
+  ours_shipped:   2.06 ms
+  ours_fair:      2.08 ms
+
+=== ScatterElements [arm] native_type=aten::scatter supported=False (operator.existence_check) shapes=[512,1,64],[64,1,64],[64,1,64] ===
+  ours_shipped:   0.0 ms
+
+=== Sign [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,128] ===
+  native_shipped: 0.37 ms
+  native_fair:    0.13 ms
+  ours_shipped:   0.14 ms
+  ours_fair:      0.14 ms
+
+=== Sin [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[256,1,32] ===
+  native_shipped: 0.02 ms
+  native_fair:    0.02 ms
+  ours_shipped:   0.02 ms
+  ours_fair:      0.02 ms
+
+=== Sinh [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[4096,1,512] ===
+  native_shipped: 7.79 ms
+  native_fair:    8.58 ms
+  ours_shipped:   9.0 ms
+  ours_fair:      9.0 ms
+
+=== Slice [arm] native_type=Crop supported=True (operator.existence_check) shapes=[32,4,10] ===
+  native_shipped: 0.01 ms
+  native_fair:    0.0 ms
+  ours_shipped:   0.0 ms
+  ours_fair:      0.0 ms
+
+=== Softmax [arm] native_type=Softmax supported=True (operator.existence_check) shapes=[16384,64] ===
+  native_shipped: 3.4 ms
+  native_fair:    2.89 ms
+  ours_shipped:   14.84 ms
+  ours_fair:      11.0 ms
+
+=== Softplus_2d [arm] native_type=Softplus supported=True (operator.existence_check) shapes=[1024,8] ===
+  native_shipped: 0.09 ms
+  native_fair:    0.09 ms
+  ours_shipped:   0.04 ms
+  ours_fair:      0.04 ms
+
+=== Softplus_3d [arm] native_type=Softplus supported=True (operator.existence_check) shapes=[1024,1,128] ===
+  native_shipped: 1.51 ms
+  native_fair:    1.51 ms
+  ours_shipped:   0.75 ms
+  ours_fair:      0.75 ms
+
+=== Sqrt [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[512,1,64] ===
+  native_shipped: 0.05 ms
+  native_fair:    0.03 ms
+  ours_shipped:   0.02 ms
+  ours_fair:      0.02 ms
+
+=== Strassen_Convolution_2D [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[448,56,64] ===
+  native_shipped: 3.3 ms
+  native_fair:    3.42 ms
+  ours_shipped:   37.52 ms
+  ours_fair:      38.09 ms
+
+=== StridedSlice [arm] native_type=Crop supported=True (operator.existence_check) shapes=[512,64,8] ===
+  native_shipped: 0.11 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.03 ms
+  ours_fair:      0.03 ms
+
+=== Sub [arm] native_type=BinaryOp supported=True (operator.existence_check) shapes=[2048,1,128],[256,1,128] ===
+  native_shipped: 0.25 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.04 ms
+  ours_fair:      0.04 ms
+
+=== Tan [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,256] ===
+  native_shipped: 4.28 ms
+  native_fair:    1.61 ms
+  ours_shipped:   1.84 ms
+  ours_fair:      1.84 ms
+
+=== Tanh [arm] native_type=TanH supported=True (operator.existence_check) shapes=[2048,1,128] ===
+  native_shipped: 0.51 ms
+  native_fair:    0.5 ms
+  ours_shipped:   0.44 ms
+  ours_fair:      0.44 ms
+
+=== TopK [arm] native_type=torch.topk supported=False (operator.existence_check) shapes=[8192,64] ===
+  ours_shipped:   5.76 ms
+
+=== TopK_3d [arm] native_type=torch.topk supported=False (operator.existence_check) shapes=[1024,1,64] ===
+  ours_shipped:   0.05 ms
+
+=== TopK_dim0 [arm] native_type=torch.topk supported=False (operator.existence_check) shapes=[2048,32] ===
+  ours_shipped:   0.34 ms
+
+=== TopK_indices [arm] native_type=torch.topk supported=False (operator.existence_check) shapes=[2048,32] ===
+  ours_shipped:   2.61 ms
+
+=== TopK_sorted [arm] native_type=torch.topk supported=False (operator.existence_check) shapes=[2048,32] ===
+  ours_shipped:   0.08 ms
+
+=== Trilu_lower [arm] native_type=aten::tril supported=False (operator.existence_check) shapes=[512,32] ===
+  ours_shipped:   0.0 ms
+
+=== Where [arm] native_type=torch.where supported=False (operator.existence_check) shapes=[4096,1,512],[512,1,512],[512,1,512] ===
+  ours_shipped:   0.27 ms
+
+=== Where_broadcast [arm] native_type=torch.where supported=False (operator.existence_check) shapes=[8,1,1],[512,1,64],[512,1,64] ===
+  ours_shipped:   0.02 ms
+
+=== Winograd_Convolution_2D [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[1792,224,16] ===
+  native_shipped: 45.38 ms
+  native_fair:    81.47 ms
+  ours_shipped:   801.88 ms
+  ours_fair:      734.85 ms
+
+=== Winograd_Convolution_2D_padding [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[512,64,16] ===
+  native_shipped: 4.01 ms
+  native_fair:    5.19 ms
+  ours_shipped:   61.51 ms
+  ours_fair:      61.53 ms
+
+========================================================================================
+op                   backend      ours  nat(ship)  nat(fair)   x_ship   x_fair
+----------------------------------------------------------------------------------------
+AveragePool              arm      0.09        0.3       0.21    3.333    1.909
+Conv3D                   arm      None       None       None        -        -
+Deconvolution_2D__asymmetric_input__asymmetric_kernel     arm    600.29      21.61       52.5    0.036    0.087
+Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__     arm    277.31      23.77       22.2    0.086     0.08
+Dense_Convolution_1D     arm      0.19        0.6       0.33    3.158    1.737
+Erf                      arm      0.12        0.1       0.12    0.833      1.0
+Log                      arm      0.32       0.29       0.32    0.906      1.0
+Reciprocal               arm      0.04       0.09       0.04     2.25    1.333
+ReduceL1                 arm       0.0       0.01       0.01        -        -
+ReduceL1_2d_input        arm      0.01       0.01       0.01      1.0      1.0
+ReduceL1_multiple_axes     arm       0.0        0.0        0.0        -        -
+ReduceL2                 arm       0.0       0.01        0.0        -        -
+ReduceL2_2d_input        arm      0.01       0.01       0.01      1.0      1.0
+ReduceL2_keepdims        arm       0.0       0.01       0.01        -        -
+ReduceL2_multiple_axes     arm       0.0        0.0        0.0        -        -
+ReduceLogSumExp          arm       0.0       0.01       0.01        -        -
+ReduceLogSumExp_2d_input     arm      0.13        0.3        0.3    2.308    2.308
+ReduceLogSumExp_keepdims     arm      0.01       0.01       0.01      1.0      1.0
+ReduceLogSumExp_multiple_axes     arm      0.01       0.01       0.01      1.0      1.0
+ReduceMax                arm       2.7       18.9      18.83      7.0    6.974
+ReduceMax_empty_axes     arm      1.98       1.98       1.98      1.0      1.0
+ReduceMax_with_negative_values     arm      2.19      19.34       19.3    8.831    8.813
+ReduceMean               arm      2.73      18.92      18.87     6.93    6.963
+ReduceMean_keepdims      arm     13.43      79.39      79.37    5.911    6.177
+ReduceMean_multiple_axes     arm      0.94       0.95       0.95    1.011    1.011
+ReduceMin                arm      0.45       4.37       4.39    9.711    9.543
+ReduceMin_empty_axes     arm      0.07       0.08       0.08    1.143    1.143
+ReduceMin_with_negative_values     arm      2.17      19.43       19.4    8.954    8.818
+ReduceProd               arm      0.17       0.47       0.46    2.765    2.706
+ReduceProd_1d            arm      0.01       0.01       0.01      1.0      1.0
+ReduceProd_keepdims      arm      0.23       1.82        1.8    7.913    7.826
+ReduceSum                arm      0.67       3.69        3.7    5.507    5.522
+ReduceSum_empty_axes     arm      0.02       0.02       0.02      1.0      1.0
+ReduceSum_multiple_axes     arm      0.94       0.94       0.94      1.0      1.0
+Relu                     arm      0.18       1.03        0.3    5.722    1.579
+Reshape                  arm      0.06       0.77       0.06   12.833      1.0
+Round                    arm      2.06       5.05       2.07    2.451    0.995
+ScatterElements          arm       0.0       None       None        -        -
+Sign                     arm      0.14       0.37       0.13    2.643    0.929
+Sin                      arm      0.02       0.02       0.02      1.0      1.0
+Sinh                     arm       9.0       7.79       8.58    0.866    0.953
+Slice                    arm       0.0       0.01        0.0        -        -
+Softmax                  arm     14.84        3.4       2.89    0.229    0.263
+Softplus_2d              arm      0.04       0.09       0.09     2.25     2.25
+Softplus_3d              arm      0.75       1.51       1.51    2.013    2.013
+Sqrt                     arm      0.02       0.05       0.03      2.5      1.5
+Strassen_Convolution_2D     arm     37.52        3.3       3.42    0.088     0.09
+StridedSlice             arm      0.03       0.11       0.01    3.667    0.333
+Sub                      arm      0.04       0.25       0.01     6.25     0.25
+Tan                      arm      1.84       4.28       1.61    2.326    0.875
+Tanh                     arm      0.44       0.51        0.5    1.159    1.136
+TopK                     arm      5.76       None       None        -        -
+TopK_3d                  arm      0.05       None       None        -        -
+TopK_dim0                arm      0.34       None       None        -        -
+TopK_indices             arm      2.61       None       None        -        -
+TopK_sorted              arm      0.08       None       None        -        -
+Trilu_lower              arm       0.0       None       None        -        -
+Where                    arm      0.27       None       None        -        -
+Where_broadcast          arm      0.02       None       None        -        -
+Winograd_Convolution_2D     arm    801.88      45.38      81.47    0.057    0.111
+Winograd_Convolution_2D_padding     arm     61.51       4.01       5.19    0.065    0.084
+========================================================================================
+speedup = native_latency / ours_latency  (>1 = OUR kernel is faster)
+results -> batch/results/perf_compare.json

@@ -27,9 +27,19 @@
     "rate": 0.7727
   },
   "speedup_shipped": {
-    "n": 0
+    "n": 109,
+    "mean": 2.388,
+    "median": 1.254,
+    "min": 0.006,
+    "max": 12.833,
+    "n_faster_than_native": 60
   },
   "speedup_fair": {
-    "n": 0
+    "n": 107,
+    "mean": 1.713,
+    "median": 1.0,
+    "min": 0.01,
+    "max": 9.543,
+    "n_faster_than_native": 50
   }
 }
