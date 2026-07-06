@@ -195,20 +195,73 @@ def build_clean_benchncnn_once() -> bool:
 
 
 # ---------------------------------------------------------------- CPU profiling
+_PROFILE_TARGET_MS = 10000   # aim ~10s of benchncnn work per profile run
+_MIN_LOOP = 30
+
+
+def _probe_periter(shapes: str, fair: bool) -> float | None:
+    """Quick un-profiled benchncnn run (few loops, no simpleperf) to estimate
+    per-iter latency (ms), so we can size the real profile's loop count. Without
+    this, a fixed loop (e.g. 4000) makes heavy ops (a 186ms/iter fp32 deconv ->
+    744s) blow past the record timeout; adaptive loop bounds every profile to
+    ~_PROFILE_TARGET_MS regardless of op weight."""
+    extra = " fp16=0 packing=0" if fair else ""
+    cmd = (f"cd {DEVDIR} && ./benchncnn 8 1 2 -1 0 "
+           f"param=model.param shape='{shapes}'{extra} 2>&1")
+    try:
+        out = adb("shell", cmd, timeout=180).stdout
+    except Exception:  # noqa: BLE001
+        return None
+    lat = op_profiler._parse_latency(out) if hasattr(op_profiler, "_parse_latency") else {}
+    return lat.get("latency_avg")
+
+
+def _adaptive_loop(shapes: str, fair: bool, cap: int) -> tuple[int, float | None]:
+    per = _probe_periter(shapes, fair)
+    if per and per > 0:
+        return max(_MIN_LOOP, min(cap, int(_PROFILE_TARGET_MS / per))), per
+    return min(cap, 200), per   # unknown -> conservative
+
+
+def _bench_latency(shapes: str, fair: bool, loop: int, timeout: int = 300) -> tuple[dict, str]:
+    """Run benchncnn directly (NO simpleperf) and parse min/max/avg. This is all
+    we need for a latency-only comparison: benchncnn reports latency itself, and
+    skipping simpleperf removes both the ~2x sampling overhead AND the profiler
+    perturbation — so the measured latency is the true clean latency."""
+    extra = " fp16=0 packing=0" if fair else ""
+    cmd = (f"cd {DEVDIR} && ./benchncnn {loop} 1 2 -1 1 "
+           f"param=model.param shape='{shapes}'{extra} 2>&1")
+    try:
+        out = adb("shell", cmd, timeout=timeout).stdout
+    except Exception as exc:  # noqa: BLE001
+        return {}, f"benchncnn timeout/err: {exc}"
+    return op_profiler._parse_latency(out), out
+
+
 def _profile_cpu(op: str, shapes: str, loop: int, fair: bool, tier: str,
-                 timeout: int = 600) -> dict:
-    extra = ("fp16=0", "packing=0") if fair else ()
-    r = op_profiler.profile_operator(op, "model.param", shapes, threads=1, loop=loop,
-                                     device_dir=DEVDIR, simpleperf_cmd="simpleperf",
-                                     bench_extra=extra, timeout=timeout)
-    return {"tier": tier, "latency_min": r.get("latency_min"),
-            "latency_avg": r.get("latency_avg"), "ipc": r.get("ipc"),
-            "symbol": r.get("operator_symbol"), "trustworthy": r.get("trustworthy"),
-            "error": r.get("error")}
+                 timeout: int = 600, use_simpleperf: bool = True) -> dict:
+    eff_loop, per = _adaptive_loop(shapes, fair, loop)   # `loop` is the cap
+    if use_simpleperf:
+        extra = ("fp16=0", "packing=0") if fair else ()
+        r = op_profiler.profile_operator(op, "model.param", shapes, threads=1, loop=eff_loop,
+                                         device_dir=DEVDIR, simpleperf_cmd="simpleperf",
+                                         bench_extra=extra, timeout=timeout)
+        return {"tier": tier, "latency_min": r.get("latency_min"),
+                "latency_avg": r.get("latency_avg"), "ipc": r.get("ipc"),
+                "symbol": r.get("operator_symbol"), "trustworthy": r.get("trustworthy"),
+                "loop": eff_loop, "per_iter_probe_ms": per, "pmu": True,
+                "error": r.get("error")}
+    # latency-only: benchncnn without simpleperf
+    lat, out = _bench_latency(shapes, fair, eff_loop, timeout=min(timeout, 300))
+    err = None if lat.get("latency_min") is not None else out.strip()[-200:]
+    return {"tier": tier, "latency_min": lat.get("latency_min"),
+            "latency_avg": lat.get("latency_avg"), "ipc": None, "symbol": None,
+            "trustworthy": None, "loop": eff_loop, "per_iter_probe_ms": per,
+            "pmu": False, "error": err}
 
 
 def bench_cpu(op: str, backend: str, loop: int, scale: int, comp_base: bool,
-              timeout: int = 600) -> dict:
+              timeout: int = 600, use_simpleperf: bool = True) -> dict:
     param = find_param(op); model = find_model(op)
     if not param or not model:
         return {"op": op, "backend": backend, "error": f"missing param={param} model={model}"}
@@ -219,8 +272,8 @@ def bench_cpu(op: str, backend: str, loop: int, scale: int, comp_base: bool,
     cls = f"Cand_{op}"
     supported, why = native_supported(op, nt)
     res = {"op": op, "backend": backend, "native_type": nt, "shapes": shapes,
-           "scale": scale, "runner": "benchncnn", "native_supported": supported,
-           "native_support_src": why, "ts": _now()}
+           "scale": scale, "runner": "benchncnn", "pmu": use_simpleperf,
+           "native_supported": supported, "native_support_src": why, "ts": _now()}
     print(f"\n=== {op} [{backend}] native_type={nt} supported={supported} ({why}) "
           f"shapes={shapes} ===")
 
@@ -231,9 +284,9 @@ def bench_cpu(op: str, backend: str, loop: int, scale: int, comp_base: bool,
     #    here. This avoids one full 63M-archive relink per op vs rebuilding clean.
     if comp_base and supported:
         adb("push", str(param), f"{DEVDIR}/model.param", timeout=30)
-        res["native_shipped"] = _profile_cpu(op, shapes, loop, fair=False, tier="fp16+packing", timeout=timeout)
+        res["native_shipped"] = _profile_cpu(op, shapes, loop, fair=False, tier="fp16+packing", timeout=timeout, use_simpleperf=use_simpleperf)
         print(f"  native_shipped: {res['native_shipped']['latency_min']} ms")
-        res["native_fair"] = _profile_cpu(op, shapes, loop, fair=True, tier="fp32", timeout=timeout)
+        res["native_fair"] = _profile_cpu(op, shapes, loop, fair=True, tier="fp32", timeout=timeout, use_simpleperf=use_simpleperf)
         print(f"  native_fair:    {res['native_fair']['latency_min']} ms")
 
     # 2) OURS — install Cand_<Op> (+arm) -> rebuild -> retarget -> profile -> restore.
@@ -256,10 +309,10 @@ def bench_cpu(op: str, backend: str, loop: int, scale: int, comp_base: bool,
         rp = RUNS / op / "_perfcmp_net" / "ours.param"
         rp.parent.mkdir(parents=True, exist_ok=True); rp.write_text(nt_txt)
         adb("push", str(rp), f"{DEVDIR}/model.param", timeout=30)
-        res["ours_shipped"] = _profile_cpu(op, shapes, loop, fair=False, tier="fp32(shipped-cfg)", timeout=timeout)
+        res["ours_shipped"] = _profile_cpu(op, shapes, loop, fair=False, tier="fp32(shipped-cfg)", timeout=timeout, use_simpleperf=use_simpleperf)
         print(f"  ours_shipped:   {res['ours_shipped']['latency_min']} ms")
         if comp_base and supported:
-            res["ours_fair"] = _profile_cpu(op, shapes, loop, fair=True, tier="fp32", timeout=timeout)
+            res["ours_fair"] = _profile_cpu(op, shapes, loop, fair=True, tier="fp32", timeout=timeout, use_simpleperf=use_simpleperf)
             print(f"  ours_fair:      {res['ours_fair']['latency_min']} ms")
     finally:
         for h in reversed(handles):
@@ -361,7 +414,11 @@ def main() -> None:
                     help="multiply each input's first dim (make the kernel dominate).")
     ap.add_argument("--loop", type=int, default=20000, help="benchncnn loop count")
     ap.add_argument("--record-timeout", type=int, default=600,
-                    help="simpleperf record timeout (s); raise for slow fp16 paths on big shapes")
+                    help="profile timeout (s); raise for slow fp16 paths on big shapes")
+    ap.add_argument("--no-simpleperf", action="store_true",
+                    help="latency-only: run benchncnn WITHOUT simpleperf (no PMU/IPC/"
+                         "cache-miss, but ~2x faster + no profiler perturbation = cleaner "
+                         "latency). Default: simpleperf ON (collects PMU).")
     ap.add_argument("--out", default=None, help="override results JSON path")
     ap.add_argument("--dataset", default=None,
                     help="override the dataset root used to resolve <op>.py input shapes "
@@ -397,7 +454,8 @@ def main() -> None:
                 r = bench_vulkan(op, args.loop, args.perf_comp_base)
             else:
                 r = bench_cpu(op, args.backend, args.loop, args.scale, args.perf_comp_base,
-                              timeout=args.record_timeout)
+                              timeout=args.record_timeout,
+                              use_simpleperf=not args.no_simpleperf)
         except Exception as exc:  # noqa: BLE001
             r = {"op": op, "backend": args.backend, "error": f"crashed: {exc}", "ts": _now()}
             print(f"  [CRASH] {op}: {exc}")

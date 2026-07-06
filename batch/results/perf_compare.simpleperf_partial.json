@@ -1,0 +1,1855 @@
+{
+  "ATan:arm": {
+    "op": "ATan",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[4096,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:20:21",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 2.66,
+      "latency_avg": 5.45,
+      "ipc": 5.907,
+      "symbol": "atanf",
+      "trustworthy": true,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 3.14,
+      "latency_avg": 5.43,
+      "ipc": 5.776,
+      "symbol": "atanf",
+      "trustworthy": true,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 2.61,
+      "latency_avg": 5.35,
+      "ipc": 6.16,
+      "symbol": "atanf",
+      "trustworthy": true,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 3.01,
+      "latency_avg": 4.47,
+      "ipc": 6.193,
+      "symbol": "atanf",
+      "trustworthy": true,
+      "error": null
+    },
+    "speedup_shipped": 1.019,
+    "speedup_fair": 1.043
+  },
+  "Abs:arm": {
+    "op": "Abs",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,256,8]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:23:01",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 6.31,
+      "latency_avg": 9.23,
+      "ipc": 0.403,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 2.5,
+      "latency_avg": 3.47,
+      "ipc": 0.0,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastFree(void*)",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.57,
+      "latency_avg": 2.32,
+      "ipc": 0.984,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.91,
+      "latency_avg": 2.56,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 4.019,
+    "speedup_fair": 2.747
+  },
+  "Acos:arm": {
+    "op": "Acos",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[1024,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:25:25",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.59,
+      "latency_avg": 1.1,
+      "ipc": 6.342,
+      "symbol": "acosf",
+      "trustworthy": true,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.12,
+      "latency_avg": 0.2,
+      "ipc": 2.625,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.17,
+      "latency_avg": 0.29,
+      "ipc": 2.637,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.17,
+      "latency_avg": 0.29,
+      "ipc": 1.982,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 3.471,
+    "speedup_fair": 0.706
+  },
+  "Acosh:arm": {
+    "op": "Acosh",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[512,1,64]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:26:34",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.11,
+      "latency_avg": 0.15,
+      "ipc": 2.724,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.15,
+      "latency_avg": 0.22,
+      "ipc": 3.33,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.11,
+      "latency_avg": 0.16,
+      "ipc": 2.891,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.11,
+      "latency_avg": 0.17,
+      "ipc": 3.146,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 1.0,
+    "speedup_fair": 1.364
+  },
+  "Add:arm": {
+    "op": "Add",
+    "backend": "arm",
+    "native_type": "BinaryOp",
+    "shapes": "[512,64,3],[1,1,3]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:27:37",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.06,
+      "latency_avg": 0.09,
+      "ipc": 4.039,
+      "symbol": "ncnn::binary_op_vector_fp16s(half const*, half const*, half*, int, int, int, int, int)",
+      "trustworthy": true,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.02,
+      "latency_avg": 0.04,
+      "ipc": 3.931,
+      "symbol": "ncnn::binary_op_vector(float const*, float const*, float*, int, int, int, int, int)",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.02,
+      "latency_avg": 0.05,
+      "ipc": 2.627,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.02,
+      "latency_avg": 0.04,
+      "ipc": 2.799,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 3.0,
+    "speedup_fair": 1.0
+  },
+  "And:arm": {
+    "op": "And",
+    "backend": "arm",
+    "native_type": "torch.logical_and",
+    "shapes": "[256,1,32],[32,1,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:28:56",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.0,
+      "latency_avg": 0.01,
+      "ipc": 2.251,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMax:arm": {
+    "op": "ArgMax",
+    "backend": "arm",
+    "native_type": "torch.argmax",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:29:46",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.05,
+      "latency_avg": 0.08,
+      "ipc": 3.49,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMax_default_axis_example:arm": {
+    "op": "ArgMax_default_axis_example",
+    "backend": "arm",
+    "native_type": "torch.argmax",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:30:32",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.04,
+      "latency_avg": 0.07,
+      "ipc": 2.148,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMax_keepdims_example:arm": {
+    "op": "ArgMax_keepdims_example",
+    "backend": "arm",
+    "native_type": "torch.argmax",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:31:14",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.04,
+      "latency_avg": 0.08,
+      "ipc": 5.056,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMax_negative_axis_keepdims_example:arm": {
+    "op": "ArgMax_negative_axis_keepdims_example",
+    "backend": "arm",
+    "native_type": "torch.argmax",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:32:01",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.15,
+      "latency_avg": 0.23,
+      "ipc": 3.567,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMin:arm": {
+    "op": "ArgMin",
+    "backend": "arm",
+    "native_type": "torch.argmin",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:32:47",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.0,
+      "latency_avg": 0.02,
+      "ipc": 3.953,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMin_default_axis_example:arm": {
+    "op": "ArgMin_default_axis_example",
+    "backend": "arm",
+    "native_type": "torch.argmin",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:33:27",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.03,
+      "latency_avg": 0.06,
+      "ipc": 2.948,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMin_keepdims_example:arm": {
+    "op": "ArgMin_keepdims_example",
+    "backend": "arm",
+    "native_type": "torch.argmin",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:34:08",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.04,
+      "latency_avg": 0.08,
+      "ipc": 3.383,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "ArgMin_negative_axis_keepdims_example:arm": {
+    "op": "ArgMin_negative_axis_keepdims_example",
+    "backend": "arm",
+    "native_type": "torch.argmin",
+    "shapes": "[1016,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:34:57",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.04,
+      "latency_avg": 0.06,
+      "ipc": 3.362,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "Asin:arm": {
+    "op": "Asin",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,1,512]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:35:49",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 5.05,
+      "latency_avg": 9.79,
+      "ipc": 5.878,
+      "symbol": "asinf",
+      "trustworthy": true,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.18,
+      "latency_avg": 2.2,
+      "ipc": 1.324,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.24,
+      "latency_avg": 2.33,
+      "ipc": 2.843,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.53,
+      "latency_avg": 2.38,
+      "ipc": 1.398,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 4.073,
+    "speedup_fair": 0.771
+  },
+  "Asinh:arm": {
+    "op": "Asinh",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:38:16",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.8,
+      "latency_avg": 1.04,
+      "ipc": 1.69,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.94,
+      "latency_avg": 1.63,
+      "ipc": 2.874,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.39,
+      "latency_avg": 2.23,
+      "ipc": 2.163,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.14,
+      "latency_avg": 2.33,
+      "ipc": 1.065,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.576,
+    "speedup_fair": 0.825
+  },
+  "Atanh:arm": {
+    "op": "Atanh",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[512,1,64]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:39:58",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.1,
+      "latency_avg": 0.15,
+      "ipc": 2.168,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.14,
+      "latency_avg": 0.2,
+      "ipc": 1.979,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.18,
+      "latency_avg": 0.25,
+      "ipc": 3.139,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.18,
+      "latency_avg": 0.26,
+      "ipc": 2.596,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.556,
+    "speedup_fair": 0.778
+  },
+  "AveragePool:arm": {
+    "op": "AveragePool",
+    "backend": "arm",
+    "native_type": "Pooling",
+    "shapes": "[512,64,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:41:10",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.27,
+      "latency_avg": 0.42,
+      "ipc": 1.524,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.2,
+      "latency_avg": 0.44,
+      "ipc": 2.438,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "error": "our-kernel benchncnn build failed"
+  },
+  "AveragePool_2d_ceil:arm": {
+    "op": "AveragePool_2d_ceil",
+    "backend": "arm",
+    "native_type": "Pooling",
+    "shapes": "[512,64,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:41:56",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.35,
+      "latency_avg": 0.51,
+      "ipc": 2.178,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.31,
+      "latency_avg": 0.71,
+      "ipc": 2.501,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.17,
+      "latency_avg": 0.38,
+      "ipc": 2.305,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.15,
+      "latency_avg": 0.36,
+      "ipc": 4.091,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 2.059,
+    "speedup_fair": 2.067
+  },
+  "AveragePool_2d_strides:arm": {
+    "op": "AveragePool_2d_strides",
+    "backend": "arm",
+    "native_type": "Pooling",
+    "shapes": "[512,64,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:43:35",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.67,
+      "latency_avg": 1.11,
+      "ipc": 2.194,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.08,
+      "latency_avg": 2.41,
+      "ipc": 1.788,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.29,
+      "latency_avg": 0.73,
+      "ipc": 2.24,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.34,
+      "latency_avg": 0.72,
+      "ipc": 2.266,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 2.31,
+    "speedup_fair": 3.176
+  },
+  "BatchNormalization:arm": {
+    "op": "BatchNormalization",
+    "backend": "arm",
+    "native_type": "BatchNorm",
+    "shapes": "[1024,128,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:45:32",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 6.01,
+      "latency_avg": 9.49,
+      "ipc": 0.443,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.85,
+      "latency_avg": 3.74,
+      "ipc": 0.741,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 4.52,
+      "latency_avg": 8.3,
+      "ipc": 0.735,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.97,
+      "latency_avg": 2.41,
+      "ipc": 0.584,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 1.33,
+    "speedup_fair": 1.907
+  },
+  "BatchNormalization_epsilon:arm": {
+    "op": "BatchNormalization_epsilon",
+    "backend": "arm",
+    "native_type": "BatchNorm",
+    "shapes": "[1024,128,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:49:15",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 6.28,
+      "latency_avg": 9.46,
+      "ipc": 0.449,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.89,
+      "latency_avg": 3.77,
+      "ipc": 0.722,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.99,
+      "latency_avg": 2.4,
+      "ipc": 0.745,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.97,
+      "latency_avg": 2.37,
+      "ipc": 1.538,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 6.343,
+    "speedup_fair": 1.948
+  },
+  "BatchNormalization_momentum:arm": {
+    "op": "BatchNormalization_momentum",
+    "backend": "arm",
+    "native_type": "BatchNorm",
+    "shapes": "[1024,128,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:53:09",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 6.0,
+      "latency_avg": 9.32,
+      "ipc": 0.454,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.78,
+      "latency_avg": 3.85,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.96,
+      "latency_avg": 2.4,
+      "ipc": 0.999,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.02,
+      "latency_avg": 2.41,
+      "ipc": 0.75,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 6.25,
+    "speedup_fair": 1.745
+  },
+  "BitWiseOr:arm": {
+    "op": "BitWiseOr",
+    "backend": "arm",
+    "native_type": "torch.bitwise_or",
+    "shapes": "[2048,1,128],[256,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:56:05",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.0,
+      "latency_avg": 0.0,
+      "ipc": 2.845,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "BitWiseXor:arm": {
+    "op": "BitWiseXor",
+    "backend": "arm",
+    "native_type": "torch.bitwise_xor",
+    "shapes": "[4096,1,128],[512,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:56:59",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.0,
+      "latency_avg": 0.0,
+      "ipc": 2.49,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "BitwiseAnd:arm": {
+    "op": "BitwiseAnd",
+    "backend": "arm",
+    "native_type": "torch.bitwise_and",
+    "shapes": "[512,1,32],[64,1,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:57:51",
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.0,
+      "latency_avg": 0.0,
+      "ipc": 3.297,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "Ceil:arm": {
+    "op": "Ceil",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T15:58:48",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.35,
+      "latency_avg": 0.48,
+      "ipc": 1.994,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.09,
+      "latency_avg": 0.14,
+      "ipc": 2.236,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.06,
+      "latency_avg": 0.1,
+      "ipc": 3.7,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.06,
+      "latency_avg": 0.1,
+      "ipc": 2.883,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 5.833,
+    "speedup_fair": 1.5
+  },
+  "Celu:arm": {
+    "op": "Celu",
+    "backend": "arm",
+    "native_type": "CELU",
+    "shapes": "[8192,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:00:16",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.74,
+      "latency_avg": 1.38,
+      "ipc": 1.193,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.75,
+      "latency_avg": 1.38,
+      "ipc": 1.187,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.82,
+      "latency_avg": 3.18,
+      "ipc": 2.207,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.76,
+      "latency_avg": 2.99,
+      "ipc": 2.217,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.407,
+    "speedup_fair": 0.426
+  },
+  "Clip:arm": {
+    "op": "Clip",
+    "backend": "arm",
+    "native_type": "Clip",
+    "shapes": "[2048,128,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:02:17",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 13.38,
+      "latency_avg": 20.22,
+      "ipc": 0.0,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastFree(void*)",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 5.0,
+      "latency_avg": 8.19,
+      "ipc": 1.235,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 2.23,
+      "latency_avg": 4.9,
+      "ipc": 0.732,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 2.06,
+      "latency_avg": 4.94,
+      "ipc": 0.729,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 6.0,
+    "speedup_fair": 2.427
+  },
+  "Concat:arm": {
+    "op": "Concat",
+    "backend": "arm",
+    "native_type": "Concat",
+    "shapes": "[512,1,128],[64,1,128],[64,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:06:38",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.12,
+      "latency_avg": 0.18,
+      "ipc": 2.428,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.01,
+      "latency_avg": 0.03,
+      "ipc": 2.716,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.05,
+      "latency_avg": 0.08,
+      "ipc": 2.968,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.04,
+      "latency_avg": 0.08,
+      "ipc": 2.201,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 2.4,
+    "speedup_fair": 0.25
+  },
+  "Conv:arm": {
+    "op": "Conv",
+    "backend": "arm",
+    "native_type": "Convolution",
+    "shapes": "[256,32,3],[3,3,3],[16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:07:47",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 1.46,
+      "latency_avg": 2.22,
+      "ipc": 2.62,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.33,
+      "latency_avg": 0.54,
+      "ipc": 3.183,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 5.31,
+      "latency_avg": 9.6,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 5.09,
+      "latency_avg": 9.59,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.275,
+    "speedup_fair": 0.065
+  },
+  "Conv3D:arm": {
+    "op": "Conv3D",
+    "backend": "arm",
+    "native_type": "Convolution3D",
+    "shapes": "[8,32,8,16,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:10:54",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 2.894,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 4.451,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "error": "our-kernel benchncnn build failed"
+  },
+  "ConvTranspose_dilations:arm": {
+    "op": "ConvTranspose_dilations",
+    "backend": "arm",
+    "native_type": "Deconvolution",
+    "shapes": "[256,32,16],[32,32,4]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:11:06",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 8.34,
+      "latency_avg": 14.97,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 12.17,
+      "latency_avg": 19.74,
+      "ipc": 0.0,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 38.96,
+      "latency_avg": 69.82,
+      "ipc": null,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastFree(void*)",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 38.67,
+      "latency_avg": 69.44,
+      "ipc": null,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.214,
+    "speedup_fair": 0.315
+  },
+  "Conv_with_strides_no_padding:arm": {
+    "op": "Conv_with_strides_no_padding",
+    "backend": "arm",
+    "native_type": "Convolution",
+    "shapes": "[512,64,8],[64,64,8]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:27:22",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 2.074,
+      "symbol": "__vfprintf",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 2.356,
+      "symbol": "__vfprintf",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 2.883,
+      "symbol": "__vfprintf",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": null,
+      "latency_avg": null,
+      "ipc": 2.532,
+      "symbol": "__vfprintf",
+      "trustworthy": false,
+      "error": null
+    }
+  },
+  "Conv_with_strides_padding:arm": {
+    "op": "Conv_with_strides_padding",
+    "backend": "arm",
+    "native_type": "Convolution",
+    "shapes": "[512,64,16],[3,3,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:28:45",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.81,
+      "latency_avg": 1.32,
+      "ipc": 1.838,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.39,
+      "latency_avg": 2.65,
+      "ipc": 1.996,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.91,
+      "latency_avg": 3.68,
+      "ipc": 2.776,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.92,
+      "latency_avg": 3.71,
+      "ipc": 2.778,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.424,
+    "speedup_fair": 0.724
+  },
+  "Cos:arm": {
+    "op": "Cos",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,1,256]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:30:53",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.81,
+      "latency_avg": 1.39,
+      "ipc": 1.767,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 1.22,
+      "latency_avg": 1.77,
+      "ipc": 2.171,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 1.15,
+      "latency_avg": 2.19,
+      "ipc": 3.034,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 1.15,
+      "latency_avg": 2.17,
+      "ipc": 2.018,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.704,
+    "speedup_fair": 1.061
+  },
+  "Cosh:arm": {
+    "op": "Cosh",
+    "backend": "arm",
+    "native_type": "UnaryOp",
+    "shapes": "[2048,1,128]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:32:39",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.6,
+      "latency_avg": 0.81,
+      "ipc": 1.687,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.53,
+      "latency_avg": 0.96,
+      "ipc": 3.532,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.78,
+      "latency_avg": 1.24,
+      "ipc": 2.475,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.61,
+      "latency_avg": 1.29,
+      "ipc": 3.301,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.769,
+    "speedup_fair": 0.869
+  },
+  "CumSum:arm": {
+    "op": "CumSum",
+    "backend": "arm",
+    "native_type": "CumulativeSum",
+    "shapes": "[256,1,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:34:18",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.01,
+      "latency_avg": 0.02,
+      "ipc": 2.784,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.01,
+      "latency_avg": 0.02,
+      "ipc": 2.618,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.01,
+      "latency_avg": 0.02,
+      "ipc": 3.385,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.01,
+      "latency_avg": 0.02,
+      "ipc": 3.152,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 1.0,
+    "speedup_fair": 1.0
+  },
+  "DeconvolutionDepthwise_2D_kernel:arm": {
+    "op": "DeconvolutionDepthwise_2D_kernel",
+    "backend": "arm",
+    "native_type": "DeconvolutionDepthWise",
+    "shapes": "[384,48,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T16:35:48",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 6.84,
+      "latency_avg": 12.73,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 63.33,
+      "latency_avg": 108.01,
+      "ipc": null,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 19.53,
+      "latency_avg": 39.99,
+      "ipc": 0.0,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+      "trustworthy": false,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 19.87,
+      "latency_avg": 36.97,
+      "ipc": null,
+      "symbol": "ncnn::UnlockedPoolAllocator::fastMalloc(unsigned long)",
+      "trustworthy": false,
+      "error": null
+    },
+    "speedup_shipped": 0.35,
+    "speedup_fair": 3.187
+  },
+  "DeconvolutionDepthwise_2D_stride:arm": {
+    "op": "DeconvolutionDepthwise_2D_stride",
+    "backend": "arm",
+    "native_type": "DeconvolutionDepthWise",
+    "shapes": "[512,64,64]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:38:18",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 35.36,
+      "latency_avg": 60.35,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 394,
+      "per_iter_probe_ms": 25.37,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 269.41,
+      "latency_avg": 388.07,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 53,
+      "per_iter_probe_ms": 186.66,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 42.07,
+      "latency_avg": 71.91,
+      "ipc": null,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 318,
+      "per_iter_probe_ms": 31.36,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 40.44,
+      "latency_avg": 72.22,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 319,
+      "per_iter_probe_ms": 31.34,
+      "error": null
+    },
+    "speedup_shipped": 0.841,
+    "speedup_fair": 6.662
+  },
+  "Deconvolution_1D:arm": {
+    "op": "Deconvolution_1D",
+    "backend": "arm",
+    "native_type": "Deconvolution1D",
+    "shapes": "[8192,1,64]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:41:23",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 2.84,
+      "latency_avg": 5.11,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 3322,
+      "per_iter_probe_ms": 3.01,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 2.77,
+      "latency_avg": 5.06,
+      "ipc": 0.0,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 3367,
+      "per_iter_probe_ms": 2.97,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 0.35,
+      "latency_avg": 0.83,
+      "ipc": 5.014,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 4000,
+      "per_iter_probe_ms": 0.35,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 0.39,
+      "latency_avg": 0.84,
+      "ipc": 1.934,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 4000,
+      "per_iter_probe_ms": 0.35,
+      "error": null
+    },
+    "speedup_shipped": 8.114,
+    "speedup_fair": 7.103
+  },
+  "Deconvolution_2D__asymmetric_input__asymmetric_kernel:arm": {
+    "op": "Deconvolution_2D__asymmetric_input__asymmetric_kernel",
+    "backend": "arm",
+    "native_type": "Deconvolution",
+    "shapes": "[512,64,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:43:11",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 18.55,
+      "latency_avg": 32.82,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 722,
+      "per_iter_probe_ms": 13.84,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 46.98,
+      "latency_avg": 80.05,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 282,
+      "per_iter_probe_ms": 35.35,
+      "error": null
+    },
+    "error": "our-kernel benchncnn build failed"
+  },
+  "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__:arm": {
+    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
+    "backend": "arm",
+    "native_type": "Deconvolution",
+    "shapes": "[512,32,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:44:37",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 14.37,
+      "latency_avg": 22.88,
+      "ipc": 0.839,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 938,
+      "per_iter_probe_ms": 10.66,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 15.86,
+      "latency_avg": 24.82,
+      "ipc": 0.0,
+      "symbol": "ncnn::PoolAllocator::fastFree(void*)",
+      "trustworthy": false,
+      "loop": 815,
+      "per_iter_probe_ms": 12.26,
+      "error": null
+    },
+    "error": "our-kernel benchncnn build failed"
+  },
+  "Dense_Convolution_1D:arm": {
+    "op": "Dense_Convolution_1D",
+    "backend": "arm",
+    "native_type": "Convolution1D",
+    "shapes": "[2048,1,64]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:45:55",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 0.45,
+      "latency_avg": 0.81,
+      "ipc": 1.737,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 4000,
+      "per_iter_probe_ms": 0.55,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 0.36,
+      "latency_avg": 0.58,
+      "ipc": 3.476,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 4000,
+      "per_iter_probe_ms": 0.38,
+      "error": null
+    },
+    "error": "our-kernel benchncnn build failed"
+  },
+  "Dense_Convolution_2D:arm": {
+    "op": "Dense_Convolution_2D",
+    "backend": "arm",
+    "native_type": "Convolution",
+    "shapes": "[512,64,16]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:46:32",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 5.07,
+      "latency_avg": 6.71,
+      "ipc": 0.536,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 2421,
+      "per_iter_probe_ms": 4.13,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 6.34,
+      "latency_avg": 11.99,
+      "ipc": 1.399,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 1246,
+      "per_iter_probe_ms": 8.02,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 913.82,
+      "latency_avg": 977.96,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 30,
+      "per_iter_probe_ms": 409.23,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 790.97,
+      "latency_avg": 968.79,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 30,
+      "per_iter_probe_ms": 405.91,
+      "error": null
+    },
+    "speedup_shipped": 0.006,
+    "speedup_fair": 0.008
+  },
+  "Dense_Convolution_2D__asymmetric_input__square_kernel:arm": {
+    "op": "Dense_Convolution_2D__asymmetric_input__square_kernel",
+    "backend": "arm",
+    "native_type": "Convolution",
+    "shapes": "[1024,64,32]",
+    "scale": 8,
+    "runner": "benchncnn",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "ts": "2026-07-06T17:49:59",
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "latency_min": 12.09,
+      "latency_avg": 20.29,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 1326,
+      "per_iter_probe_ms": 7.54,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "latency_min": 22.21,
+      "latency_avg": 40.55,
+      "ipc": 0.0,
+      "symbol": "__aarch64_cas4_acq",
+      "trustworthy": false,
+      "loop": 544,
+      "per_iter_probe_ms": 18.36,
+      "error": null
+    },
+    "ours_shipped": {
+      "tier": "fp32(shipped-cfg)",
+      "latency_min": 693.56,
+      "latency_avg": 834.07,
+      "ipc": null,
+      "symbol": "std::__1::__tree<std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, int>, std::__1::__map_value_compare<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, int>, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const>, true>, std::__1::allocator<std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, int>>>::destroy(std::__1::__tree_node<std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, int>, void*>*)",
+      "trustworthy": false,
+      "loop": 34,
+      "per_iter_probe_ms": 286.99,
+      "error": null
+    },
+    "ours_fair": {
+      "tier": "fp32",
+      "latency_min": 2670.24,
+      "latency_avg": 2966.91,
+      "ipc": null,
+      "symbol": "__aarch64_ldadd4_rel",
+      "trustworthy": false,
+      "loop": 30,
+      "per_iter_probe_ms": 929.55,
+      "error": null
+    },
+    "speedup_shipped": 0.017,
+    "speedup_fair": 0.008
+  }
+}

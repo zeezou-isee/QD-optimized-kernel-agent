@@ -1,0 +1,203 @@
+=== building clean benchncnn ONCE (shared native baseline) ===
+
+=== ATan [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[4096,1,128] ===
+  native_shipped: 2.04 ms
+  native_fair:    2.63 ms
+  ours_shipped:   2.37 ms
+  ours_fair:      1.79 ms
+
+=== Abs [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,256,8] ===
+  native_shipped: 3.57 ms
+  native_fair:    1.5 ms
+  ours_shipped:   0.67 ms
+  ours_fair:      0.7 ms
+
+=== Acos [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[1024,1,128] ===
+  native_shipped: 0.59 ms
+  native_fair:    0.12 ms
+  ours_shipped:   0.09 ms
+  ours_fair:      0.09 ms
+
+=== Acosh [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[512,1,64] ===
+  native_shipped: 0.1 ms
+  native_fair:    0.15 ms
+  ours_shipped:   0.1 ms
+  ours_fair:      0.12 ms
+
+=== Add [arm] native_type=BinaryOp supported=True (operator.existence_check) shapes=[512,64,3],[1,1,3] ===
+  native_shipped: 0.05 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.02 ms
+  ours_fair:      0.02 ms
+
+=== And [arm] native_type=torch.logical_and supported=False (operator.existence_check) shapes=[256,1,32],[32,1,32] ===
+  ours_shipped:   0.0 ms
+
+=== ArgMax [arm] native_type=torch.argmax supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.04 ms
+
+=== ArgMax_default_axis_example [arm] native_type=torch.argmax supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.03 ms
+
+=== ArgMax_keepdims_example [arm] native_type=torch.argmax supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.02 ms
+
+=== ArgMax_negative_axis_keepdims_example [arm] native_type=torch.argmax supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.12 ms
+
+=== ArgMin [arm] native_type=torch.argmin supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.01 ms
+
+=== ArgMin_default_axis_example [arm] native_type=torch.argmin supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.02 ms
+
+=== ArgMin_keepdims_example [arm] native_type=torch.argmin supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.04 ms
+
+=== ArgMin_negative_axis_keepdims_example [arm] native_type=torch.argmin supported=False (operator.existence_check) shapes=[1016,1,128] ===
+  ours_shipped:   0.02 ms
+
+=== Asin [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,512] ===
+  native_shipped: 13.33 ms
+  native_fair:    1.06 ms
+  ours_shipped:   1.13 ms
+  ours_fair:      1.13 ms
+
+=== Asinh [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,128] ===
+  native_shipped: 0.8 ms
+  native_fair:    0.92 ms
+  ours_shipped:   1.11 ms
+  ours_fair:      1.11 ms
+
+=== Atanh [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[512,1,64] ===
+  native_shipped: 0.1 ms
+  native_fair:    0.15 ms
+  ours_shipped:   0.13 ms
+  ours_fair:      0.17 ms
+
+=== AveragePool [arm] native_type=Pooling supported=True (operator.existence_check) shapes=[512,64,16] ===
+  native_shipped: 0.23 ms
+  native_fair:    0.19 ms
+    [build FAIL] 'stride' in 'ncnn::Cand_AveragePool_arm'
+   29 |     int stride = this->stride;
+      |                  ~~~~  ^
+/Users/xingze/Documents/project/kernelgen/ncnn/src/layer/arm/cand_averagepool_arm.cpp:30:15: error: use of undeclared identifier 'padding'
+   30 |     int pad = padding;
+      |               ^
+3 errors generated.
+make[3]: *** [src/CMakeFiles/ncnn.dir/layer/arm/cand_averagepool_arm.cpp.o] Error 1
+make[3]: *** Waiting for unfinished jobs....
+make[2]: *** [src/CMakeFiles/ncnn.dir/all] Error 2
+make[1]: *** [benchmark/CMakeFiles/benchncnn.dir/rule] Error 2
+make: *** [benchncnn] Error 2
+
+
+=== AveragePool_2d_ceil [arm] native_type=Pooling supported=True (operator.existence_check) shapes=[512,64,16] ===
+  native_shipped: 0.27 ms
+  native_fair:    0.3 ms
+  ours_shipped:   0.17 ms
+  ours_fair:      0.14 ms
+
+=== AveragePool_2d_strides [arm] native_type=Pooling supported=True (operator.existence_check) shapes=[512,64,32] ===
+  native_shipped: 0.49 ms
+  native_fair:    0.98 ms
+  ours_shipped:   0.29 ms
+  ours_fair:      0.29 ms
+
+=== BatchNormalization [arm] native_type=BatchNorm supported=True (operator.existence_check) shapes=[1024,128,32] ===
+  native_shipped: 3.85 ms
+  native_fair:    1.51 ms
+  ours_shipped:   3.07 ms
+  ours_fair:      0.72 ms
+
+=== BatchNormalization_epsilon [arm] native_type=BatchNorm supported=True (operator.existence_check) shapes=[1024,128,32] ===
+  native_shipped: 3.83 ms
+  native_fair:    1.56 ms
+  ours_shipped:   0.73 ms
+  ours_fair:      0.71 ms
+
+=== BatchNormalization_momentum [arm] native_type=BatchNorm supported=True (operator.existence_check) shapes=[1024,128,32] ===
+  native_shipped: 3.78 ms
+  native_fair:    1.45 ms
+  ours_shipped:   0.68 ms
+  ours_fair:      0.82 ms
+
+=== BitWiseOr [arm] native_type=torch.bitwise_or supported=False (operator.existence_check) shapes=[2048,1,128],[256,1,128] ===
+  ours_shipped:   0.0 ms
+
+=== BitWiseXor [arm] native_type=torch.bitwise_xor supported=False (operator.existence_check) shapes=[4096,1,128],[512,1,128] ===
+  ours_shipped:   0.0 ms
+
+=== BitwiseAnd [arm] native_type=torch.bitwise_and supported=False (operator.existence_check) shapes=[512,1,32],[64,1,32] ===
+  ours_shipped:   0.0 ms
+
+=== Ceil [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,128] ===
+  native_shipped: 0.21 ms
+  native_fair:    0.05 ms
+  ours_shipped:   0.04 ms
+  ours_fair:      0.05 ms
+
+=== Celu [arm] native_type=CELU supported=True (operator.existence_check) shapes=[8192,128] ===
+  native_shipped: 0.58 ms
+  native_fair:    0.46 ms
+  ours_shipped:   1.32 ms
+  ours_fair:      1.72 ms
+
+=== Clip [arm] native_type=Clip supported=True (operator.existence_check) shapes=[2048,128,32] ===
+  native_shipped: 8.15 ms
+  native_fair:    3.41 ms
+  ours_shipped:   1.67 ms
+  ours_fair:      1.58 ms
+
+=== Concat [arm] native_type=Concat supported=True (operator.existence_check) shapes=[512,1,128],[64,1,128],[64,1,128] ===
+  native_shipped: 0.1 ms
+  native_fair:    0.01 ms
+  ours_shipped:   0.03 ms
+  ours_fair:      0.03 ms
+
+=== Conv [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[256,32,3],[3,3,3],[16] ===
+  native_shipped: 1.45 ms
+  native_fair:    0.32 ms
+  ours_shipped:   3.45 ms
+  ours_fair:      4.27 ms
+
+=== Conv3D [arm] native_type=Convolution3D supported=True (operator.existence_check) shapes=[8,32,8,16,16] ===
+  native_shipped: None ms
+  native_fair:    None ms
+    [build FAIL]  undeclared identifier 'width_pad'
+   35 |     const int pad_w = width_pad;
+      |                       ^
+/Users/xingze/Documents/project/kernelgen/ncnn/src/layer/arm/cand_conv3d_arm.cpp:36:24: error: use of undeclared identifier 'group'
+   36 |     const int groups = group;
+      |                        ^
+13 errors generated.
+make[3]: *** [src/CMakeFiles/ncnn.dir/layer/arm/cand_conv3d_arm.cpp.o] Error 1
+make[3]: *** Waiting for unfinished jobs....
+make[2]: *** [src/CMakeFiles/ncnn.dir/all] Error 2
+make[1]: *** [benchmark/CMakeFiles/benchncnn.dir/rule] Error 2
+make: *** [benchncnn] Error 2
+
+
+=== ConvTranspose_dilations [arm] native_type=Deconvolution supported=True (operator.existence_check) shapes=[256,32,16],[32,32,4] ===
+  native_shipped: 5.8 ms
+  native_fair:    7.38 ms
+  ours_shipped:   23.74 ms
+  ours_fair:      31.52 ms
+
+=== Conv_with_strides_no_padding [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[512,64,8],[64,64,8] ===
+  native_shipped: None ms
+  native_fair:    None ms
+  ours_shipped:   None ms
+  ours_fair:      None ms
+
+=== Conv_with_strides_padding [arm] native_type=Convolution supported=True (operator.existence_check) shapes=[512,64,16],[3,3,16] ===
+  native_shipped: 0.54 ms
+  native_fair:    1.29 ms
+  ours_shipped:   1.64 ms
+  ours_fair:      1.24 ms
+
+=== Cos [arm] native_type=UnaryOp supported=True (operator.existence_check) shapes=[2048,1,256] ===
+  native_shipped: 0.71 ms
+  native_fair:    0.91 ms
+  ours_shipped:   1.09 ms
+  ours_fair:      1.09 ms
