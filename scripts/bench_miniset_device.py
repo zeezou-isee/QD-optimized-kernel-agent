@@ -88,12 +88,29 @@ def native_type(param: Path) -> str:
 def base_arm_code(op: str) -> tuple[dict, dict]:
     art = REPO / "opgen/runs" / op / "base_kernel/artifacts"
     base = {p.name: p.read_text() for p in art.glob("*") if p.suffix in (".h", ".cpp")}
+    # VERIFIED arm code from summary.final_result — NOT rounds[-1] (which holds
+    # leftover FAILED attempts: wrong member names, hallucinated intrinsics, etc).
     arm = {}
-    rounds = sorted((REPO / "opgen/runs" / op / "backends/arm/kernel").glob("round_*"))
-    if rounds:
-        arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
-               if p.name.endswith(("_arm.h", "_arm.cpp"))}
+    sj = REPO / "opgen/runs" / op / "backends/arm/kernel/summary.json"
+    if sj.exists():
+        rc = (json.loads(sj.read_text()).get("final_result") or {}).get("response_code") or {}
+        arm = {k: v for k, v in rc.items() if k.endswith(("_arm.h", "_arm.cpp"))}
+    if not arm:
+        rounds = sorted((REPO / "opgen/runs" / op / "backends/arm/kernel").glob("round_*"))
+        if rounds:
+            arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
+                   if p.name.endswith(("_arm.h", "_arm.cpp"))}
     return base, arm
+
+
+def kernel_class_name(op: str) -> str:
+    """Real class name from kernel_profile.json (LLM may shorten it), not f'Cand_{op}'."""
+    p = REPO / "opgen/runs" / op / "base_kernel/artifacts/kernel_profile.json"
+    if p.exists():
+        cn = (json.loads(p.read_text()) or {}).get("class_name")
+        if cn:
+            return cn
+    return f"Cand_{op}"
 
 
 def android_rebuild() -> bool:
@@ -126,7 +143,7 @@ def bench_op(op: str, backends: list[str], scale: int = 1) -> dict:
     if scale > 1:
         shapes = scale_shapes(shapes, scale)
     nt = native_type(param)
-    cls = f"Cand_{op}"
+    cls = kernel_class_name(op)
     res = {"op": op, "native_type": nt, "shapes": shapes, "results": {}}
     print(f"\n=== {op} (native_type={nt}, shapes={shapes}) ===")
 

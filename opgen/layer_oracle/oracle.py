@@ -197,7 +197,8 @@ class OracleResult:
     run_log: str = ""
     runner: str = ""
     error: str = ""
-    skipped: bool = False   # vulkan: no GPU device available -> treat as skipped, not fail
+    skipped: bool = False   # vulkan/device: no device available -> treat as skipped, not fail
+    latency: float | None = None   # device: min single-forward ms (runner --bench), else None
 
     # filled by verify()
     passed: bool | None = None
@@ -330,6 +331,11 @@ class LayerOracle:
         argv += ["--out", str(out_path)]
         if packing > 0:
             argv += ["--packing", str(packing)]
+
+        # Persist the exact argv so a device driver (DeviceOracle / offline replay)
+        # can reproduce the same params / weight-flags on the phone. The in*/w*/out
+        # bins already live in `wd` and serve as the host reference.
+        (wd / "argv.txt").write_text(" ".join(argv), encoding="utf-8")
 
         proc = subprocess.run(argv, capture_output=True, text=True)
         run_log = " ".join(argv) + "\n" + proc.stdout + proc.stderr

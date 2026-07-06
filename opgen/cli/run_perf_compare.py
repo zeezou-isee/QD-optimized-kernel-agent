@@ -118,12 +118,33 @@ def scale_shapes(shapes: str, factor: int) -> str:
 def base_arm_code(op: str) -> tuple[dict, dict]:
     art = RUNS / op / "base_kernel/artifacts"
     base = {p.name: p.read_text() for p in art.glob("*") if p.suffix in (".h", ".cpp")}
+    # Read the VERIFIED arm kernel from the summary's final_result.response_code —
+    # NOT rounds[-1]. The round dirs include failed later attempts (e.g. one that
+    # references non-existent members or a hallucinated intrinsic); only
+    # final_result holds the code that actually passed verification.
     arm = {}
-    rounds = sorted((RUNS / op / "backends/arm/kernel").glob("round_*"))
-    if rounds:
-        arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
-               if p.name.endswith(("_arm.h", "_arm.cpp"))}
+    sj = RUNS / op / "backends/arm/kernel/summary.json"
+    if sj.exists():
+        rc = (json.loads(sj.read_text()).get("final_result") or {}).get("response_code") or {}
+        arm = {k: v for k, v in rc.items() if k.endswith(("_arm.h", "_arm.cpp"))}
+    if not arm:  # legacy fallback
+        rounds = sorted((RUNS / op / "backends/arm/kernel").glob("round_*"))
+        if rounds:
+            arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
+                   if p.name.endswith(("_arm.h", "_arm.cpp"))}
     return base, arm
+
+
+def kernel_class_name(op: str) -> str:
+    """The kernel's REAL class name from kernel_profile.json — the LLM sometimes
+    shortens it (e.g. Deconvolution_2D__asymmetric... -> Cand_Deconvolution_2D_asym),
+    so f'Cand_{op}' is wrong. NetOracle install + retarget must use the real name."""
+    p = RUNS / op / "base_kernel/artifacts/kernel_profile.json"
+    if p.exists():
+        cn = (json.loads(p.read_text()) or {}).get("class_name")
+        if cn:
+            return cn
+    return f"Cand_{op}"
 
 
 _IFACE_NAMES: set[str] | None = None
@@ -269,7 +290,7 @@ def bench_cpu(op: str, backend: str, loop: int, scale: int, comp_base: bool,
     if scale > 1:
         shapes = scale_shapes(shapes, scale)
     nt = native_type(param)
-    cls = f"Cand_{op}"
+    cls = kernel_class_name(op)   # real class name (may be shortened), not f"Cand_{op}"
     supported, why = native_supported(op, nt)
     res = {"op": op, "backend": backend, "native_type": nt, "shapes": shapes,
            "scale": scale, "runner": "benchncnn", "pmu": use_simpleperf,

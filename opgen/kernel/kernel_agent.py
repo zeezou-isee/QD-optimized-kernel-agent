@@ -52,11 +52,15 @@ class KernelAgent:
         run_subdir_suffix: str = "",                # e2e_repair: write to runs/<task>/kernel<suffix>/
         force_analog_layer: str | None = None,      # baseline-probe-driven hard constraint:
                                                     # the actual ncnn layer type pnnx emits
+        device_verify: str = "off",                 # off | auto | on — on-phone gate after host
+        device_simpleperf: bool = False,            # also collect PMU on device (default off)
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
         self.llm = llm_query or query_llm
         self.backend = backend
+        self.device_verify = (device_verify or "off").strip().lower()
+        self.device_simpleperf = bool(device_simpleperf)
         self.base_kernel_code = base_kernel_code or {}
         self.base_profile_dict = base_profile or {}
         # e2e_repair seeding: when set, KernelAgent skips analyzer + round-0
@@ -302,7 +306,9 @@ class KernelAgent:
                              run_numeric=self.cfg.run_numeric,
                              base_files=(self.base_kernel_code if self._subclasses_base else None),
                              extra_includes=tuple(self._extra_includes),
-                             packing=self._packing)
+                             packing=self._packing,
+                             device_verify=self.device_verify,
+                             device_simpleperf=self.device_simpleperf)
 
     def _save_round(self, idx: int, phase: str, prompt: str, response: str, result: KernelResult) -> None:
         rd = self.run_dir / f"round_{idx:02d}"
@@ -768,19 +774,30 @@ class KernelAgent:
             self._save_round(idx, phase, prompt, response, result)
             self._update_memory(idx, phase, result)
             print(f"[round {idx}] phase={phase} ok={result.ok} compile={result.compile_ok} "
-                  f"numeric={result.numeric_status} max_diff={result.max_diff}")
+                  f"numeric={result.numeric_status} device={result.device_status} "
+                  f"max_diff={result.max_diff}")
             if result.ok:
                 break
 
+        # device-in-the-loop policy: if the loop ended not-ok but the HOST verdict
+        # passed and only the on-phone gate failed, ACCEPT the host-verified kernel
+        # and flag device_status=failed — do NOT hard-fail on a device-only miss.
+        host_accepted = bool(result and not result.ok and result.host_ok)
+        status = "success" if (result and (result.ok or host_accepted)) else "fail"
         summary = {
-            "status": "success" if (result and result.ok) else "fail",
+            "status": status,
             "task_name": self.task_name,
             "backend": self.backend,
             "rounds": len(self.history),
+            "device_status": (result.device_status if result else "none"),
+            "device_latency": (result.device_latency if result else None),
             "kernel_profile": self.profile.to_dict() if self.profile else {},
             "history": [h.to_dict() for h in self.history],
             "final_result": result.to_dict() if result else {},
         }
+        if host_accepted:
+            summary["note"] = ("host-verified but device gate failed "
+                               f"({result.failure_category}); accepted with device_status=failed")
         write_json(self.run_dir / "summary.json", summary)
 
         # BASE-KERNEL SoT CONTRACT: on a successful base run (not an e2e_repair
@@ -791,7 +808,7 @@ class KernelAgent:
         # `analyze/kernel_profile.json` so future backends can seed their own
         # profile without re-running the analyzer.
         if (self.backend == "base" and self.run_subdir_suffix == ""
-                and result and result.ok and self.profile):
+                and result and result.host_ok and self.profile):
             self._publish_base_artifacts(result)
         return summary
 

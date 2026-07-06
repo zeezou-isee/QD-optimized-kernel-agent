@@ -30,6 +30,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <chrono>
 
 using namespace ncnn;
 
@@ -170,6 +171,7 @@ int main(int argc, char** argv)
     int packing = 0;   // 0 = off (naive elempack=1); N>0 = pack inputs to elempack N (arm NC4HW4)
     int fp16_storage = 0;    // 1 = enable ncnn opt.use_fp16_storage (half-precision weights/blobs)
     int fp16_arith = 0;      // 1 = enable ncnn opt.use_fp16_arithmetic (requires HAS_ASIMDHP)
+    int bench = 0;           // N>0 = after correctness, run N timed forwards, print BENCH_MIN_MS (no simpleperf)
     for (int i = 1; i < argc; i++)
     {
         std::string a = argv[i];
@@ -181,6 +183,7 @@ int main(int argc, char** argv)
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
         else if (a == "--fp16-storage") fp16_storage = 1;
         else if (a == "--fp16-arith")   { fp16_storage = 1; fp16_arith = 1; }
+        else if (a == "--bench" && i + 1 < argc) bench = atoi(argv[++i]);
     }
     // default any unspecified weight flags to 0 (tagged) so the bin layout is
     // well-defined even when the caller passes fewer --weight-flag than --weight.
@@ -260,6 +263,42 @@ int main(int argc, char** argv)
             fprintf(stderr, "output[0] dims=%d (w=%d h=%d d=%d c=%d)\n", o.dims, o.w, o.h, o.d, o.c);
             write_mat(o, out.c_str());
         }
+    }
+
+    // optional latency benchmark (NO simpleperf): warmup + N timed forwards, report
+    // the min single-forward wall time. Matches the vulkan runner's --bench contract.
+    if (bench > 0 && ret == 0)
+    {
+        const int warmup = 3;
+        double best = 1e30;
+        // pre-load + pre-pack inputs ONCE so only forward() is timed (no disk I/O).
+        std::vector<Mat> ins;
+        for (size_t i = 0; i < inputs.size(); i++) ins.push_back(pack(read_mat(inputs[i].c_str())));
+        for (int it = 0; it < warmup + bench; it++)
+        {
+            auto t0 = std::chrono::high_resolution_clock::now();
+            if (op->one_blob_only)
+            {
+                Mat o;
+                if (op->support_inplace) { o = ins[0].clone(); op->forward_inplace(o, opt); }
+                else op->forward(ins[0], o, opt);
+            }
+            else
+            {
+                std::vector<Mat> outs(1);
+                if (op->support_inplace)
+                {
+                    outs.clear();
+                    for (size_t i = 0; i < ins.size(); i++) outs.push_back(ins[i].clone());
+                    op->forward_inplace(outs, opt);
+                }
+                else op->forward(ins, outs, opt);
+            }
+            auto t1 = std::chrono::high_resolution_clock::now();
+            double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+            if (it >= warmup && ms < best) best = ms;
+        }
+        printf("BENCH_MIN_MS=%.4f\n", best);
     }
 
     op->destroy_pipeline(opt);

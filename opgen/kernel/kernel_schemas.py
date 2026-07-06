@@ -179,9 +179,23 @@ class KernelResult:
     artifacts: dict[str, str] = field(default_factory=dict)
     messages: list[str] = field(default_factory=list)
 
+    # device-in-the-loop gate (set by verify_kernel when a phone is present):
+    #   none    = gate disabled / no device -> host-only behavior (unchanged)
+    #   passed  = verified on the real phone
+    #   failed  = host passed but device compile/numeric/crash -> drives repair
+    #   skipped = device dropped / flaky -> keep host result
+    device_status: str = "none"
+    device_latency: float | None = None   # device min single-forward ms (runner --bench)
+
+    @property
+    def host_ok(self) -> bool:
+        """The host (Mac) verdict — compile + numeric — independent of the device gate."""
+        return self.compile_ok and (self.numeric_ok or self.numeric_skipped)
+
     @property
     def ok(self) -> bool:
-        return self.compile_ok and (self.numeric_ok or self.numeric_skipped)
+        # loop breaks on ok: host must pass AND the device gate must not be a hard fail.
+        return self.host_ok and self.device_status in ("none", "passed", "skipped")
 
     def first_failure(self) -> str | None:
         if not self.generate_ok:
@@ -189,6 +203,10 @@ class KernelResult:
         if not self.compile_ok:
             return "compile_repair"
         if not (self.numeric_ok or self.numeric_skipped):
+            return "numeric_repair"
+        if self.device_status == "failed":
+            # host passed but the phone rejected it; the device diagnostic is placed
+            # in numeric_log by verify_kernel, so reuse the numeric_repair prompt path.
             return "numeric_repair"
         return None
 
@@ -209,6 +227,7 @@ class KernelResult:
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["ok"] = self.ok
+        d["host_ok"] = self.host_ok
         d["numeric"] = self.numeric_status
         return d
 

@@ -19,6 +19,7 @@ from .net_oracle import (
     retarget_param_file,
 )
 from .vulkan_oracle import VulkanLayerOracle
+from .device_oracle import DeviceOracle, VulkanDeviceOracle
 from .failure_taxonomy import classify_failure
 
 __all__ = [
@@ -38,4 +39,6 @@ __all__ = [
     "retarget_param_output_file",
     "retarget_param_file",
     "VulkanLayerOracle",
+    "DeviceOracle",
+    "VulkanDeviceOracle",
 ]

@@ -365,6 +365,8 @@ def verify_kernel(
     base_files: dict[str, str] | None = None,
     extra_includes: tuple = (),
     packing: int = 0,
+    device_verify: str = "off",       # off | auto | on — run the on-phone gate after host passes
+    device_simpleperf: bool = False,  # also collect PMU on device (default off)
 ) -> KernelResult:
     """Verify a candidate kernel against PyTorch via LayerOracle.
 
@@ -690,4 +692,45 @@ def verify_kernel(
             res.failure_category = bad[0]
             res.numeric_log = bad[1]
             res.messages.append("multi-shape: failed a size variant")
+
+    # ---- device-in-the-loop gate ----------------------------------------------
+    # After the HOST verdict passes, verify on the REAL phone (correctness + latency).
+    # A device fail (NDK compile / numeric divergence / crash) sets device_status
+    # ="failed" and puts the diagnostic in numeric_log so it flows into the existing
+    # numeric_repair prompt. No device / flaky -> "skipped" (keep the host result).
+    # backend=="base"/"arm" -> DeviceOracle (CPU); "vulkan" -> host MoltenVK for now.
+    if device_verify != "off" and res.host_ok and profile.backend in ("base", "arm"):
+        try:
+            from layer_oracle import DeviceOracle
+            dev = DeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
+            avail, why = dev.available()
+            if not avail:
+                res.device_status = "skipped"
+                res.messages.append(f"device gate skipped ({why})")
+                if device_verify == "on":
+                    res.messages.append("WARNING: --device-verify on but no device — kept host result")
+            else:
+                dv = dev.verify(
+                    candidate_cpp=cpp_path, class_name=profile.class_name,
+                    header=profile.header, params=params, inputs=ncnn_inputs,
+                    reference=reference, weights=weights, weight_flags=weight_flags,
+                    tol=tol, extra_sources=extra_sources, extra_includes=extra_includes,
+                    packing=int(backend_kwargs.get("packing", 0)),
+                    bench=20, simpleperf=device_simpleperf, backend=profile.backend)
+                if getattr(dv, "skipped", False):
+                    res.device_status = "skipped"
+                    res.messages.append(f"device gate skipped ({dv.detail})")
+                elif dv.passed:
+                    res.device_status = "passed"
+                    res.device_latency = dv.latency
+                    res.messages.append(f"device passed (max_diff={dv.max_diff}, "
+                                        f"latency_min={dv.latency}ms)")
+                else:
+                    res.device_status = "failed"
+                    res.failure_category = dv.failure_category or "device"
+                    res.numeric_log = dv.detail   # -> numeric_repair feedback next round
+                    res.messages.append(f"device FAILED ({dv.failure_category})")
+        except Exception as exc:  # noqa: BLE001 — device gate must never break the host loop
+            res.device_status = "skipped"
+            res.messages.append(f"device gate error (skipped): {exc}")
     return res

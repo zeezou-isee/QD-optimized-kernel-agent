@@ -87,6 +87,14 @@ def main() -> None:
                         ".h+.cpp+.comp shader from scratch; native_first = try native subclass, "
                         "fall back to scratch on non-verify; native_only = never asks the LLM to "
                         "write a shader (legacy miniset audit path).")
+    p.add_argument("--device-verify", choices=["off", "auto", "on"], default="off",
+                   help="device-in-the-loop gate: after each round's HOST verify passes, also "
+                        "verify on the REAL phone (base/arm; correctness + latency) and feed device "
+                        "failures back to the LLM. auto = use device if detected else host-only; "
+                        "on = same but warn if no device; off (default) = host-only.")
+    p.add_argument("--device-simpleperf", action="store_true",
+                   help="device gate also collects PMU via simpleperf (default off: correctness + "
+                        "plain latency only).")
     args = p.parse_args()
 
     cfg = GraphConfig(
@@ -101,7 +109,8 @@ def main() -> None:
     if args.backend in ("arm", "vulkan"):
         base_code, base_prof = _load_base_kernel(args.task, args.base_kernel_dir)
     agent = KernelAgent(task_name=args.task, model_py=args.model, cfg=cfg,
-                        backend=args.backend, base_kernel_code=base_code, base_profile=base_prof)
+                        backend=args.backend, base_kernel_code=base_code, base_profile=base_prof,
+                        device_verify=args.device_verify, device_simpleperf=args.device_simpleperf)
     summary = agent.run()
     print(json.dumps(summary, ensure_ascii=False, indent=2)[:3000])
 

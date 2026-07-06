@@ -73,6 +73,13 @@ def main() -> None:
                    help="ncnn-tree guard: if the ncnn source tree is found dirty at startup "
                         "(typically leaked from a prior killed run), silently clean it instead "
                         "of aborting. OFF by default — abort is safer; turn on for batch jobs.")
+    p.add_argument("--device-verify", choices=["off", "auto", "on"], default="off",
+                   help="device-in-the-loop gate: after each KernelAgent round's HOST verify passes, "
+                        "also verify on the REAL phone (base/arm) and feed device failures back to "
+                        "the LLM. auto = device if detected else host-only; on = warn if none; "
+                        "off (default) = host-only.")
+    p.add_argument("--device-simpleperf", action="store_true",
+                   help="device gate also collects PMU via simpleperf (default off).")
     args = p.parse_args()
 
     summary = OperatorAgent(
@@ -91,6 +98,8 @@ def main() -> None:
         backends=[b.strip() for b in args.backends.split(",") if b.strip()],
         allow_backend_fallback=args.allow_backend_fallback,
         auto_cleanup_ncnn=args.auto_cleanup,
+        device_verify=args.device_verify,
+        device_simpleperf=args.device_simpleperf,
     ).run()
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

@@ -49,11 +49,17 @@ def adb(*a, **k):
 def base_arm_code(op: str) -> tuple[dict, dict]:
     art = REPO / "opgen/runs" / op / "base_kernel/artifacts"
     base = {p.name: p.read_text() for p in art.glob("*") if p.suffix in (".h", ".cpp")}
+    # VERIFIED arm code from summary.final_result — NOT rounds[-1] (leftover fails).
     arm = {}
-    rounds = sorted((REPO / "opgen/runs" / op / "backends/arm/kernel").glob("round_*"))
-    if rounds:
-        arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
-               if p.name.endswith(("_arm.h", "_arm.cpp"))}
+    sj = REPO / "opgen/runs" / op / "backends/arm/kernel/summary.json"
+    if sj.exists():
+        rc = (json.loads(sj.read_text()).get("final_result") or {}).get("response_code") or {}
+        arm = {k: v for k, v in rc.items() if k.endswith(("_arm.h", "_arm.cpp"))}
+    if not arm:
+        rounds = sorted((REPO / "opgen/runs" / op / "backends/arm/kernel").glob("round_*"))
+        if rounds:
+            arm = {p.name: p.read_text() for p in rounds[-1].glob("*")
+                   if p.name.endswith(("_arm.h", "_arm.cpp"))}
     return base, arm
 
 

@@ -74,6 +74,8 @@ class OperatorAgent:
                                               # a LayerOracle-passed kernel fails end-to-end NetOracle
         adapt_e2e: bool = True,               # use the contract-driven AdapterAgent for e2e_repair
                                               # (vs. the legacy guess-driven KernelAgent reseed)
+        device_verify: str = "off",           # device-in-the-loop gate: off | auto | on
+        device_simpleperf: bool = False,      # device gate also collects PMU (default off)
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -104,6 +106,8 @@ class OperatorAgent:
         self.auto_cleanup_ncnn = bool(auto_cleanup_ncnn)
         self.e2e_repair_max_attempts = max(0, int(e2e_repair_max_attempts))
         self.adapt_e2e = bool(adapt_e2e)
+        self.device_verify = (device_verify or "off").strip().lower()
+        self.device_simpleperf = bool(device_simpleperf)
         # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
         self._ncnn_guard = None
         # baseline probe cache populated by _early_baseline_probe()
@@ -166,7 +170,9 @@ class OperatorAgent:
         kernel_sum = KernelAgent(task_name=self.task_name, model_py=self.model_py,
                                  cfg=self._cfg(run_numeric=True),
                                  llm_query=self.llm_query,
-                                 force_analog_layer=force_analog).run()
+                                 force_analog_layer=force_analog,
+                                 device_verify=self.device_verify,
+                                 device_simpleperf=self.device_simpleperf).run()
         kernel_ok = kernel_sum.get("status") == "success"
         kprof = kernel_sum.get("kernel_profile") or {}
         kcode = (kernel_sum.get("final_result") or {}).get("response_code") or {}
@@ -189,7 +195,9 @@ class OperatorAgent:
             print("\n===== [1b] KernelAgent (arm NEON kernel, numeric vs PyTorch) =====")
             arm_sum = KernelAgent(task_name=self.task_name, model_py=self.model_py,
                                   cfg=self._cfg(run_numeric=True), llm_query=self.llm_query,
-                                  backend="arm", base_kernel_code=kcode, base_profile=kprof).run()
+                                  backend="arm", base_kernel_code=kcode, base_profile=kprof,
+                                  device_verify=self.device_verify,
+                                  device_simpleperf=self.device_simpleperf).run()
             arm_ok = arm_sum.get("status") == "success"
             arm_code = (arm_sum.get("final_result") or {}).get("response_code") or {}
             summary["phases"]["kernel_arm"] = {
