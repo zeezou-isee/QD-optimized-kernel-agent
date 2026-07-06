@@ -698,11 +698,17 @@ def verify_kernel(
     # A device fail (NDK compile / numeric divergence / crash) sets device_status
     # ="failed" and puts the diagnostic in numeric_log so it flows into the existing
     # numeric_repair prompt. No device / flaky -> "skipped" (keep the host result).
-    # backend=="base"/"arm" -> DeviceOracle (CPU); "vulkan" -> host MoltenVK for now.
-    if device_verify != "off" and res.host_ok and profile.backend in ("base", "arm"):
+    # backend=="base"/"arm" -> DeviceOracle (CPU); "vulkan" -> VulkanDeviceOracle (Adreno).
+    if device_verify != "off" and res.host_ok:
         try:
-            from layer_oracle import DeviceOracle
-            dev = DeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
+            from layer_oracle import DeviceOracle, VulkanDeviceOracle
+            if profile.backend == "vulkan":
+                dev = VulkanDeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
+                dev_kwargs = {"shader": backend_kwargs.get("shader"),
+                              "extra_shaders": backend_kwargs.get("extra_shaders", [])}
+            else:
+                dev = DeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
+                dev_kwargs = {"packing": int(backend_kwargs.get("packing", 0))}
             avail, why = dev.available()
             if not avail:
                 res.device_status = "skipped"
@@ -715,8 +721,8 @@ def verify_kernel(
                     header=profile.header, params=params, inputs=ncnn_inputs,
                     reference=reference, weights=weights, weight_flags=weight_flags,
                     tol=tol, extra_sources=extra_sources, extra_includes=extra_includes,
-                    packing=int(backend_kwargs.get("packing", 0)),
-                    bench=20, simpleperf=device_simpleperf, backend=profile.backend)
+                    bench=20, simpleperf=device_simpleperf, backend=profile.backend,
+                    **dev_kwargs)
                 if getattr(dv, "skipped", False):
                     res.device_status = "skipped"
                     res.messages.append(f"device gate skipped ({dv.detail})")

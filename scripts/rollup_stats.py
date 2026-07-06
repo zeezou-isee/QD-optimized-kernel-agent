@@ -62,6 +62,7 @@ def op_row(op: str, runs_root: Path, perf: dict, backend: str) -> dict:
            "kernel_numeric": None, "kernel_max_diff": None,
            "e2e": None, "e2e_max_diff": None,
            "compile": None, "correctness": None, "correctness_max_diff": None,
+           "device_status": None, "device_latency": None,
            "native_supported": None,
            "speedup_shipped": None, "speedup_fair": None,
            "ours_ms": None, "native_shipped_ms": None, "native_fair_ms": None}
@@ -84,6 +85,10 @@ def op_row(op: str, runs_root: Path, perf: dict, backend: str) -> dict:
             row["compile"] = _dig(s, "phases", "production", "compile", "ok")
             row["correctness"] = _dig(s, "phases", "production", "correctness", "passed")
             row["correctness_max_diff"] = _dig(s, "phases", "production", "correctness", "max_diff")
+            # device-in-the-loop status from the backend-appropriate kernel phase
+            _kphase = "kernel_arm" if backend == "arm" else "kernel"
+            row["device_status"] = _dig(s, "phases", _kphase, "device_status")
+            row["device_latency"] = _dig(s, "phases", _kphase, "device_latency")
 
     p = perf.get(f"{op}:{backend}") or {}
     if p:
@@ -122,6 +127,11 @@ def summarize(rows: list[dict]) -> dict:
                 "min": round(min(xs), 3), "max": round(max(xs), 3),
                 "n_faster_than_native": sum(1 for x in xs if x > 1.0)}
 
+    # device-in-the-loop: passed vs (passed+failed) among ops the gate actually ran
+    dev = [r["device_status"] for r in rows if r["device_status"] in ("passed", "failed")]
+    device_gate = {"passed": sum(1 for v in dev if v == "passed"), "ran": len(dev),
+                   "rate": round(sum(1 for v in dev if v == "passed") / len(dev), 4) if dev else None,
+                   "skipped": sum(1 for r in rows if r["device_status"] == "skipped")}
     return {
         "n_ops": len(rows),
         "n_operator_runs": sum(1 for r in rows if r["operator_run"]),
@@ -129,6 +139,7 @@ def summarize(rows: list[dict]) -> dict:
         "kernel_numeric": _pct("kernel_numeric", ok_status),
         "e2e_numeric": _pct("e2e", truthy),
         "production_correctness": _pct("correctness", truthy),
+        "device_gate": device_gate,
         "already_in_ncnn": _pct("already_in_ncnn", truthy),
         "speedup_shipped": _speedup_stats("speedup_shipped"),
         "speedup_fair": _speedup_stats("speedup_fair"),
@@ -199,6 +210,12 @@ def main() -> None:
     print(f"  kernel numeric (vs torch): {_fmt(summary['kernel_numeric'])}")
     print(f"  e2e numeric (ncnn::Net)  : {_fmt(summary['e2e_numeric'])}")
     print(f"  production correctness   : {_fmt(summary['production_correctness'])}")
+    dg = summary["device_gate"]
+    if dg["ran"]:
+        print(f"  device gate (on phone)   : {dg['passed']}/{dg['ran']} "
+              f"({dg['rate']*100:.1f}%)  [skipped/no-device: {dg['skipped']}]")
+    else:
+        print(f"  device gate (on phone)   : not run (device-verify off / no device)")
     print(f"  already in ncnn (native) : {_fmt(summary['already_in_ncnn'])}")
     for tier in ("speedup_shipped", "speedup_fair"):
         s = summary[tier]

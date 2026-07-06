@@ -181,6 +181,8 @@ class OperatorAgent:
             "status": kernel_sum.get("status"), "rounds": kernel_sum.get("rounds"),
             "max_diff": (kernel_sum.get("final_result") or {}).get("max_diff"),
             "class_name": cls,
+            "device_status": kernel_sum.get("device_status"),
+            "device_latency": kernel_sum.get("device_latency"),
         }
         print(f"[orchestrator] kernel: {kernel_sum.get('status')} (class={cls})")
         if not kernel_ok:
@@ -204,6 +206,8 @@ class OperatorAgent:
                 "status": arm_sum.get("status"), "rounds": arm_sum.get("rounds"),
                 "max_diff": (arm_sum.get("final_result") or {}).get("max_diff"),
                 "class_name": (arm_sum.get("kernel_profile") or {}).get("class_name"),
+                "device_status": arm_sum.get("device_status"),
+                "device_latency": arm_sum.get("device_latency"),
             }
             print(f"[orchestrator] arm kernel: {arm_sum.get('status')}")
             # A requested target backend is a hard gate by default: if arm fails the

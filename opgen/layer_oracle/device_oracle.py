@@ -19,6 +19,7 @@ from __future__ import annotations
 import glob
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Sequence
@@ -250,18 +251,195 @@ class DeviceOracle:
 class VulkanDeviceOracle:
     """Adreno GPU on-device verification (device-in-the-loop for vulkan).
 
-    NOT YET WIRED — returns `skipped` so vulkan authoring keeps its current host
-    MoltenVK verification (no regression). The building blocks exist
-    (`vulkan_oracle_runner.cpp` has --bench + RC=42 skip; `scripts/bench_vulkan_device.py`
-    is the NDK-vk cross-compile+push+run+compare template) and will be wired here
-    next, mirroring DeviceOracle.verify but linking build-android-vk + pushing the
-    .comp shader.
+    Ports the proven `scripts/bench_vulkan_device.py` flow to in-memory args:
+    NDK-vk cross-compile `vulkan_oracle_runner.cpp` + candidate (.cpp/.comp) + base
+    .cpp against build-android-vk (find_package ncnn), push runner + .comp shader +
+    in/w bins to the phone, run on Adreno (runtime glslang compile), pull output,
+    compare to the host (MoltenVK/torch) reference. `--bench` gives GPU latency.
+    RC=42 (no vulkan device) / device drop -> skipped (host fallback).
     """
 
-    def available(self) -> tuple[bool, str]:
-        return False, "vulkan device gate not yet wired (host MoltenVK fallback)"
+    def __init__(self, ncnn_root: str | Path | None = None, ndk: str | Path | None = None,
+                 workdir: str | Path | None = None,
+                 device_dir: str = "/data/local/tmp/vkoracle") -> None:
+        self.ncnn_root = Path(ncnn_root) if ncnn_root else (_KERNELGEN / "ncnn")
+        self.vk_cmake_dir = self.ncnn_root / "build-android-vk/install/lib/cmake/ncnn"
+        self.ndk = Path(ndk) if ndk else DeviceOracle._find_ndk()
+        self.lo_dir = _THIS   # layer_oracle/ (runner + cand_vulkan_shader.h)
+        self.workdir = Path(workdir) if workdir else (_OPGEN / "runs" / "_vk_device_oracle")
+        self.device_dir = device_dir
 
-    def verify(self, **_kw: Any) -> OracleResult:
-        return OracleResult(ok=False, skipped=True,
-                            error="vulkan device gate not yet wired",
-                            detail="vulkan device gate not yet wired (host fallback)")
+    def _cmake(self) -> str:
+        c = shutil.which("cmake")
+        if c:
+            return c
+        venv = _OPGEN.parent / ".venv" / "bin" / "cmake"   # pip-installed cmake
+        return str(venv) if venv.exists() else "cmake"
+
+    def _device_online(self) -> bool:
+        try:
+            r = _adb("devices", timeout=10)
+        except Exception:  # noqa: BLE001
+            return False
+        return any(ln.strip() and ln.split()[-1] == "device" for ln in r.stdout.splitlines()[1:])
+
+    def available(self) -> tuple[bool, str]:
+        if not self.ndk:
+            return False, "ANDROID_NDK not found"
+        if not (self.vk_cmake_dir / "ncnnConfig.cmake").exists():
+            return False, f"android-vk ncnn install missing ({self.vk_cmake_dir}); build build-android-vk"
+        if not self._device_online():
+            return False, "no authorized android device (adb)"
+        return True, "ok"
+
+    def verify(self, *, candidate_cpp: str | Path, class_name: str, header: str,
+               params: dict[int, Any] | None, inputs: Sequence[np.ndarray],
+               reference: np.ndarray, weights: Sequence[np.ndarray] = (),
+               weight_flags: Sequence[int] = (), tol: float = 2e-3,
+               extra_sources: Sequence[str | Path] = (), extra_includes: Sequence[str | Path] = (),
+               shader: str | Path | None = None, extra_shaders: Sequence[str | Path] = (),
+               bench: int = 20, simpleperf: bool = False, backend: str = "vulkan",
+               **_kw: Any) -> OracleResult:
+        ok, why = self.available()
+        if not ok:
+            return OracleResult(ok=False, skipped=True, error=f"vk device skip: {why}", detail=why)
+        if not shader:
+            return OracleResult(ok=False, skipped=True,
+                                error="no .comp shader (native-subclass?)", detail="no shader")
+        try:
+            runner, shader_name, extra_names = self._compile(candidate_cpp, class_name, header,
+                                                             shader, extra_shaders, extra_sources)
+        except RuntimeError as exc:
+            return OracleResult(ok=False, passed=False, failure_category="device_compile",
+                                compile_log=str(exc),
+                                detail=f"[device_compile] NDK-vk cross-compile failed:\n{str(exc)[-1500:]}")
+
+        wd = self.workdir / class_name
+        wd.mkdir(parents=True, exist_ok=True)
+        argv = [f"./{runner.name}"]
+        pushes = [runner, Path(shader)] + [Path(s) for s in extra_shaders]
+        if params:
+            argv += ["--param", ",".join(LayerOracle._fmt_param(k, v) for k, v in params.items())]
+        for i, x in enumerate(inputs):
+            p = wd / f"in{i}.bin"; write_bin(p, np.asarray(x)); pushes.append(p)
+            argv += ["--input", p.name]
+        for i, w in enumerate(weights):
+            p = wd / f"w{i}.bin"; write_bin(p, np.asarray(w).reshape(-1)); pushes.append(p)
+            flag = weight_flags[i] if i < len(weight_flags) else 0
+            argv += ["--weight", p.name, "--weight-flag", str(int(flag))]
+        argv += ["--out", "out.bin"]
+        if bench > 0:
+            argv += ["--bench", str(bench)]
+
+        try:
+            _adb("shell", f"mkdir -p {self.device_dir}", timeout=15)
+            for p in pushes:
+                r = _adb("push", str(p), f"{self.device_dir}/{p.name}", timeout=60)
+                if r.returncode != 0:
+                    if _looks_like_device_drop(r.stdout + r.stderr):
+                        return OracleResult(ok=False, skipped=True, detail="device dropped (push)")
+                    return OracleResult(ok=False, passed=False, failure_category="device_crash",
+                                        detail=f"[device] push failed: {(r.stdout + r.stderr)[-200:]}")
+            _adb("shell", "chmod", "+x", f"{self.device_dir}/{runner.name}", timeout=15)
+            inner = " ".join(argv)
+            cmd = (f"cd {self.device_dir} && LD_LIBRARY_PATH={self.device_dir} "
+                   f"{('simpleperf stat ' if simpleperf else '')}{inner} 2>&1")
+            run = _adb("shell", cmd, timeout=300)
+            txt = run.stdout + run.stderr
+        except subprocess.TimeoutExpired:
+            return OracleResult(ok=False, skipped=True, detail="device run timed out")
+        except Exception as exc:  # noqa: BLE001
+            return OracleResult(ok=False, skipped=True, detail=f"device error: {exc}")
+
+        if "RC_NO_VULKAN_DEVICE" in txt or "no vulkan device" in txt.lower():
+            return OracleResult(ok=False, skipped=True, detail="no vulkan device on phone")
+        if "RUNNER_OK" not in txt:
+            if _looks_like_device_drop(txt):
+                return OracleResult(ok=False, skipped=True, detail="device dropped (run)")
+            return OracleResult(ok=False, passed=False, failure_category="device_crash", run_log=txt,
+                                detail=f"[device_crash] vulkan runner failed on Adreno:\n{txt[-1000:]}")
+        m = re.search(r"BENCH_MIN_MS=([\d.]+)", txt)
+        latency = float(m.group(1)) if m else None
+
+        dev_out = wd / "out_dev.bin"
+        rp = _adb("pull", f"{self.device_dir}/out.bin", str(dev_out), timeout=60)
+        if rp.returncode != 0 or not dev_out.exists():
+            return OracleResult(ok=False, skipped=True, detail="could not pull vulkan output")
+        out = read_bin(dev_out)
+        ref = np.asarray(reference, dtype=np.float32)
+        res = OracleResult(ok=True, outputs=[out], run_log=txt, runner=str(runner), latency=latency)
+        try:
+            out_r = out.reshape(ref.shape)
+        except ValueError:
+            res.passed = False; res.failure_category = "device_numeric"
+            res.detail = f"[device_numeric] Adreno output shape {out.shape} != ref {ref.shape}"
+            return res
+        diff = np.abs(out_r - ref)
+        res.max_diff = float(diff.max()); res.mean_diff = float(diff.mean())
+        res.passed = bool(np.allclose(out_r, ref, atol=tol, rtol=tol))
+        if res.passed:
+            res.detail = (f"vulkan device max_diff={res.max_diff:.6f} tol={tol}"
+                          + (f" gpu_latency_min={latency}ms" if latency is not None else ""))
+        else:
+            res.failure_category = "device_numeric"
+            res.detail = (f"[device_numeric] Adreno GPU output differs from host reference: "
+                          f"max_diff={res.max_diff:.6f} tol={tol} (shader/dispatch bug the host "
+                          f"MoltenVK build masks).")
+        return res
+
+    def _compile(self, candidate_cpp, class_name, header, shader, extra_shaders, extra_sources):
+        """NDK-vk cross-compile the runner + candidate + base into a device binary
+        (mirrors scripts/bench_vulkan_device.py)."""
+        candidate_cpp = Path(candidate_cpp).resolve()
+        cand_dir = candidate_cpp.parent
+        wd = self.workdir / class_name
+        src = wd / "src"
+        shutil.rmtree(src, ignore_errors=True)
+        src.mkdir(parents=True, exist_ok=True)
+        # stage: runner + shader header + candidate .cpp + ALL headers in the round
+        # dir (the vulkan .h #includes the base .h) + shader(s) + base .cpp
+        staged = [self.lo_dir / "vulkan_oracle_runner.cpp", self.lo_dir / "cand_vulkan_shader.h",
+                  candidate_cpp, Path(shader)]
+        staged += list(cand_dir.glob("*.h"))
+        staged += [Path(s) for s in extra_shaders]
+        staged += [Path(s) for s in extra_sources]
+        for f in staged:
+            if f.exists():
+                shutil.copy(str(f), str(src / f.name))
+        # strip DEFINE_LAYER_CREATOR from cpps (avoid duplicate-symbol vs libncnn)
+        for cpp in src.glob("*.cpp"):
+            cpp.write_text(re.sub(r"^\s*DEFINE_LAYER_CREATOR\s*\([^)]*\)\s*;?\s*$", "",
+                                  cpp.read_text(), flags=re.M))
+        vk_cpp = candidate_cpp.name
+        base_cpps = [Path(s).name for s in extra_sources if str(s).endswith(".cpp")]
+        srcs = [f'"{src}/vulkan_oracle_runner.cpp"', f'"{src}/{vk_cpp}"'] + \
+               [f'"{src}/{b}"' for b in base_cpps]
+        shader_name = Path(shader).name
+        (wd / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 3.10)
+project(vkoracle CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${{CMAKE_BINARY_DIR}})
+find_package(ncnn REQUIRED)
+add_executable(runner {' '.join(srcs)})
+target_include_directories(runner PRIVATE "{src}" "{self.ncnn_root}/src" "{self.ncnn_root}/src/layer" "{self.ncnn_root}/src/layer/vulkan")
+target_compile_definitions(runner PRIVATE
+  "CANDIDATE_HEADER=\\"{header}\\""
+  "CANDIDATE_CLASS={class_name}"
+  "CANDIDATE_SHADER=\\"{self.device_dir}/{shader_name}\\"")
+target_link_libraries(runner ncnn)
+""")
+        cmake = self._cmake()
+        cfg = subprocess.run([cmake, "-S", str(wd), "-B", str(wd / "build"),
+                              f"-DCMAKE_TOOLCHAIN_FILE={self.ndk}/build/cmake/android.toolchain.cmake",
+                              "-DANDROID_ABI=arm64-v8a", "-DANDROID_PLATFORM=android-24",
+                              f"-Dncnn_DIR={self.vk_cmake_dir}", "-DCMAKE_BUILD_TYPE=Release"],
+                             capture_output=True, text=True, timeout=300)
+        if cfg.returncode != 0:
+            raise RuntimeError("cmake configure failed:\n" + cfg.stdout + cfg.stderr)
+        bld = subprocess.run([cmake, "--build", str(wd / "build"), "-j", "8"],
+                             capture_output=True, text=True, timeout=600)
+        runner = wd / "build" / "runner"
+        if bld.returncode != 0 or not runner.exists():
+            raise RuntimeError("cmake build failed:\n" + bld.stdout + bld.stderr)
+        return runner, shader_name, [Path(s).name for s in extra_shaders]

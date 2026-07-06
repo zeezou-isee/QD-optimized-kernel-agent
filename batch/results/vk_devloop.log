@@ -1,0 +1,52 @@
+===== Abs (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== Add (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== And (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== AveragePool (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=5.960464477539063e-08
+  "status": "success",
+  "device_status": "passed",
+===== BatchNormalization (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== Conv (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=False compile=True numeric=failed device=none max_diff=37.00609588623047
+[round 2] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== Gemm (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=4.76837158203125e-07
+  "status": "success",
+  "device_status": "passed",
+===== Greater (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=False compile=True numeric=passed device=failed max_diff=0.0
+[round 2] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== Mul (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=passed device=failed max_diff=0.0
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+  "status": "success",
+  "device_status": "passed",
+===== ReduceSum (vulkan device-in-loop) =====
+[round 0] phase=identify_and_generate ok=False compile=False numeric=failed device=none max_diff=None
+[round 1] phase=compile_repair ok=False compile=True numeric=failed device=none max_diff=None
+[round 2] phase=numeric_repair ok=False compile=True numeric=failed device=none max_diff=None
+[round 3] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=5.340576171875e-05
+  "status": "success",
+  "device_status": "passed",
+===== DONE =====

@@ -199,7 +199,8 @@ def child_env() -> dict:
 
 def run_one(category: str, op: str, cfg: ModuleType,
             mode: str = "operator", backend: str = "base",
-            model: str | None = None, vulkan_mode: str | None = None) -> dict:
+            model: str | None = None, vulkan_mode: str | None = None,
+            device_verify: str = "off", device_simpleperf: bool = False) -> dict:
     """Spawn one agent (operator | kernel) for `op` and capture its summary.
 
     mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
@@ -237,6 +238,10 @@ def run_one(category: str, op: str, cfg: ModuleType,
             # e2e is green. The degradation is recorded in the op summary note.
             "--allow-backend-fallback",
         ]
+        if device_verify and device_verify != "off":
+            cmd += ["--device-verify", device_verify]
+            if device_simpleperf:
+                cmd += ["--device-simpleperf"]
     timed_out = False
     t0 = time.time()
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -294,6 +299,11 @@ def main() -> None:
     p.add_argument("--model", default=None,
                    help="override cfg.MODEL (e.g. claude-opus-4-8 / deepseek-v4-pro). "
                         "When omitted, uses the MODEL declared in batch/sets/<set>.py.")
+    p.add_argument("--device-verify", choices=["off", "auto", "on"], default="off",
+                   help="operator mode: device-in-the-loop gate (verify each kernel on the "
+                        "REAL phone after host passes; auto = device if present else host).")
+    p.add_argument("--device-simpleperf", action="store_true",
+                   help="device gate also collects PMU via simpleperf (default off).")
     args = p.parse_args()
 
     cfg = load_set(args.set_name)
@@ -336,7 +346,8 @@ def main() -> None:
         print(f"[{i}/{total}] {cat}/{op}: running...", flush=True)
         mode = "kernel" if args.kernel_only else "operator"
         row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model,
-                      vulkan_mode=args.vulkan_mode)
+                      vulkan_mode=args.vulkan_mode,
+                      device_verify=args.device_verify, device_simpleperf=args.device_simpleperf)
         results[op] = row
         save_results(results_path, results)
         if args.kernel_only:
