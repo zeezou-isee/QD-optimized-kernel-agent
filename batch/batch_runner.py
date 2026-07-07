@@ -174,13 +174,17 @@ def summarize_kernel(op: str, backend: str) -> dict:
     else:
         numeric = "failed"
     return {
-        "status":     s.get("status"),
-        "backend":    s.get("backend"),
-        "rounds":     s.get("rounds"),
-        "compile":    fr.get("compile_ok"),
-        "numeric":    numeric,
-        "max_diff":   fr.get("max_diff"),
-        "category":   fr.get("failure_category"),
+        "status":       s.get("status"),
+        "backend":      s.get("backend"),
+        "rounds":       s.get("rounds"),
+        "compile":      fr.get("compile_ok"),
+        "numeric":      numeric,
+        "max_diff":     fr.get("max_diff"),
+        "category":     fr.get("failure_category"),
+        "device_status": s.get("device_status"),
+        "device_latency": s.get("device_latency"),
+        "device_native_latency": s.get("device_native_latency"),
+        "device_speedup": s.get("device_speedup"),
     }
 
 
@@ -221,6 +225,12 @@ def run_one(category: str, op: str, cfg: ModuleType,
         ]
         if backend == "vulkan" and vulkan_mode:
             cmd += ["--vulkan-mode", vulkan_mode]
+        if device_verify and device_verify != "off":
+            cmd += ["--device-verify", device_verify]
+            if device_simpleperf:
+                cmd += ["--device-simpleperf"]
+            if not device_speedup:
+                cmd += ["--no-device-speedup"]
     else:
         cmd = [
             sys.executable, str(CLI_OPERATOR),

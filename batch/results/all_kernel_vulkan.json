@@ -1,0 +1,34 @@
+{
+  "Celu": {
+    "category": "",
+    "elapsed_s": 29.0,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "backend": "vulkan",
+    "rounds": 1,
+    "compile": true,
+    "numeric": "passed",
+    "max_diff": 0.0,
+    "device_status": "passed",
+    "device_latency": 0.2693,
+    "device_native_latency": 0.2689,
+    "device_speedup": 0.999
+  },
+  "ELU": {
+    "category": "",
+    "elapsed_s": 48.7,
+    "returncode": 0,
+    "timed_out": false,
+    "status": "success",
+    "backend": "vulkan",
+    "rounds": 2,
+    "compile": true,
+    "numeric": "passed",
+    "max_diff": 8.731149137020111e-09,
+    "device_status": "passed",
+    "device_latency": 0.536,
+    "device_native_latency": 0.2498,
+    "device_speedup": 0.466
+  }
+}
