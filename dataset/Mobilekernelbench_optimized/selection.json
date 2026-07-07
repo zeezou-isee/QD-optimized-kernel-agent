@@ -1,0 +1,272 @@
+[
+  {
+    "op": "Dense_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Dense_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.01,
+    "ss": 0.006,
+    "tag": "slow+hard: im2col/GEMM conv, biggest gap"
+  },
+  {
+    "op": "Group_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Group_Convolution_2D.py",
+    "native": "ConvolutionDepthWise",
+    "sf": 0.036,
+    "ss": 0.048,
+    "tag": "slow+hard: grouped conv"
+  },
+  {
+    "op": "Winograd_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Winograd_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.111,
+    "ss": 0.057,
+    "tag": "slow+hard: Winograd algorithm"
+  },
+  {
+    "op": "Strassen_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Strassen_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.09,
+    "ss": 0.088,
+    "tag": "slow+hard: Strassen algorithm"
+  },
+  {
+    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
+    "category": "Convolution",
+    "file": "Convolution/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.py",
+    "native": "Deconvolution",
+    "sf": 0.08,
+    "ss": 0.086,
+    "tag": "slow+hard: deconv, dilated/padded/strided"
+  },
+  {
+    "op": "ConvTranspose_dilations",
+    "category": "Convolution",
+    "file": "Convolution/ConvTranspose_dilations.py",
+    "native": "Deconvolution",
+    "sf": 0.234,
+    "ss": 0.244,
+    "tag": "slow: transposed conv w/ dilation"
+  },
+  {
+    "op": "Conv3D",
+    "category": "Convolution",
+    "file": "Convolution/Conv3D.py",
+    "native": "Convolution3D",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: 3D convolution"
+  },
+  {
+    "op": "Gemm_no_bias",
+    "category": "Matrix",
+    "file": "Matrix/Gemm_no_bias.py",
+    "native": "Gemm",
+    "sf": 0.047,
+    "ss": 0.028,
+    "tag": "slow+hard: GEMM"
+  },
+  {
+    "op": "MatMul",
+    "category": "Matrix",
+    "file": "Matrix/MatMul.py",
+    "native": "MatMul",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: batched matmul"
+  },
+  {
+    "op": "Einsum_sum_all",
+    "category": "Matrix",
+    "file": "Matrix/Einsum_sum_all.py",
+    "native": "Reduction",
+    "sf": 0.5,
+    "ss": 0.5,
+    "tag": "slow: einsum full reduction"
+  },
+  {
+    "op": "Einsum",
+    "category": "Matrix",
+    "file": "Matrix/Einsum.py",
+    "native": "Einsum",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: general einsum"
+  },
+  {
+    "op": "CumSum",
+    "category": "Tensor",
+    "file": "Tensor/CumSum.py",
+    "native": "CumulativeSum",
+    "sf": 1.0,
+    "ss": 1.0,
+    "tag": "hard+diverse: prefix scan"
+  },
+  {
+    "op": "TopK",
+    "category": "Tensor",
+    "file": "Tensor/TopK.py",
+    "native": "torch.topk",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: sort/select"
+  },
+  {
+    "op": "ArgMax",
+    "category": "Reduction",
+    "file": "Reduction/ArgMax.py",
+    "native": "torch.argmax",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: arg-reduction"
+  },
+  {
+    "op": "LayerNorm",
+    "category": "Normalization",
+    "file": "Normalization/LayerNorm.py",
+    "native": "LayerNorm",
+    "sf": 1.771,
+    "ss": 1.61,
+    "tag": "hard+diverse: transformer LayerNorm"
+  },
+  {
+    "op": "InstanceNormalization",
+    "category": "Normalization",
+    "file": "Normalization/InstanceNormalization.py",
+    "native": "InstanceNorm",
+    "sf": 1.0,
+    "ss": 1.373,
+    "tag": "hard+diverse: instance norm"
+  },
+  {
+    "op": "MaxPool_2d_ceil",
+    "category": "Pooling",
+    "file": "Pooling/MaxPool_2d_ceil.py",
+    "native": "Pooling",
+    "sf": 0.333,
+    "ss": 1.333,
+    "tag": "slow: pooling ceil-mode"
+  },
+  {
+    "op": "GridSample",
+    "category": "Tensor",
+    "file": "Tensor/GridSample.py",
+    "native": "GridSample",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: grid sampling/interp"
+  },
+  {
+    "op": "Celu",
+    "category": "Activation",
+    "file": "Activation/Celu.py",
+    "native": "CELU",
+    "sf": 0.267,
+    "ss": 0.439,
+    "tag": "slow: CELU activation"
+  },
+  {
+    "op": "Softmax",
+    "category": "Activation",
+    "file": "Activation/Softmax.py",
+    "native": "Softmax",
+    "sf": 0.263,
+    "ss": 0.229,
+    "tag": "slow+hard: softmax normalization"
+  },
+  {
+    "op": "Sub",
+    "category": "Binary",
+    "file": "Binary/Sub.py",
+    "native": "BinaryOp",
+    "sf": 0.25,
+    "ss": 6.25,
+    "tag": "slow: binary elementwise"
+  },
+  {
+    "op": "Exp",
+    "category": "Unary",
+    "file": "Unary/Exp.py",
+    "native": "UnaryOp",
+    "sf": 0.8,
+    "ss": 1.277,
+    "tag": "slow: unary transcendental"
+  },
+  {
+    "op": "Floor",
+    "category": "Unary",
+    "file": "Unary/Floor.py",
+    "native": "UnaryOp",
+    "sf": 0.676,
+    "ss": 2.206,
+    "tag": "slow: unary rounding"
+  },
+  {
+    "op": "Cos",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Cos.py",
+    "native": "UnaryOp",
+    "sf": 0.835,
+    "ss": 0.651,
+    "tag": "slow: unary trig"
+  },
+  {
+    "op": "Concat",
+    "category": "Tensor",
+    "file": "Tensor/Concat.py",
+    "native": "Concat",
+    "sf": 0.333,
+    "ss": 3.333,
+    "tag": "slow: concat/layout"
+  },
+  {
+    "op": "StridedSlice",
+    "category": "Tensor",
+    "file": "Tensor/StridedSlice.py",
+    "native": "Crop",
+    "sf": 0.333,
+    "ss": 3.667,
+    "tag": "slow+diverse: strided slice/crop"
+  },
+  {
+    "op": "ScatterElements",
+    "category": "Tensor",
+    "file": "Tensor/ScatterElements.py",
+    "native": "aten::scatter",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: scatter/indexing"
+  },
+  {
+    "op": "Gather",
+    "category": "Tensor",
+    "file": "Tensor/Gather.py",
+    "native": "torch.index_select",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: gather/index_select"
+  },
+  {
+    "op": "DepthToSpace",
+    "category": "Tensor",
+    "file": "Tensor/DepthToSpace.py",
+    "native": "PixelShuffle",
+    "sf": 1.357,
+    "ss": 1.053,
+    "tag": "diverse: pixel-shuffle layout"
+  },
+  {
+    "op": "Det",
+    "category": "Matrix",
+    "file": "Matrix/Det.py",
+    "native": "aten::linalg_det",
+    "sf": null,
+    "ss": null,
+    "tag": "hard+diverse: matrix determinant"
+  }
+]
