@@ -1,30 +1,42 @@
 {
   "n_ops": 190,
-  "n_operator_runs": 182,
+  "n_operator_runs": 184,
   "compile_correctness": {
-    "pass": 173,
-    "of": 173,
+    "pass": 167,
+    "of": 167,
     "rate": 1.0
   },
   "kernel_numeric": {
-    "pass": 176,
-    "of": 182,
-    "rate": 0.967
+    "pass": 173,
+    "of": 184,
+    "rate": 0.9402
   },
   "e2e_numeric": {
-    "pass": 173,
-    "of": 176,
-    "rate": 0.983
+    "pass": 167,
+    "of": 172,
+    "rate": 0.9709
   },
   "production_correctness": {
-    "pass": 173,
-    "of": 173,
+    "pass": 167,
+    "of": 167,
     "rate": 1.0
   },
+  "device_gate": {
+    "passed": 172,
+    "ran": 172,
+    "rate": 1.0,
+    "skipped": 0
+  },
+  "device_speedup_inline": {
+    "n": 0
+  },
+  "device_speedup_inline_landed": {
+    "n": 0
+  },
   "already_in_ncnn": {
-    "pass": 136,
-    "of": 176,
-    "rate": 0.7727
+    "pass": 133,
+    "of": 172,
+    "rate": 0.7733
   },
   "speedup_shipped": {
     "n": 109,
@@ -34,6 +46,14 @@
     "max": 12.833,
     "n_faster_than_native": 60
   },
+  "speedup_shipped_landed": {
+    "n": 94,
+    "mean": 2.627,
+    "median": 1.558,
+    "min": 0.006,
+    "max": 12.833,
+    "n_faster_than_native": 58
+  },
   "speedup_fair": {
     "n": 107,
     "mean": 1.713,
@@ -41,5 +61,36 @@
     "min": 0.01,
     "max": 9.543,
     "n_faster_than_native": 50
-  }
+  },
+  "speedup_fair_landed": {
+    "n": 93,
+    "mean": 1.819,
+    "median": 1.0,
+    "min": 0.01,
+    "max": 9.543,
+    "n_faster_than_native": 45
+  },
+  "n_decomposed": 20,
+  "decomposed_ops": [
+    "ConvolutionDepthwise",
+    "Gemm_alpha",
+    "Gemm_beta",
+    "Gemm_transposed",
+    "GlobalAveragePool",
+    "GlobalAveragePool_2d",
+    "GlobalAveragePool_2d_single_channel",
+    "GlobalAveragePool_3d",
+    "GlobalMaxPool",
+    "GlobalMaxPool_2d_single_channel",
+    "GlobalMaxPool_3d",
+    "LogSoftmax",
+    "LogSoftmax_axis_0",
+    "LogSoftmax_axis_1",
+    "LogSoftmax_axis_2",
+    "Mul_bcast",
+    "ReduceL1",
+    "ReduceMax_empty_axes",
+    "ReduceMin_empty_axes",
+    "ReduceProd_1d"
+  ]
 }

@@ -269,13 +269,32 @@ class OperatorAgent:
             # ------------- [3] Existence check (skip graph if already supported) -------------
             print("\n===== [3] Existence check (probe baseline pnnx) =====")
             already_in_ncnn, baseline_graph_sum = self._check_already_in_ncnn()
+            _op_types = baseline_graph_sum.get("_baseline_op_types") or []
+            _distinct = {t for t in _op_types
+                         if t not in ("Input", "Output", "Split") and "." not in t}
+            # decomposed: pnnx emits a CHAIN of ≥2 distinct native layers. The
+            # retarget guard then refuses to point the output layer at our
+            # monolithic Cand_<Op>, so at runtime ncnn::Net runs the native chain
+            # and any QD winner for the Cand is NEVER called (speedup does NOT
+            # land). Flag it loudly so summary.json is self-documenting.
+            decomposed = already_in_ncnn and len(_distinct) > 1
             summary["phases"]["existence_check"] = {
                 "already_in_ncnn": already_in_ncnn,
                 "baseline_op_types": baseline_graph_sum.get("_baseline_op_types"),
                 "residual_aten": baseline_graph_sum.get("_residual_aten"),
+                "decomposed": decomposed,
+                "decomposed_warning": (
+                    f"pnnx decomposes this op into a native chain "
+                    f"{sorted(_distinct)}; the monolithic Cand_{self.task_name} QD "
+                    f"winner is NOT called at runtime (retarget guard) — its "
+                    f"optimization does NOT land. Audit before quoting QD speedup."
+                    if decomposed else None),
             }
             print(f"[orchestrator] already_in_ncnn={already_in_ncnn} "
                   f"op_types={baseline_graph_sum.get('_baseline_op_types')}")
+            if decomposed:
+                print(f"[orchestrator] ⚠ DECOMPOSED op (native chain {sorted(_distinct)}) "
+                      f"— QD winner for Cand_{self.task_name} will NOT land at runtime")
 
             if already_in_ncnn:
                 # use baseline IR as if GraphAgent had produced it

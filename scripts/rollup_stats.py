@@ -43,6 +43,28 @@ RUNS = REPO / "opgen" / "runs"
 RESULTS = REPO / "batch" / "results"
 
 
+def _load_decomposed(runs_root: Path, manifest: str | None) -> dict[str, bool]:
+    """Map op -> is-decomposed. Prefer the audit manifest (decomposed_ops.json);
+    fall back to computing it live from cached pnnx probes so the flag is never
+    stale. A decomposed op runs as a native chain at runtime, so its monolithic
+    Cand_<Op> QD winner is never called -> its speedup does NOT land."""
+    path = Path(manifest) if manifest else (RESULTS / "decomposed_ops.json")
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return {op: bool(v.get("decomposed")) for op, v in data.items()
+                    if v.get("decomposed") is not None}
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    try:  # live fallback — same source of truth as scripts/audit_decomposed_ops.py
+        from audit_decomposed_ops import audit
+        roots = [runs_root, REPO / "opgen" / "runs_arm", REPO / "opgen" / "runs_vulkan"]
+        return {op: bool(v.get("decomposed")) for op, v in audit(None, roots).items()
+                if v.get("decomposed") is not None}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def _dig(d: dict, *path, default=None):
     """Safe nested get: _dig(s, 'phases', 'production', 'compile', 'ok')."""
     cur = d
@@ -55,10 +77,15 @@ def _dig(d: dict, *path, default=None):
     return cur
 
 
-def op_row(op: str, runs_root: Path, perf: dict, backend: str) -> dict:
+def op_row(op: str, runs_root: Path, perf: dict, backend: str,
+           decomposed_map: dict[str, bool] | None = None) -> dict:
     """Build one op's un-fused metric row from its operator summary + perf join."""
+    decomposed = bool((decomposed_map or {}).get(op, False))
     row = {"op": op, "operator_run": False, "status": None,
            "already_in_ncnn": None,
+           # decomposed -> op runs as a native chain; the monolithic Cand's QD
+           # winner is never called, so its speedup does NOT land at runtime.
+           "decomposed": decomposed, "optimization_lands": not decomposed,
            "kernel_numeric": None, "kernel_max_diff": None,
            "e2e": None, "e2e_max_diff": None,
            "compile": None, "correctness": None, "correctness_max_diff": None,
@@ -119,14 +146,18 @@ def summarize(rows: list[dict]) -> dict:
     truthy = lambda v: v is True  # noqa: E731
     ok_status = lambda v: str(v).lower() in ("success", "passed", "ok")  # noqa: E731
 
-    def _speedup_stats(k):
-        xs = [r[k] for r in rows if isinstance(r[k], (int, float))]
+    def _speedup_stats(k, only=None):
+        src = rows if only is None else [r for r in rows if only(r)]
+        xs = [r[k] for r in src if isinstance(r[k], (int, float))]
         if not xs:
             return {"n": 0}
         return {"n": len(xs), "mean": round(statistics.mean(xs), 3),
                 "median": round(statistics.median(xs), 3),
                 "min": round(min(xs), 3), "max": round(max(xs), 3),
                 "n_faster_than_native": sum(1 for x in xs if x > 1.0)}
+
+    lands = lambda r: r.get("optimization_lands", True)  # noqa: E731
+    decomposed_ops = sorted(r["op"] for r in rows if r.get("decomposed"))
 
     # device-in-the-loop: passed vs (passed+failed) among ops the gate actually ran
     dev = [r["device_status"] for r in rows if r["device_status"] in ("passed", "failed")]
@@ -142,9 +173,16 @@ def summarize(rows: list[dict]) -> dict:
         "production_correctness": _pct("correctness", truthy),
         "device_gate": device_gate,
         "device_speedup_inline": _speedup_stats("device_speedup"),
+        "device_speedup_inline_landed": _speedup_stats("device_speedup", only=lands),
         "already_in_ncnn": _pct("already_in_ncnn", truthy),
         "speedup_shipped": _speedup_stats("speedup_shipped"),
+        "speedup_shipped_landed": _speedup_stats("speedup_shipped", only=lands),
         "speedup_fair": _speedup_stats("speedup_fair"),
+        "speedup_fair_landed": _speedup_stats("speedup_fair", only=lands),
+        # decomposed ops: QD winner never called at runtime -> speedup does NOT land.
+        # Reported separately, NOT silently dropped.
+        "n_decomposed": len(decomposed_ops),
+        "decomposed_ops": decomposed_ops,
     }
 
 
@@ -161,6 +199,9 @@ def main() -> None:
                     help="perf_compare.json to merge speedups from")
     ap.add_argument("--out-csv", default=str(RESULTS / "rollup.csv"))
     ap.add_argument("--out-json", default=str(RESULTS / "rollup_summary.json"))
+    ap.add_argument("--decomposed-manifest", default=None,
+                    help="decomposed_ops.json from scripts/audit_decomposed_ops.py "
+                         "(default: batch/results/decomposed_ops.json, else computed live)")
     args = ap.parse_args()
 
     runs_root = Path(args.runs_root)
@@ -186,7 +227,8 @@ def main() -> None:
         except json.JSONDecodeError:
             perf = {}
 
-    rows = [op_row(op, runs_root, perf, args.backend) for op in ops]
+    decomposed_map = _load_decomposed(runs_root, args.decomposed_manifest)
+    rows = [op_row(op, runs_root, perf, args.backend, decomposed_map) for op in ops]
     summary = summarize(rows)
 
     # write CSV
@@ -218,19 +260,33 @@ def main() -> None:
               f"({dg['rate']*100:.1f}%)  [skipped/no-device: {dg['skipped']}]")
     else:
         print(f"  device gate (on phone)   : not run (device-verify off / no device)")
-    si = summary["device_speedup_inline"]
+    def _spd(s):
+        return (f"n={s['n']} median={s['median']}x mean={s['mean']}x "
+                f"faster_than_native={s['n_faster_than_native']}/{s['n']} "
+                f"(range {s['min']}–{s['max']}x)") if s.get("n") else "no data"
+
+    si, sil = summary["device_speedup_inline"], summary["device_speedup_inline_landed"]
     if si.get("n"):
-        print(f"  device speedup (inline)  : n={si['n']} median={si['median']}x mean={si['mean']}x "
-              f"faster_than_native={si['n_faster_than_native']}/{si['n']} (range {si['min']}–{si['max']}x)")
+        print(f"  device speedup (inline)  : {_spd(si)}")
+        if sil.get("n") != si.get("n"):
+            print(f"    └ landed-only (excl. decomposed): {_spd(sil)}")
     print(f"  already in ncnn (native) : {_fmt(summary['already_in_ncnn'])}")
     for tier in ("speedup_shipped", "speedup_fair"):
-        s = summary[tier]
+        s, sl = summary[tier], summary[tier + "_landed"]
         if s.get("n"):
-            print(f"  {tier:<24} : n={s['n']} median={s['median']}x mean={s['mean']}x "
-                  f"faster_than_native={s['n_faster_than_native']}/{s['n']} "
-                  f"(range {s['min']}–{s['max']}x)")
+            print(f"  {tier:<24} : {_spd(s)}")
+            if sl.get("n") != s.get("n"):
+                print(f"    └ landed-only (excl. decomposed): {_spd(sl)}")
         else:
             print(f"  {tier:<24} : no perf data (run run_perf_compare.py first)")
+    if summary["n_decomposed"]:
+        print("-" * 72)
+        print(f"  ⚠ {summary['n_decomposed']} DECOMPOSED ops — run as a native ncnn CHAIN; the")
+        print(f"    monolithic Cand_<Op> QD winner is NEVER called, so its speedup does")
+        print(f"    NOT land at runtime. Excluded from '*_landed' above; audit before")
+        print(f"    quoting their QD gains:")
+        for op in summary["decomposed_ops"]:
+            print(f"      · {op}")
     print("=" * 72)
     print(f"per-op CSV -> {out_csv}")
     print(f"summary    -> {args.out_json}")

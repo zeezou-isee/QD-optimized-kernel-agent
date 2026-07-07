@@ -1,0 +1,1791 @@
+{
+  "ATan": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ATan/operator/_baseline_probe/_probe/ATan.ncnn.param"
+  },
+  "Abs": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Abs/operator/_baseline_probe/_probe/Abs.ncnn.param"
+  },
+  "Acos": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Acos/operator/_baseline_probe/_probe/Acos.ncnn.param"
+  },
+  "Acosh": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Acosh/operator/_baseline_probe/_probe/Acosh.ncnn.param"
+  },
+  "Add": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Add/operator/_baseline_probe/_probe/Add.ncnn.param"
+  },
+  "And": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/And/operator/_baseline_probe/_probe/And.ncnn.param"
+  },
+  "ArgMax": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMax/operator/_baseline_probe/_probe/ArgMax.ncnn.param"
+  },
+  "ArgMax_default_axis_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMax_default_axis_example/operator/_baseline_probe/_probe/ArgMax_default_axis_example.ncnn.param"
+  },
+  "ArgMax_keepdims_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMax_keepdims_example/operator/_baseline_probe/_probe/ArgMax_keepdims_example.ncnn.param"
+  },
+  "ArgMax_negative_axis_keepdims_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMax_negative_axis_keepdims_example/operator/_baseline_probe/_probe/ArgMax_negative_axis_keepdims_example.ncnn.param"
+  },
+  "ArgMin": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMin/operator/_baseline_probe/_probe/ArgMin.ncnn.param"
+  },
+  "ArgMin_default_axis_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMin_default_axis_example/operator/_baseline_probe/_probe/ArgMin_default_axis_example.ncnn.param"
+  },
+  "ArgMin_keepdims_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMin_keepdims_example/operator/_baseline_probe/_probe/ArgMin_keepdims_example.ncnn.param"
+  },
+  "ArgMin_negative_axis_keepdims_example": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ArgMin_negative_axis_keepdims_example/operator/_baseline_probe/_probe/ArgMin_negative_axis_keepdims_example.ncnn.param"
+  },
+  "Asin": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Asin/operator/_baseline_probe/_probe/Asin.ncnn.param"
+  },
+  "Asinh": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Asinh/operator/_baseline_probe/_probe/Asinh.ncnn.param"
+  },
+  "Atanh": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Atanh/operator/_baseline_probe/_probe/Atanh.ncnn.param"
+  },
+  "AveragePool": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/AveragePool/operator/_baseline_probe/_probe/AveragePool.ncnn.param"
+  },
+  "AveragePool_2d_ceil": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/AveragePool_2d_ceil/operator/_baseline_probe/_probe/AveragePool_2d_ceil.ncnn.param"
+  },
+  "AveragePool_2d_strides": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/AveragePool_2d_strides/operator/_baseline_probe/_probe/AveragePool_2d_strides.ncnn.param"
+  },
+  "BatchNormalization": {
+    "op_types": [
+      "BatchNorm"
+    ],
+    "distinct": [
+      "BatchNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BatchNormalization/operator/_baseline_probe/_probe/BatchNormalization.ncnn.param"
+  },
+  "BatchNormalization_epsilon": {
+    "op_types": [
+      "BatchNorm"
+    ],
+    "distinct": [
+      "BatchNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BatchNormalization_epsilon/operator/_baseline_probe/_probe/BatchNormalization_epsilon.ncnn.param"
+  },
+  "BatchNormalization_momentum": {
+    "op_types": [
+      "BatchNorm"
+    ],
+    "distinct": [
+      "BatchNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BatchNormalization_momentum/operator/_baseline_probe/_probe/BatchNormalization_momentum.ncnn.param"
+  },
+  "BitWiseOr": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BitWiseOr/operator/_baseline_probe/_probe/BitWiseOr.ncnn.param"
+  },
+  "BitWiseXor": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BitWiseXor/operator/_baseline_probe/_probe/BitWiseXor.ncnn.param"
+  },
+  "BitwiseAnd": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/BitwiseAnd/operator/_baseline_probe/_probe/BitwiseAnd.ncnn.param"
+  },
+  "Cast": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Cast/operator/_baseline_probe/_probe/Cast.ncnn.param"
+  },
+  "Ceil": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Ceil/operator/_baseline_probe/_probe/Ceil.ncnn.param"
+  },
+  "Celu": {
+    "op_types": [
+      "CELU"
+    ],
+    "distinct": [
+      "CELU"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Celu/operator/_baseline_probe/_probe/Celu.ncnn.param"
+  },
+  "Clip": {
+    "op_types": [
+      "Clip"
+    ],
+    "distinct": [
+      "Clip"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Clip/operator/_baseline_probe/_probe/Clip.ncnn.param"
+  },
+  "Concat": {
+    "op_types": [
+      "Concat"
+    ],
+    "distinct": [
+      "Concat"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Concat/operator/_baseline_probe/_probe/Concat.ncnn.param"
+  },
+  "Conv": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Conv/operator/_baseline_probe/_probe/Conv.ncnn.param"
+  },
+  "Conv3D": {
+    "op_types": [
+      "Convolution3D"
+    ],
+    "distinct": [
+      "Convolution3D"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Conv3D/operator/_baseline_probe/_probe/Conv3D.ncnn.param"
+  },
+  "ConvTranspose_2D__asymmetric_input__asymmetric_kernel": {
+    "op_types": [
+      "Deconvolution"
+    ],
+    "distinct": [
+      "Deconvolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ConvTranspose_2D__asymmetric_input__asymmetric_kernel/operator/_baseline_probe/_probe/ConvTranspose_2D__asymmetric_input__asymmetric_kernel.ncnn.param"
+  },
+  "ConvTranspose_dilations": {
+    "op_types": [
+      "Deconvolution"
+    ],
+    "distinct": [
+      "Deconvolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ConvTranspose_dilations/operator/_baseline_probe/_probe/ConvTranspose_dilations.ncnn.param"
+  },
+  "Conv_with_strides_no_padding": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Conv_with_strides_no_padding/operator/_baseline_probe/_probe/Conv_with_strides_no_padding.ncnn.param"
+  },
+  "Conv_with_strides_padding": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Conv_with_strides_padding/operator/_baseline_probe/_probe/Conv_with_strides_padding.ncnn.param"
+  },
+  "ConvolutionDepthwise": {
+    "op_types": [
+      "ConvolutionDepthWise",
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution",
+      "ConvolutionDepthWise"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ConvolutionDepthwise/operator/_baseline_probe/_probe/ConvolutionDepthwise.ncnn.param"
+  },
+  "Cos": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Cos/operator/_baseline_probe/_probe/Cos.ncnn.param"
+  },
+  "Cosh": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Cosh/operator/_baseline_probe/_probe/Cosh.ncnn.param"
+  },
+  "CumSum": {
+    "op_types": [
+      "CumulativeSum"
+    ],
+    "distinct": [
+      "CumulativeSum"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/CumSum/operator/_baseline_probe/_probe/CumSum.ncnn.param"
+  },
+  "DeconvolutionDepthwise_2D_kernel": {
+    "op_types": [
+      "DeconvolutionDepthWise"
+    ],
+    "distinct": [
+      "DeconvolutionDepthWise"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/DeconvolutionDepthwise_2D_kernel/operator/_baseline_probe/_probe/DeconvolutionDepthwise_2D_kernel.ncnn.param"
+  },
+  "DeconvolutionDepthwise_2D_stride": {
+    "op_types": [
+      "DeconvolutionDepthWise"
+    ],
+    "distinct": [
+      "DeconvolutionDepthWise"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/DeconvolutionDepthwise_2D_stride/operator/_baseline_probe/_probe/DeconvolutionDepthwise_2D_stride.ncnn.param"
+  },
+  "Deconvolution_1D": {
+    "op_types": [
+      "Deconvolution1D"
+    ],
+    "distinct": [
+      "Deconvolution1D"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Deconvolution_1D/operator/_baseline_probe/_probe/Deconvolution_1D.ncnn.param"
+  },
+  "Deconvolution_2D__asymmetric_input__asymmetric_kernel": {
+    "op_types": [
+      "Deconvolution"
+    ],
+    "distinct": [
+      "Deconvolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Deconvolution_2D__asymmetric_input__asymmetric_kernel/operator/_baseline_probe/_probe/Deconvolution_2D__asymmetric_input__asymmetric_kernel.ncnn.param"
+  },
+  "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__": {
+    "op_types": [
+      "Deconvolution"
+    ],
+    "distinct": [
+      "Deconvolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__/operator/_baseline_probe/_probe/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.ncnn.param"
+  },
+  "Dense_Convolution_1D": {
+    "op_types": [
+      "Convolution1D"
+    ],
+    "distinct": [
+      "Convolution1D"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Dense_Convolution_1D/operator/_baseline_probe/_probe/Dense_Convolution_1D.ncnn.param"
+  },
+  "Dense_Convolution_2D": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Dense_Convolution_2D/operator/_baseline_probe/_probe/Dense_Convolution_2D.ncnn.param"
+  },
+  "Dense_Convolution_2D__asymmetric_input__square_kernel": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Dense_Convolution_2D__asymmetric_input__square_kernel/operator/_baseline_probe/_probe/Dense_Convolution_2D__asymmetric_input__square_kernel.ncnn.param"
+  },
+  "Dense_Convolution_2D_kernel": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Dense_Convolution_2D_kernel/operator/_baseline_probe/_probe/Dense_Convolution_2D_kernel.ncnn.param"
+  },
+  "DepthToSpace": {
+    "op_types": [
+      "PixelShuffle"
+    ],
+    "distinct": [
+      "PixelShuffle"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/DepthToSpace/operator/_baseline_probe/_probe/DepthToSpace.ncnn.param"
+  },
+  "Det": {
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "distinct": [
+      "aten::linalg_det"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Det/operator/_baseline_probe/_probe/Det.ncnn.param"
+  },
+  "Det_2d": {
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "distinct": [
+      "aten::linalg_det"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Det_2d/operator/_baseline_probe/_probe/Det_2d.ncnn.param"
+  },
+  "Det_3d": {
+    "op_types": [
+      "aten::linalg_det"
+    ],
+    "distinct": [
+      "aten::linalg_det"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Det_3d/operator/_baseline_probe/_probe/Det_3d.ncnn.param"
+  },
+  "Div": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Div/operator/_baseline_probe/_probe/Div.ncnn.param"
+  },
+  "ELU": {
+    "op_types": [
+      "ELU"
+    ],
+    "distinct": [
+      "ELU"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ELU/operator/_baseline_probe/_probe/ELU.ncnn.param"
+  },
+  "Einsum": {
+    "op_types": [
+      "Einsum"
+    ],
+    "distinct": [
+      "Einsum"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Einsum/operator/_baseline_probe/_probe/Einsum.ncnn.param"
+  },
+  "Einsum_diagonal": {
+    "op_types": [
+      "Einsum"
+    ],
+    "distinct": [
+      "Einsum"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Einsum_diagonal/operator/_baseline_probe/_probe/Einsum_diagonal.ncnn.param"
+  },
+  "Einsum_elementwise": {
+    "op_types": [
+      "Einsum"
+    ],
+    "distinct": [
+      "Einsum"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Einsum_elementwise/operator/_baseline_probe/_probe/Einsum_elementwise.ncnn.param"
+  },
+  "Einsum_sum_all": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Einsum_sum_all/operator/_baseline_probe/_probe/Einsum_sum_all.ncnn.param"
+  },
+  "Einsum_transpose": {
+    "op_types": [
+      "Permute"
+    ],
+    "distinct": [
+      "Permute"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Einsum_transpose/operator/_baseline_probe/_probe/Einsum_transpose.ncnn.param"
+  },
+  "Equal": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Equal/operator/_baseline_probe/_probe/Equal.ncnn.param"
+  },
+  "Erf": {
+    "op_types": [
+      "Erf"
+    ],
+    "distinct": [
+      "Erf"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Erf/operator/_baseline_probe/_probe/Erf.ncnn.param"
+  },
+  "Exp": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Exp/operator/_baseline_probe/_probe/Exp.ncnn.param"
+  },
+  "Floor": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Floor/operator/_baseline_probe/_probe/Floor.ncnn.param"
+  },
+  "Gather": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gather/operator/_baseline_probe/_probe/Gather.ncnn.param"
+  },
+  "GatherElements": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GatherElements/operator/_baseline_probe/_probe/GatherElements.ncnn.param"
+  },
+  "Gemm": {
+    "op_types": [
+      "Gemm"
+    ],
+    "distinct": [
+      "Gemm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm/operator/_baseline_probe/_probe/Gemm.ncnn.param"
+  },
+  "Gemm_alpha": {
+    "op_types": [
+      "Gemm",
+      "BinaryOp",
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp",
+      "Gemm"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm_alpha/operator/_baseline_probe/_probe/Gemm_alpha.ncnn.param"
+  },
+  "Gemm_beta": {
+    "op_types": [
+      "Gemm",
+      "BinaryOp",
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp",
+      "Gemm"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm_beta/operator/_baseline_probe/_probe/Gemm_beta.ncnn.param"
+  },
+  "Gemm_no_bias": {
+    "op_types": [
+      "Gemm"
+    ],
+    "distinct": [
+      "Gemm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm_no_bias/operator/_baseline_probe/_probe/Gemm_no_bias.ncnn.param"
+  },
+  "Gemm_scalar_bias": {
+    "op_types": [
+      "Gemm"
+    ],
+    "distinct": [
+      "Gemm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm_scalar_bias/operator/_baseline_probe/_probe/Gemm_scalar_bias.ncnn.param"
+  },
+  "Gemm_transposed": {
+    "op_types": [
+      "Permute",
+      "Gemm",
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp",
+      "Gemm",
+      "Permute"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Gemm_transposed/operator/_baseline_probe/_probe/Gemm_transposed.ncnn.param"
+  },
+  "GlobalAveragePool": {
+    "op_types": [
+      "Pooling",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalAveragePool/operator/_baseline_probe/_probe/GlobalAveragePool.ncnn.param"
+  },
+  "GlobalAveragePool_2d": {
+    "op_types": [
+      "Pooling",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalAveragePool_2d/operator/_baseline_probe/_probe/GlobalAveragePool_2d.ncnn.param"
+  },
+  "GlobalAveragePool_2d_single_channel": {
+    "op_types": [
+      "Pooling",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalAveragePool_2d_single_channel/operator/_baseline_probe/_probe/GlobalAveragePool_2d_single_channel.ncnn.param"
+  },
+  "GlobalAveragePool_3d": {
+    "op_types": [
+      "Pooling3D",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling3D",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalAveragePool_3d/operator/_baseline_probe/_probe/GlobalAveragePool_3d.ncnn.param"
+  },
+  "GlobalMaxPool": {
+    "op_types": [
+      "Pooling",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalMaxPool/operator/_baseline_probe/_probe/GlobalMaxPool.ncnn.param"
+  },
+  "GlobalMaxPool_2d_single_channel": {
+    "op_types": [
+      "Pooling",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalMaxPool_2d_single_channel/operator/_baseline_probe/_probe/GlobalMaxPool_2d_single_channel.ncnn.param"
+  },
+  "GlobalMaxPool_3d": {
+    "op_types": [
+      "Pooling3D",
+      "Reshape"
+    ],
+    "distinct": [
+      "Pooling3D",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GlobalMaxPool_3d/operator/_baseline_probe/_probe/GlobalMaxPool_3d.ncnn.param"
+  },
+  "Greater": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Greater/operator/_baseline_probe/_probe/Greater.ncnn.param"
+  },
+  "GreaterEqual": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GreaterEqual/operator/_baseline_probe/_probe/GreaterEqual.ncnn.param"
+  },
+  "GridSample": {
+    "op_types": [
+      "GridSample"
+    ],
+    "distinct": [
+      "GridSample"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/GridSample/operator/_baseline_probe/_probe/GridSample.ncnn.param"
+  },
+  "Group_Convolution_2D": {
+    "op_types": [
+      "ConvolutionDepthWise"
+    ],
+    "distinct": [
+      "ConvolutionDepthWise"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Group_Convolution_2D/operator/_baseline_probe/_probe/Group_Convolution_2D.ncnn.param"
+  },
+  "Group_Convolution_2D_kernel": {
+    "op_types": [
+      "ConvolutionDepthWise"
+    ],
+    "distinct": [
+      "ConvolutionDepthWise"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Group_Convolution_2D_kernel/operator/_baseline_probe/_probe/Group_Convolution_2D_kernel.ncnn.param"
+  },
+  "HardSigmoid": {
+    "op_types": [
+      "HardSigmoid"
+    ],
+    "distinct": [
+      "HardSigmoid"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/HardSigmoid/operator/_baseline_probe/_probe/HardSigmoid.ncnn.param"
+  },
+  "InstanceNormalization": {
+    "op_types": [
+      "InstanceNorm"
+    ],
+    "distinct": [
+      "InstanceNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/InstanceNormalization/operator/_baseline_probe/_probe/InstanceNormalization.ncnn.param"
+  },
+  "InstanceNormalization_1d": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/InstanceNormalization_1d/operator/_baseline_probe/_probe/InstanceNormalization_1d.ncnn.param"
+  },
+  "InstanceNormalization_3d": {
+    "op_types": [
+      "InstanceNorm"
+    ],
+    "distinct": [
+      "InstanceNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/InstanceNormalization_3d/operator/_baseline_probe/_probe/InstanceNormalization_3d.ncnn.param"
+  },
+  "LSTM": {
+    "op_types": [
+      "LSTM"
+    ],
+    "distinct": [
+      "LSTM"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LSTM/operator/_baseline_probe/_probe/LSTM.ncnn.param"
+  },
+  "LayerNorm": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm/operator/_baseline_probe/_probe/LayerNorm.ncnn.param"
+  },
+  "LayerNorm_1d": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm_1d/operator/_baseline_probe/_probe/LayerNorm_1d.ncnn.param"
+  },
+  "LayerNorm_3d": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm_3d/operator/_baseline_probe/_probe/LayerNorm_3d.ncnn.param"
+  },
+  "LayerNorm_eps": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm_eps/operator/_baseline_probe/_probe/LayerNorm_eps.ncnn.param"
+  },
+  "LayerNorm_no_affine": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm_no_affine/operator/_baseline_probe/_probe/LayerNorm_no_affine.ncnn.param"
+  },
+  "LayerNorm_vision": {
+    "op_types": [
+      "LayerNorm"
+    ],
+    "distinct": [
+      "LayerNorm"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LayerNorm_vision/operator/_baseline_probe/_probe/LayerNorm_vision.ncnn.param"
+  },
+  "Less": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Less/operator/_baseline_probe/_probe/Less.ncnn.param"
+  },
+  "LessEqual": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LessEqual/operator/_baseline_probe/_probe/LessEqual.ncnn.param"
+  },
+  "Log": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Log/operator/_baseline_probe/_probe/Log.ncnn.param"
+  },
+  "LogSoftmax": {
+    "op_types": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "distinct": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogSoftmax/operator/_baseline_probe/_probe/LogSoftmax.ncnn.param"
+  },
+  "LogSoftmax_axis_0": {
+    "op_types": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "distinct": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogSoftmax_axis_0/operator/_baseline_probe/_probe/LogSoftmax_axis_0.ncnn.param"
+  },
+  "LogSoftmax_axis_1": {
+    "op_types": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "distinct": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogSoftmax_axis_1/operator/_baseline_probe/_probe/LogSoftmax_axis_1.ncnn.param"
+  },
+  "LogSoftmax_axis_2": {
+    "op_types": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "distinct": [
+      "Softmax",
+      "UnaryOp"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogSoftmax_axis_2/operator/_baseline_probe/_probe/LogSoftmax_axis_2.ncnn.param"
+  },
+  "LogicalXor": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogicalXor/operator/_baseline_probe/_probe/LogicalXor.ncnn.param"
+  },
+  "LogicalXor3d": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogicalXor3d/operator/_baseline_probe/_probe/LogicalXor3d.ncnn.param"
+  },
+  "LogicalXor_2d": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/LogicalXor_2d/operator/_baseline_probe/_probe/LogicalXor_2d.ncnn.param"
+  },
+  "MatMul": {
+    "op_types": [
+      "MatMul"
+    ],
+    "distinct": [
+      "MatMul"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MatMul/operator/_baseline_probe/_probe/MatMul.ncnn.param"
+  },
+  "MatMul_1d_3d": {
+    "op_types": [
+      "MatMul"
+    ],
+    "distinct": [
+      "MatMul"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MatMul_1d_3d/operator/_baseline_probe/_probe/MatMul_1d_3d.ncnn.param"
+  },
+  "MatMul_3d": {
+    "op_types": [
+      "MatMul"
+    ],
+    "distinct": [
+      "MatMul"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MatMul_3d/operator/_baseline_probe/_probe/MatMul_3d.ncnn.param"
+  },
+  "MatMul_bcast": {
+    "op_types": [
+      "MatMul"
+    ],
+    "distinct": [
+      "MatMul"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MatMul_bcast/operator/_baseline_probe/_probe/MatMul_bcast.ncnn.param"
+  },
+  "MatMul_square": {
+    "op_types": [
+      "MatMul"
+    ],
+    "distinct": [
+      "MatMul"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MatMul_square/operator/_baseline_probe/_probe/MatMul_square.ncnn.param"
+  },
+  "MaxPool": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MaxPool/operator/_baseline_probe/_probe/MaxPool.ncnn.param"
+  },
+  "MaxPool_2d_ceil": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MaxPool_2d_ceil/operator/_baseline_probe/_probe/MaxPool_2d_ceil.ncnn.param"
+  },
+  "MaxPool_2d_dilations": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MaxPool_2d_dilations/operator/_baseline_probe/_probe/MaxPool_2d_dilations.ncnn.param"
+  },
+  "MaxPool_2d_same_lower": {
+    "op_types": [
+      "aten::max_pool2d"
+    ],
+    "distinct": [
+      "aten::max_pool2d"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MaxPool_2d_same_lower/operator/_baseline_probe/_probe/MaxPool_2d_same_lower.ncnn.param"
+  },
+  "MaxPool_2d_strides": {
+    "op_types": [
+      "Pooling"
+    ],
+    "distinct": [
+      "Pooling"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/MaxPool_2d_strides/operator/_baseline_probe/_probe/MaxPool_2d_strides.ncnn.param"
+  },
+  "Min": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Min/operator/_baseline_probe/_probe/Min.ncnn.param"
+  },
+  "Mod": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Mod/operator/_baseline_probe/_probe/Mod.ncnn.param"
+  },
+  "Mul": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Mul/operator/_baseline_probe/_probe/Mul.ncnn.param"
+  },
+  "Mul_bcast": {
+    "op_types": [
+      "Reshape",
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Mul_bcast/operator/_baseline_probe/_probe/Mul_bcast.ncnn.param"
+  },
+  "Neg": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Neg/operator/_baseline_probe/_probe/Neg.ncnn.param"
+  },
+  "Not": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Not/operator/_baseline_probe/_probe/Not.ncnn.param"
+  },
+  "OneHot": {
+    "op_types": [
+      "aten::one_hot"
+    ],
+    "distinct": [
+      "aten::one_hot"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/OneHot/operator/_baseline_probe/_probe/OneHot.ncnn.param"
+  },
+  "PRelu": {
+    "op_types": [
+      "PReLU"
+    ],
+    "distinct": [
+      "PReLU"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/PRelu/operator/_baseline_probe/_probe/PRelu.ncnn.param"
+  },
+  "Pow": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Pow/operator/_baseline_probe/_probe/Pow.ncnn.param"
+  },
+  "RNN": {
+    "op_types": [
+      "RNN"
+    ],
+    "distinct": [
+      "RNN"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/RNN/operator/_baseline_probe/_probe/RNN.ncnn.param"
+  },
+  "Range": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Range/operator/_baseline_probe/_probe/Range.ncnn.param"
+  },
+  "Reciprocal": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Reciprocal/operator/_baseline_probe/_probe/Reciprocal.ncnn.param"
+  },
+  "ReduceL1": {
+    "op_types": [
+      "Reduction",
+      "Reshape"
+    ],
+    "distinct": [
+      "Reduction",
+      "Reshape"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL1/operator/_baseline_probe/_probe/ReduceL1.ncnn.param"
+  },
+  "ReduceL1_2d_input": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL1_2d_input/operator/_baseline_probe/_probe/ReduceL1_2d_input.ncnn.param"
+  },
+  "ReduceL1_multiple_axes": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL1_multiple_axes/operator/_baseline_probe/_probe/ReduceL1_multiple_axes.ncnn.param"
+  },
+  "ReduceL1_negative_axes_keepdims": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL1_negative_axes_keepdims/operator/_baseline_probe/_probe/ReduceL1_negative_axes_keepdims.ncnn.param"
+  },
+  "ReduceL2": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL2/operator/_baseline_probe/_probe/ReduceL2.ncnn.param"
+  },
+  "ReduceL2_2d_input": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL2_2d_input/operator/_baseline_probe/_probe/ReduceL2_2d_input.ncnn.param"
+  },
+  "ReduceL2_keepdims": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL2_keepdims/operator/_baseline_probe/_probe/ReduceL2_keepdims.ncnn.param"
+  },
+  "ReduceL2_multiple_axes": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceL2_multiple_axes/operator/_baseline_probe/_probe/ReduceL2_multiple_axes.ncnn.param"
+  },
+  "ReduceLogSumExp": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceLogSumExp/operator/_baseline_probe/_probe/ReduceLogSumExp.ncnn.param"
+  },
+  "ReduceLogSumExp_2d_input": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceLogSumExp_2d_input/operator/_baseline_probe/_probe/ReduceLogSumExp_2d_input.ncnn.param"
+  },
+  "ReduceLogSumExp_keepdims": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceLogSumExp_keepdims/operator/_baseline_probe/_probe/ReduceLogSumExp_keepdims.ncnn.param"
+  },
+  "ReduceLogSumExp_multiple_axes": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceLogSumExp_multiple_axes/operator/_baseline_probe/_probe/ReduceLogSumExp_multiple_axes.ncnn.param"
+  },
+  "ReduceMax": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMax/operator/_baseline_probe/_probe/ReduceMax.ncnn.param"
+  },
+  "ReduceMax_empty_axes": {
+    "op_types": [
+      "Reduction",
+      "ExpandDims"
+    ],
+    "distinct": [
+      "ExpandDims",
+      "Reduction"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMax_empty_axes/operator/_baseline_probe/_probe/ReduceMax_empty_axes.ncnn.param"
+  },
+  "ReduceMax_with_negative_values": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMax_with_negative_values/operator/_baseline_probe/_probe/ReduceMax_with_negative_values.ncnn.param"
+  },
+  "ReduceMean": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMean/operator/_baseline_probe/_probe/ReduceMean.ncnn.param"
+  },
+  "ReduceMean_keepdims": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMean_keepdims/operator/_baseline_probe/_probe/ReduceMean_keepdims.ncnn.param"
+  },
+  "ReduceMean_multiple_axes": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMean_multiple_axes/operator/_baseline_probe/_probe/ReduceMean_multiple_axes.ncnn.param"
+  },
+  "ReduceMin": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMin/operator/_baseline_probe/_probe/ReduceMin.ncnn.param"
+  },
+  "ReduceMin_empty_axes": {
+    "op_types": [
+      "Reduction",
+      "ExpandDims"
+    ],
+    "distinct": [
+      "ExpandDims",
+      "Reduction"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMin_empty_axes/operator/_baseline_probe/_probe/ReduceMin_empty_axes.ncnn.param"
+  },
+  "ReduceMin_with_negative_values": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceMin_with_negative_values/operator/_baseline_probe/_probe/ReduceMin_with_negative_values.ncnn.param"
+  },
+  "ReduceProd": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceProd/operator/_baseline_probe/_probe/ReduceProd.ncnn.param"
+  },
+  "ReduceProd_1d": {
+    "op_types": [
+      "Reduction",
+      "ExpandDims"
+    ],
+    "distinct": [
+      "ExpandDims",
+      "Reduction"
+    ],
+    "decomposed": true,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceProd_1d/operator/_baseline_probe/_probe/ReduceProd_1d.ncnn.param"
+  },
+  "ReduceProd_keepdims": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceProd_keepdims/operator/_baseline_probe/_probe/ReduceProd_keepdims.ncnn.param"
+  },
+  "ReduceSum": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceSum/operator/_baseline_probe/_probe/ReduceSum.ncnn.param"
+  },
+  "ReduceSum_empty_axes": {
+    "op_types": [
+      "Reduction",
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceSum_empty_axes/operator/_baseline_probe/_probe/ReduceSum_empty_axes.ncnn.param"
+  },
+  "ReduceSum_multiple_axes": {
+    "op_types": [
+      "Reduction"
+    ],
+    "distinct": [
+      "Reduction"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ReduceSum_multiple_axes/operator/_baseline_probe/_probe/ReduceSum_multiple_axes.ncnn.param"
+  },
+  "Relu": {
+    "op_types": [
+      "ReLU"
+    ],
+    "distinct": [
+      "ReLU"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Relu/operator/_baseline_probe/_probe/Relu.ncnn.param"
+  },
+  "Reshape": {
+    "op_types": [
+      "Reshape"
+    ],
+    "distinct": [
+      "Reshape"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Reshape/operator/_baseline_probe/_probe/Reshape.ncnn.param"
+  },
+  "Round": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Round/operator/_baseline_probe/_probe/Round.ncnn.param"
+  },
+  "ScatterElements": {
+    "op_types": [
+      "aten::scatter"
+    ],
+    "distinct": [
+      "aten::scatter"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/ScatterElements/operator/_baseline_probe/_probe/ScatterElements.ncnn.param"
+  },
+  "Sign": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Sign/operator/_baseline_probe/_probe/Sign.ncnn.param"
+  },
+  "Sin": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Sin/operator/_baseline_probe/_probe/Sin.ncnn.param"
+  },
+  "Sinh": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Sinh/operator/_baseline_probe/_probe/Sinh.ncnn.param"
+  },
+  "Slice": {
+    "op_types": [
+      "Crop"
+    ],
+    "distinct": [
+      "Crop"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Slice/operator/_baseline_probe/_probe/Slice.ncnn.param"
+  },
+  "Softmax": {
+    "op_types": [
+      "Softmax"
+    ],
+    "distinct": [
+      "Softmax"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Softmax/operator/_baseline_probe/_probe/Softmax.ncnn.param"
+  },
+  "Softplus_2d": {
+    "op_types": [
+      "Softplus"
+    ],
+    "distinct": [
+      "Softplus"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Softplus_2d/operator/_baseline_probe/_probe/Softplus_2d.ncnn.param"
+  },
+  "Softplus_3d": {
+    "op_types": [
+      "Softplus"
+    ],
+    "distinct": [
+      "Softplus"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Softplus_3d/operator/_baseline_probe/_probe/Softplus_3d.ncnn.param"
+  },
+  "Sqrt": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Sqrt/operator/_baseline_probe/_probe/Sqrt.ncnn.param"
+  },
+  "Stft": {
+    "op_types": [
+      "MemoryData"
+    ],
+    "distinct": [
+      "MemoryData"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Stft/operator/_baseline_probe/_probe/Stft.ncnn.param"
+  },
+  "Strassen_Convolution_2D": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Strassen_Convolution_2D/operator/_baseline_probe/_probe/Strassen_Convolution_2D.ncnn.param"
+  },
+  "StridedSlice": {
+    "op_types": [
+      "Crop"
+    ],
+    "distinct": [
+      "Crop"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/StridedSlice/operator/_baseline_probe/_probe/StridedSlice.ncnn.param"
+  },
+  "Sub": {
+    "op_types": [
+      "BinaryOp"
+    ],
+    "distinct": [
+      "BinaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Sub/operator/_baseline_probe/_probe/Sub.ncnn.param"
+  },
+  "Tan": {
+    "op_types": [
+      "UnaryOp"
+    ],
+    "distinct": [
+      "UnaryOp"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Tan/operator/_baseline_probe/_probe/Tan.ncnn.param"
+  },
+  "Tanh": {
+    "op_types": [
+      "TanH"
+    ],
+    "distinct": [
+      "TanH"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Tanh/operator/_baseline_probe/_probe/Tanh.ncnn.param"
+  },
+  "Tile": {
+    "op_types": [
+      "Tile"
+    ],
+    "distinct": [
+      "Tile"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Tile/operator/_baseline_probe/_probe/Tile.ncnn.param"
+  },
+  "TopK": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/TopK/operator/_baseline_probe/_probe/TopK.ncnn.param"
+  },
+  "TopK_3d": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/TopK_3d/operator/_baseline_probe/_probe/TopK_3d.ncnn.param"
+  },
+  "TopK_dim0": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/TopK_dim0/operator/_baseline_probe/_probe/TopK_dim0.ncnn.param"
+  },
+  "TopK_indices": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/TopK_indices/operator/_baseline_probe/_probe/TopK_indices.ncnn.param"
+  },
+  "TopK_sorted": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/TopK_sorted/operator/_baseline_probe/_probe/TopK_sorted.ncnn.param"
+  },
+  "Trilu_lower": {
+    "op_types": [
+      "aten::tril"
+    ],
+    "distinct": [
+      "aten::tril"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Trilu_lower/operator/_baseline_probe/_probe/Trilu_lower.ncnn.param"
+  },
+  "Trilu_uppper": {
+    "op_types": [
+      "aten::triu"
+    ],
+    "distinct": [
+      "aten::triu"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Trilu_uppper/operator/_baseline_probe/_probe/Trilu_uppper.ncnn.param"
+  },
+  "Unique": {
+    "op_types": [
+      "aten::unique_dim"
+    ],
+    "distinct": [
+      "aten::unique_dim"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Unique/operator/_baseline_probe/_probe/Unique.ncnn.param"
+  },
+  "Unique_sorted_with_axis": {
+    "op_types": [
+      "aten::unique_dim"
+    ],
+    "distinct": [
+      "aten::unique_dim"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Unique_sorted_with_axis/operator/_baseline_probe/_probe/Unique_sorted_with_axis.ncnn.param"
+  },
+  "Unique_sorted_with_axis_3d": {
+    "op_types": [
+      "aten::unique_dim"
+    ],
+    "distinct": [
+      "aten::unique_dim"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Unique_sorted_with_axis_3d/operator/_baseline_probe/_probe/Unique_sorted_with_axis_3d.ncnn.param"
+  },
+  "Where": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Where/operator/_baseline_probe/_probe/Where.ncnn.param"
+  },
+  "Where_broadcast": {
+    "op_types": [],
+    "distinct": [],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Where_broadcast/operator/_baseline_probe/_probe/Where_broadcast.ncnn.param"
+  },
+  "Winograd_Convolution_2D": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Winograd_Convolution_2D/operator/_baseline_probe/_probe/Winograd_Convolution_2D.ncnn.param"
+  },
+  "Winograd_Convolution_2D_padding": {
+    "op_types": [
+      "Convolution"
+    ],
+    "distinct": [
+      "Convolution"
+    ],
+    "decomposed": false,
+    "param": "/Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/opgen/runs/Winograd_Convolution_2D_padding/operator/_baseline_probe/_probe/Winograd_Convolution_2D_padding.ncnn.param"
+  }
+}

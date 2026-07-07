@@ -233,9 +233,19 @@ python batch/batch_runner.py --set subset --ops Gemm,LayerNorm    # debug a few 
 python opgen/cli/run_perf_compare.py --task Abs --backend arm --perf-comp-base --scale 8
 #   -> batch/results/perf_compare.json  (speedup_shipped / speedup_fair per op)
 
+# --- audit DECOMPOSED ops (pnnx -> native chain; QD winner never lands) ---
+python scripts/audit_decomposed_ops.py
+#   -> batch/results/decomposed_ops.json + a table of island-only ops
+#      (e.g. LogSoftmax -> Softmax+UnaryOp): the monolithic Cand_<Op> is verified
+#      & QD-optimized in isolation, but ncnn::Net runs the native chain at runtime,
+#      so its speedup does NOT land. AUDIT these before quoting their QD gains.
+
 # --- roll up compile / functional / speedup stats across many ops ---
 python scripts/rollup_stats.py --source batch/results/all.json --backend arm
 #   -> batch/results/rollup.csv + rollup_summary.json
+#   rollup joins decomposed_ops.json: adds a `decomposed`/`optimization_lands`
+#   column and reports speedup twice — overall AND `*_landed` (excluding
+#   decomposed ops). Quote the landed-only numbers for QD-speedup claims.
 
 # --- unit tests (no LLM / ncnn needed) ---
 python opgen/optimize/test_m1.py && python opgen/optimize/test_m2.py && python opgen/optimize/test_m3.py

@@ -140,12 +140,24 @@ def summarize(op: str) -> dict:
     except json.JSONDecodeError:
         return {}
     ph = s.get("phases", {})
+    ec = ph.get("existence_check") or {}
+    # decomposed = pnnx emits a chain of ≥2 distinct native layers (Input/Output/
+    # Split + dotted pnnx-only names excluded). Such an op runs as a native chain
+    # at runtime, so the monolithic Cand_<Op> QD winner never lands. Prefer the
+    # flag the orchestrator recorded; else derive from baseline_op_types.
+    op_types = ec.get("baseline_op_types")
+    decomposed = ec.get("decomposed")
+    if decomposed is None and isinstance(op_types, list):
+        distinct = {t for t in op_types if t not in ("Input", "Output", "Split") and "." not in t}
+        decomposed = len(distinct) > 1
     return {
         "status":           s.get("status"),
         "kernel":           (ph.get("kernel") or {}).get("status"),
         "kernel_arm":       (ph.get("kernel_arm") or {}).get("status"),
         "graph":            (ph.get("graph") or {}).get("status"),
-        "already_in_ncnn":  (ph.get("existence_check") or {}).get("already_in_ncnn"),
+        "already_in_ncnn":  ec.get("already_in_ncnn"),
+        "baseline_op_types": op_types,
+        "decomposed":       decomposed,
         "e2e":              (ph.get("end_to_end_numeric") or {}).get("passed"),
         "production":       (ph.get("production") or {}).get("_mandatory_ok"),
         "note":             s.get("note"),
