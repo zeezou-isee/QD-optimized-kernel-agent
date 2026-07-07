@@ -76,6 +76,7 @@ class OptimizeAgent:
         run_baseline_comparison: bool = False,  # §7.5 best-first control arm
         op_class: str = "",
         n_promote: int = 3,                     # axis-extension: cross-task wins to grow Σ
+        device_measure: bool = False,           # measure candidate+baseline latency on the REAL phone
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -110,6 +111,7 @@ class OptimizeAgent:
         self.run_baseline_comparison = run_baseline_comparison
         self.op_class = op_class
         self.n_promote = n_promote
+        self.device_measure = bool(device_measure)
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -138,6 +140,7 @@ class OptimizeAgent:
             weight_keys=self.weight_keys, params=self.params,
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
+            device_measure=self.device_measure,
         )
         proposer = self.proposer or self._build_proposer(
             hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras,
@@ -300,6 +303,7 @@ class OptimizeAgent:
             weight_keys=self.weight_keys, params=self.params,
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
+            device_measure=self.device_measure,
         )
         # roofline diagnosis first so we can pass regime into the proposer
         # (wiki v1 keys BD-axis content by regime).

@@ -91,10 +91,13 @@ class Evaluator:
         tol: float = 2e-3,
         backend: str = "base",
         base_files: dict[str, str] | None = None,   # arm: verified base layer code
+        device_measure: bool = False,   # measure candidate latency on the REAL phone
+        device_bench: int = 20,         # runner --bench iterations for device latency
     ) -> None:
         self.baseline_kernel = dict(baseline_kernel)
         self.model_py = str(model_py)
         self.backend = backend
+        self._ncnn_root = ncnn_root
         cpp, hdr = _split_files(self.baseline_kernel)
         self.class_name = class_name or _detect_class_name(self.baseline_kernel)
         self.header = header or hdr or ""
@@ -139,9 +142,21 @@ class Evaluator:
 
         # derive I/O once, then compile+run the baseline to fix the reference.
         self.inputs, self.weights = self._derive_io()
+        self._ref = self._baseline_reference()   # reuse for correctness + device compare
         self.correctness = CorrectnessOracle(
-            self._baseline_reference(), atol=tol, rtol=tol, backend=backend,
+            self._ref, atol=tol, rtol=tol, backend=backend,
             input=(self.inputs[0] if self.inputs else None))
+
+        # on-device latency (real phone). When enabled + a device is present, the
+        # candidate's latency comes from the phone (--bench) instead of host
+        # wall-clock — so baseline AND candidates are same-harness real-phone time
+        # and the search optimizes actual device latency. Falls back to host when
+        # no device. Correctness stays on the host LayerOracle (fast).
+        self.device_measure = bool(device_measure)
+        self._measurer = None
+        if self.device_measure:
+            from .device_measure import DeviceMeasurer
+            self._measurer = DeviceMeasurer(backend, ncnn_root=self._ncnn_root, bench=device_bench)
 
     # ------------------------------------------------------------------ I/O
     def _derive_io(self) -> tuple[list[np.ndarray], list[np.ndarray]]:
@@ -247,7 +262,22 @@ class Evaluator:
             return MeasureSample(point=point, correct=False, correctness=report,
                                  error="incorrect output")
 
-        # timed measurement (warmup + N runs)
+        # timed measurement — REAL PHONE when device_measure + a device is present
+        # (candidate + baseline both go through this path -> consistent real-phone
+        # latency), else host wall-clock (fallback / no-device / CI).
+        if self._measurer is not None:
+            dev_lat = self._measurer.latency(
+                candidate_cpp=cpp_path, class_name=self.class_name,
+                header=hdr or self.header, params=self.params or None,
+                inputs=self.inputs, reference=self._ref, weights=self.weights,
+                extra_sources=self.extra_sources, extra_includes=self.extra_includes,
+                packing=self.packing, shader=self._shader_path())
+            if dev_lat is not None:
+                return MeasureSample(
+                    point=point, correct=True, latency_ms=dev_lat, latency_min_ms=dev_lat,
+                    latency_median_ms=dev_lat, latency_std_ms=0.0,
+                    n_runs=self._measurer.bench, correctness=report)
+
         try:
             stats = self.harness.measure(art)
         except RuntimeError as exc:

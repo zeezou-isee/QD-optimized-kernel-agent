@@ -125,6 +125,10 @@ def main() -> None:
                    help="base = portable C++; arm = NEON/NC4HW4 kernel; vulkan = GPU kernel "
                         "(.cpp + .comp, optimized & measured on a Vulkan device). "
                         "arm/vulkan need a verified base + that-backend kernel from run_kernel_agent")
+    p.add_argument("--device-verify", choices=["off", "auto", "on"], default="off",
+                   help="measure candidate + baseline latency on the REAL phone (auto = use "
+                        "device if adb sees one, else host wall-clock). MANDATORY for a "
+                        "meaningful latency objective — host subprocess wall-clock is not phone time.")
     p.add_argument("--runs-root", default=None,
                    help="override the root that holds runs/<task>/{kernel,kernel_arm,...} "
                         "when loading baselines. Default: opgen/runs")
@@ -177,6 +181,7 @@ def main() -> None:
         regime=args.regime, experience_pool_path=args.experience_pool,
         run_baseline_comparison=args.baseline_compare, op_class=args.task,
         backend=args.backend, base_files=base_files, n_promote=args.n_promote,
+        device_measure=(args.device_verify in ("auto", "on")),
     )
     res: OptimizeResult = agent.run()
 

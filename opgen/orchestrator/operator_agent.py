@@ -685,6 +685,7 @@ class OperatorAgent:
             coverage_target=self.optimize_coverage_target,
             experience_pool_path=self.experience_pool_path, op_class=cls,
             backend=backend, base_files=(base_code if target_arm else {}),
+            device_measure=(self.device_verify in ("auto", "on")),
         )
         opt = agent.run().to_dict()
         opt["backend"] = backend
