@@ -349,10 +349,14 @@ def _benchncnn_vk_latency(param: Path, shapes: str, loop: int, fair: bool) -> di
     vulkan layer). Different runner from our oracle-runner path (flagged
     cross_runner in the result) but same GPU/backend."""
     extra = " fp16=0 packing=0" if fair else ""
+    # GPU is per-dispatch-sync bound: each loop is a full submit+wait, so a big loop
+    # (e.g. 20000) blows the adb timeout. Cap hard for the vulkan native run — min
+    # latency is stable at a few hundred GPU dispatches.
+    gpu_loop = min(loop, 500)
     adb("push", str(param), f"{DEVDIR}/vk_model.param", timeout=30)
-    cmd = (f"cd {DEVDIR} && ./benchncnn {loop} 1 2 0 0 "
+    cmd = (f"cd {DEVDIR} && ./benchncnn {gpu_loop} 1 2 0 0 "
            f"param=vk_model.param shape='{shapes}'{extra} 2>&1")
-    out = adb("shell", cmd, timeout=180).stdout
+    out = adb("shell", cmd, timeout=300).stdout
     lat = op_profiler._parse_latency(out) if hasattr(op_profiler, "_parse_latency") else {}
     return {"tier": "fp32" if fair else "fp16+packing",
             "runner": "benchncnn-vk", "latency_min": lat.get("latency_min"),
@@ -392,10 +396,16 @@ def bench_vulkan(op: str, loop: int, comp_base: bool) -> dict:
             push_benchncnn(BUILD_VK)
             model = find_model(op)
             shapes = torch_input_shapes_str(model) if model else "[1,32,64,64]"
-            res["native_shipped"] = _benchncnn_vk_latency(param, shapes, loop, fair=False)
-            res["native_fair"] = _benchncnn_vk_latency(param, shapes, loop, fair=True)
-            print(f"  native_shipped: {res['native_shipped'].get('latency_min')} ms  "
-                  f"native_fair: {res['native_fair'].get('latency_min')} ms")
+            # wrap so a native timeout/error NEVER discards the (already-measured)
+            # ours result — record it as a native error instead of crashing the op.
+            try:
+                res["native_shipped"] = _benchncnn_vk_latency(param, shapes, loop, fair=False)
+                res["native_fair"] = _benchncnn_vk_latency(param, shapes, loop, fair=True)
+            except Exception as exc:  # noqa: BLE001
+                res.setdefault("native_shipped", {"error": f"native run failed: {exc}"})
+                res.setdefault("native_fair", {"error": f"native run failed: {exc}"})
+            print(f"  native_shipped: {(res.get('native_shipped') or {}).get('latency_min')} ms  "
+                  f"native_fair: {(res.get('native_fair') or {}).get('latency_min')} ms")
 
     # speedup on GPU ms (ours oracle single-op vs native whole-net; approximate)
     ours_ms = res["ours"].get("gpu_latency_min_ms")

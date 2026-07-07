@@ -2,70 +2,70 @@
   "Abs": {
     "op": "Abs",
     "ran": true,
-    "gpu_latency_min_ms": 0.1879,
+    "gpu_latency_min_ms": 0.1922,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "Add": {
     "op": "Add",
     "ran": true,
-    "gpu_latency_min_ms": 0.1872,
+    "gpu_latency_min_ms": 0.1858,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "And": {
     "op": "And",
     "ran": true,
-    "gpu_latency_min_ms": 0.084,
+    "gpu_latency_min_ms": 0.1909,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "AveragePool": {
     "op": "AveragePool",
     "ran": true,
-    "gpu_latency_min_ms": 0.2225,
+    "gpu_latency_min_ms": 0.2276,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "BatchNormalization": {
     "op": "BatchNormalization",
     "ran": true,
-    "gpu_latency_min_ms": 0.5295,
+    "gpu_latency_min_ms": 0.557,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "Conv": {
     "op": "Conv",
     "ran": true,
-    "gpu_latency_min_ms": 0.5426,
+    "gpu_latency_min_ms": 0.3134,
     "max_diff_vs_host": 3.814697265625e-06,
     "tail": ""
   },
   "Gemm": {
     "op": "Gemm",
-    "ran": false,
-    "gpu_latency_min_ms": null,
-    "max_diff_vs_host": null,
-    "tail": "1:\t    buffer_st1(top_blob_data, gy * psc(ostep) + gx, sum);\n93:\t}\n=== SHADER_COMPILE_FAIL stage=spirv_compile ret=-1 path=/data/local/tmp/vkrun/cand_gemm.comp ===\n(see glslang errors above; they cite .comp line numbers)\n=== END_SHADER_COMPILE_FAIL ===\ncreate_pipeline failed via shader compile fail\n"
+    "ran": true,
+    "gpu_latency_min_ms": 3.2165,
+    "max_diff_vs_host": 2.384185791015625e-07,
+    "tail": ""
   },
   "Greater": {
     "op": "Greater",
-    "ran": false,
-    "gpu_latency_min_ms": null,
-    "max_diff_vs_host": null,
-    "tail": "HADER_COMPILE_FAIL stage=multi_shader_disabled ===\ncompile_candidate_shader_by_name(\"cand_greater_broadcast\") but CANDIDATE_SHADER_DIR is not set; use compile_candidate_shader() or ensure the oracle passed extra_shaders.\n=== END_SHADER_COMPILE_FAIL ===\ncreate_pipeline failed via shader compile fail\n"
+    "ran": true,
+    "gpu_latency_min_ms": 0.3916,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
   },
   "Mul": {
     "op": "Mul",
     "ran": true,
-    "gpu_latency_min_ms": 0.2965,
+    "gpu_latency_min_ms": 0.1951,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "ReduceSum": {
     "op": "ReduceSum",
     "ran": true,
-    "gpu_latency_min_ms": 0.2442,
+    "gpu_latency_min_ms": 0.2553,
     "max_diff_vs_host": 0.0,
     "tail": ""
   }

@@ -1,0 +1,55 @@
+
+=== Abs [vulkan] native_type=UnaryOp supported=True ===
+  ours(oracle): 0.1922 ms  err=None
+  native_shipped: 3.96 ms  native_fair: 5.48 ms
+
+=== Add [vulkan] native_type=BinaryOp supported=True ===
+  ours(oracle): 0.1858 ms  err=None
+  native_shipped: 0.61 ms  native_fair: 0.59 ms
+
+=== And [vulkan] native_type=torch.logical_and supported=False ===
+  ours(oracle): 0.1909 ms  err=None
+
+=== AveragePool [vulkan] native_type=Pooling supported=True ===
+  ours(oracle): 0.2276 ms  err=None
+  native_shipped: 0.67 ms  native_fair: 0.72 ms
+
+=== BatchNormalization [vulkan] native_type=BatchNorm supported=True ===
+  ours(oracle): 0.557 ms  err=None
+  native_shipped: 4.09 ms  native_fair: 4.18 ms
+
+=== Conv [vulkan] native_type=Convolution supported=True ===
+  ours(oracle): 0.3134 ms  err=None
+  native_shipped: 0.32 ms  native_fair: 0.15 ms
+
+=== Gemm [vulkan] native_type=Gemm supported=True ===
+  ours(oracle): 3.2165 ms  err=None
+  native_shipped: 1.4 ms  native_fair: 1.49 ms
+
+=== Greater [vulkan] native_type=torch.gt supported=False ===
+  ours(oracle): 0.3916 ms  err=None
+
+=== Mul [vulkan] native_type=BinaryOp supported=True ===
+  ours(oracle): 0.1951 ms  err=None
+  native_shipped: 1.07 ms  native_fair: 1.21 ms
+
+=== ReduceSum [vulkan] native_type=Reduction supported=True ===
+  ours(oracle): 0.2553 ms  err=None
+  native_shipped: 4.91 ms  native_fair: 5.95 ms
+
+========================================================================================
+op                   backend      ours  nat(ship)  nat(fair)   x_ship   x_fair
+----------------------------------------------------------------------------------------
+Abs                   vulkan    0.1922       3.96       5.48   20.604   28.512
+Add                   vulkan    0.1858       0.61       0.59    3.283    3.175
+And                   vulkan    0.1909       None       None        -        -
+AveragePool           vulkan    0.2276       0.67       0.72    2.944    3.163
+BatchNormalization    vulkan     0.557       4.09       4.18    7.343    7.504
+Conv                  vulkan    0.3134       0.32       0.15    1.021    0.479
+Gemm                  vulkan    3.2165        1.4       1.49    0.435    0.463
+Greater               vulkan    0.3916       None       None        -        -
+Mul                   vulkan    0.1951       1.07       1.21    5.484    6.202
+ReduceSum             vulkan    0.2553       4.91       5.95   19.232   23.306
+========================================================================================
+speedup = native_latency / ours_latency  (>1 = OUR kernel is faster)
+results -> batch/results/perf_compare.json

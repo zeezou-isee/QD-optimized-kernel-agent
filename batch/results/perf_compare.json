@@ -9190,5 +9190,303 @@
     },
     "speedup_shipped": 0.065,
     "speedup_fair": 0.084
+  },
+  "Abs:vulkan": {
+    "op": "Abs",
+    "backend": "vulkan",
+    "native_type": "UnaryOp",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:10",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.1922,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 3.96,
+      "latency_avg": 6.07,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 5.48,
+      "latency_avg": 10.16,
+      "error": null
+    },
+    "speedup_shipped": 20.604,
+    "speedup_fair": 28.512
+  },
+  "Add:vulkan": {
+    "op": "Add",
+    "backend": "vulkan",
+    "native_type": "BinaryOp",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:25",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.1858,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.61,
+      "latency_avg": 0.82,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.59,
+      "latency_avg": 0.83,
+      "error": null
+    },
+    "speedup_shipped": 3.283,
+    "speedup_fair": 3.175
+  },
+  "And:vulkan": {
+    "op": "And",
+    "backend": "vulkan",
+    "native_type": "torch.logical_and",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:32",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.1909,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    }
+  },
+  "AveragePool:vulkan": {
+    "op": "AveragePool",
+    "backend": "vulkan",
+    "native_type": "Pooling",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:36",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.2276,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.67,
+      "latency_avg": 0.95,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.72,
+      "latency_avg": 1.11,
+      "error": null
+    },
+    "speedup_shipped": 2.944,
+    "speedup_fair": 3.163
+  },
+  "BatchNormalization:vulkan": {
+    "op": "BatchNormalization",
+    "backend": "vulkan",
+    "native_type": "BatchNorm",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:43",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.557,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 4.09,
+      "latency_avg": 4.81,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 4.18,
+      "latency_avg": 9.56,
+      "error": null
+    },
+    "speedup_shipped": 7.343,
+    "speedup_fair": 7.504
+  },
+  "Conv:vulkan": {
+    "op": "Conv",
+    "backend": "vulkan",
+    "native_type": "Convolution",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:38:56",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.3134,
+      "max_diff_vs_host": 3.814697265625e-06,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.32,
+      "latency_avg": 0.96,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 0.15,
+      "latency_avg": 0.17,
+      "error": null
+    },
+    "speedup_shipped": 1.021,
+    "speedup_fair": 0.479
+  },
+  "Gemm:vulkan": {
+    "op": "Gemm",
+    "backend": "vulkan",
+    "native_type": "Gemm",
+    "native_supported": true,
+    "native_support_src": "layer_interface(Gemm)",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:39:03",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 3.2165,
+      "max_diff_vs_host": 2.384185791015625e-07,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 1.4,
+      "latency_avg": 1.71,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 1.49,
+      "latency_avg": 1.82,
+      "error": null
+    },
+    "speedup_shipped": 0.435,
+    "speedup_fair": 0.463
+  },
+  "Greater:vulkan": {
+    "op": "Greater",
+    "backend": "vulkan",
+    "native_type": "torch.gt",
+    "native_supported": false,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:39:11",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.3916,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    }
+  },
+  "Mul:vulkan": {
+    "op": "Mul",
+    "backend": "vulkan",
+    "native_type": "BinaryOp",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:39:15",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.1951,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 1.07,
+      "latency_avg": 1.58,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 1.21,
+      "latency_avg": 3.07,
+      "error": null
+    },
+    "speedup_shipped": 5.484,
+    "speedup_fair": 6.202
+  },
+  "ReduceSum:vulkan": {
+    "op": "ReduceSum",
+    "backend": "vulkan",
+    "native_type": "Reduction",
+    "native_supported": true,
+    "native_support_src": "operator.existence_check",
+    "cross_runner": true,
+    "ts": "2026-07-07T11:39:23",
+    "note": "vulkan: ours=oracle-runner single-op GPU dispatch; native=benchncnn gpu=0 whole-net — cross-runner approximation",
+    "ours": {
+      "gpu_latency_min_ms": 0.2553,
+      "max_diff_vs_host": 0.0,
+      "ran": true,
+      "runner": "oracle",
+      "error": null
+    },
+    "native_shipped": {
+      "tier": "fp16+packing",
+      "runner": "benchncnn-vk",
+      "latency_min": 4.91,
+      "latency_avg": 6.07,
+      "error": null
+    },
+    "native_fair": {
+      "tier": "fp32",
+      "runner": "benchncnn-vk",
+      "latency_min": 5.95,
+      "latency_avg": 7.45,
+      "error": null
+    },
+    "speedup_shipped": 19.232,
+    "speedup_fair": 23.306
   }
 }
