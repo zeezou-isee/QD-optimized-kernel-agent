@@ -216,6 +216,11 @@ int main(int argc, char** argv)
     int packing = 0;   // reserved; v1 runs elempack=1 on GPU
     int bench_iters = 0;   // --bench N: after the correctness run, time N GPU
                            // forwards and print BENCH_MIN_MS (device latency)
+    std::string layer_name;  // --layer <name>: instantiate a BUILT-IN ncnn VULKAN layer via
+                             // create_layer_vulkan (native GPU baseline) instead of the
+                             // compiled-in CANDIDATE_CLASS. Reuses the SAME runner + GPU
+                             // harness (baked SPIR-V from libncnn-vk) -> native GPU latency,
+                             // zero extra compile.
     for (int i = 1; i < argc; i++)
     {
         std::string a = argv[i];
@@ -226,6 +231,7 @@ int main(int argc, char** argv)
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
         else if (a == "--bench" && i + 1 < argc) bench_iters = atoi(argv[++i]);
+        else if (a == "--layer" && i + 1 < argc) layer_name = argv[++i];
     }
     (void)packing;
     while (wflags.size() < weights.size()) wflags.push_back(0);
@@ -247,7 +253,15 @@ int main(int argc, char** argv)
     ParamDict pd;
     parse_params(param_str, pd);
 
-    Layer* op = new CANDIDATE_CLASS();
+    // --layer <name> -> built-in ncnn VULKAN layer via create_layer_vulkan (native
+    // GPU baseline); otherwise the compiled-in candidate class. Same GPU harness
+    // (vkdev + create_pipeline uses ncnn's baked SPIR-V) for both. If the op has no
+    // vulkan variant, create_layer_vulkan returns null -> RC_NO_VULKAN_DEVICE so the
+    // caller skips the speedup (not a failure).
+    Layer* op = layer_name.empty() ? (Layer*)(new CANDIDATE_CLASS())
+                                   : create_layer_vulkan(layer_name.c_str());
+    if (!op) { fprintf(stderr, "NO_VULKAN_NATIVE: create_layer_vulkan(%s) returned null\n",
+                       layer_name.c_str()); return RC_NO_VULKAN_DEVICE; }
     op->vkdev = vkdev;
 
     if (op->load_param(pd) != 0) { fprintf(stderr, "load_param failed\n"); return 2; }

@@ -706,7 +706,9 @@ def verify_kernel(
             if profile.backend == "vulkan":
                 dev = VulkanDeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
                 dev_kwargs = {"shader": backend_kwargs.get("shader"),
-                              "extra_shaders": backend_kwargs.get("extra_shaders", [])}
+                              "extra_shaders": backend_kwargs.get("extra_shaders", []),
+                              "native_type": getattr(profile, "analog_layer", "") or "",
+                              "measure_speedup": device_speedup}
             else:
                 dev = DeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
                 # native baseline via create_layer(analog_layer) on the SAME runner ->
