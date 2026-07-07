@@ -172,6 +172,9 @@ int main(int argc, char** argv)
     int fp16_storage = 0;    // 1 = enable ncnn opt.use_fp16_storage (half-precision weights/blobs)
     int fp16_arith = 0;      // 1 = enable ncnn opt.use_fp16_arithmetic (requires HAS_ASIMDHP)
     int bench = 0;           // N>0 = after correctness, run N timed forwards, print BENCH_MIN_MS (no simpleperf)
+    std::string layer_name;  // --layer <name>: instantiate a BUILT-IN ncnn layer via create_layer
+                             // (native baseline) instead of the compiled-in CANDIDATE_CLASS.
+                             // Reuses the SAME runner binary -> native latency with zero extra compile.
     for (int i = 1; i < argc; i++)
     {
         std::string a = argv[i];
@@ -184,6 +187,7 @@ int main(int argc, char** argv)
         else if (a == "--fp16-storage") fp16_storage = 1;
         else if (a == "--fp16-arith")   { fp16_storage = 1; fp16_arith = 1; }
         else if (a == "--bench" && i + 1 < argc) bench = atoi(argv[++i]);
+        else if (a == "--layer" && i + 1 < argc) layer_name = argv[++i];
     }
     // default any unspecified weight flags to 0 (tagged) so the bin layout is
     // well-defined even when the caller passes fewer --weight-flag than --weight.
@@ -192,7 +196,11 @@ int main(int argc, char** argv)
     ParamDict pd;
     parse_params(param_str, pd);
 
-    Layer* op = new CANDIDATE_CLASS();
+    // --layer <name> -> built-in ncnn layer via create_layer (native baseline);
+    // otherwise the compiled-in candidate class. Same load/run/bench flow for both.
+    Layer* op = layer_name.empty() ? (Layer*)(new CANDIDATE_CLASS())
+                                   : create_layer(layer_name.c_str());
+    if (!op) { fprintf(stderr, "create_layer(%s) failed\n", layer_name.c_str()); return 2; }
     if (op->load_param(pd) != 0) { fprintf(stderr, "load_param failed\n"); return 2; }
 
     std::vector<Mat> w;

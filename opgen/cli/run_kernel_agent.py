@@ -95,6 +95,10 @@ def main() -> None:
     p.add_argument("--device-simpleperf", action="store_true",
                    help="device gate also collects PMU via simpleperf (default off: correctness + "
                         "plain latency only).")
+    p.add_argument("--no-device-speedup", action="store_true",
+                   help="disable the inline speedup measurement (by default the device gate also "
+                        "times the native ncnn op via create_layer on the SAME runner -> fair "
+                        "single-layer speedup, zero extra compile).")
     args = p.parse_args()
 
     cfg = GraphConfig(
@@ -110,7 +114,8 @@ def main() -> None:
         base_code, base_prof = _load_base_kernel(args.task, args.base_kernel_dir)
     agent = KernelAgent(task_name=args.task, model_py=args.model, cfg=cfg,
                         backend=args.backend, base_kernel_code=base_code, base_profile=base_prof,
-                        device_verify=args.device_verify, device_simpleperf=args.device_simpleperf)
+                        device_verify=args.device_verify, device_simpleperf=args.device_simpleperf,
+                        device_speedup=not args.no_device_speedup)
     summary = agent.run()
     print(json.dumps(summary, ensure_ascii=False, indent=2)[:3000])
 

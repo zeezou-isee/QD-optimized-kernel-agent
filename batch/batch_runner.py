@@ -200,7 +200,8 @@ def child_env() -> dict:
 def run_one(category: str, op: str, cfg: ModuleType,
             mode: str = "operator", backend: str = "base",
             model: str | None = None, vulkan_mode: str | None = None,
-            device_verify: str = "off", device_simpleperf: bool = False) -> dict:
+            device_verify: str = "off", device_simpleperf: bool = False,
+            device_speedup: bool = True) -> dict:
     """Spawn one agent (operator | kernel) for `op` and capture its summary.
 
     mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
@@ -242,6 +243,8 @@ def run_one(category: str, op: str, cfg: ModuleType,
             cmd += ["--device-verify", device_verify]
             if device_simpleperf:
                 cmd += ["--device-simpleperf"]
+            if not device_speedup:
+                cmd += ["--no-device-speedup"]
     timed_out = False
     t0 = time.time()
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -304,6 +307,8 @@ def main() -> None:
                         "REAL phone after host passes; auto = device if present else host).")
     p.add_argument("--device-simpleperf", action="store_true",
                    help="device gate also collects PMU via simpleperf (default off).")
+    p.add_argument("--no-device-speedup", action="store_true",
+                   help="disable inline device speedup measurement (default on).")
     args = p.parse_args()
 
     cfg = load_set(args.set_name)
@@ -347,7 +352,8 @@ def main() -> None:
         mode = "kernel" if args.kernel_only else "operator"
         row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model,
                       vulkan_mode=args.vulkan_mode,
-                      device_verify=args.device_verify, device_simpleperf=args.device_simpleperf)
+                      device_verify=args.device_verify, device_simpleperf=args.device_simpleperf,
+                      device_speedup=not args.no_device_speedup)
         results[op] = row
         save_results(results_path, results)
         if args.kernel_only:

@@ -62,7 +62,7 @@ def op_row(op: str, runs_root: Path, perf: dict, backend: str) -> dict:
            "kernel_numeric": None, "kernel_max_diff": None,
            "e2e": None, "e2e_max_diff": None,
            "compile": None, "correctness": None, "correctness_max_diff": None,
-           "device_status": None, "device_latency": None,
+           "device_status": None, "device_latency": None, "device_speedup": None,
            "native_supported": None,
            "speedup_shipped": None, "speedup_fair": None,
            "ours_ms": None, "native_shipped_ms": None, "native_fair_ms": None}
@@ -89,6 +89,7 @@ def op_row(op: str, runs_root: Path, perf: dict, backend: str) -> dict:
             _kphase = "kernel_arm" if backend == "arm" else "kernel"
             row["device_status"] = _dig(s, "phases", _kphase, "device_status")
             row["device_latency"] = _dig(s, "phases", _kphase, "device_latency")
+            row["device_speedup"] = _dig(s, "phases", _kphase, "device_speedup")
 
     p = perf.get(f"{op}:{backend}") or {}
     if p:
@@ -140,6 +141,7 @@ def summarize(rows: list[dict]) -> dict:
         "e2e_numeric": _pct("e2e", truthy),
         "production_correctness": _pct("correctness", truthy),
         "device_gate": device_gate,
+        "device_speedup_inline": _speedup_stats("device_speedup"),
         "already_in_ncnn": _pct("already_in_ncnn", truthy),
         "speedup_shipped": _speedup_stats("speedup_shipped"),
         "speedup_fair": _speedup_stats("speedup_fair"),
@@ -216,6 +218,10 @@ def main() -> None:
               f"({dg['rate']*100:.1f}%)  [skipped/no-device: {dg['skipped']}]")
     else:
         print(f"  device gate (on phone)   : not run (device-verify off / no device)")
+    si = summary["device_speedup_inline"]
+    if si.get("n"):
+        print(f"  device speedup (inline)  : n={si['n']} median={si['median']}x mean={si['mean']}x "
+              f"faster_than_native={si['n_faster_than_native']}/{si['n']} (range {si['min']}–{si['max']}x)")
     print(f"  already in ncnn (native) : {_fmt(summary['already_in_ncnn'])}")
     for tier in ("speedup_shipped", "speedup_fair"):
         s = summary[tier]

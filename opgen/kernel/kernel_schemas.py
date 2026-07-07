@@ -185,7 +185,9 @@ class KernelResult:
     #   failed  = host passed but device compile/numeric/crash -> drives repair
     #   skipped = device dropped / flaky -> keep host result
     device_status: str = "none"
-    device_latency: float | None = None   # device min single-forward ms (runner --bench)
+    device_latency: float | None = None       # device min single-forward ms (runner --bench)
+    device_native_latency: float | None = None  # native ncnn op ms on device (create_layer)
+    device_speedup: float | None = None       # native_latency / ours (>1 = ours faster), fair single-layer
 
     @property
     def host_ok(self) -> bool:

@@ -367,6 +367,7 @@ def verify_kernel(
     packing: int = 0,
     device_verify: str = "off",       # off | auto | on — run the on-phone gate after host passes
     device_simpleperf: bool = False,  # also collect PMU on device (default off)
+    device_speedup: bool = True,      # also time the native ncnn op on device -> speedup (default on)
 ) -> KernelResult:
     """Verify a candidate kernel against PyTorch via LayerOracle.
 
@@ -708,7 +709,11 @@ def verify_kernel(
                               "extra_shaders": backend_kwargs.get("extra_shaders", [])}
             else:
                 dev = DeviceOracle(ncnn_root=getattr(oracle, "ncnn_root", None))
-                dev_kwargs = {"packing": int(backend_kwargs.get("packing", 0))}
+                # native baseline via create_layer(analog_layer) on the SAME runner ->
+                # fair single-layer speedup, zero extra compile (default on).
+                dev_kwargs = {"packing": int(backend_kwargs.get("packing", 0)),
+                              "native_type": getattr(profile, "analog_layer", "") or "",
+                              "measure_speedup": device_speedup}
             avail, why = dev.available()
             if not avail:
                 res.device_status = "skipped"
@@ -729,8 +734,10 @@ def verify_kernel(
                 elif dv.passed:
                     res.device_status = "passed"
                     res.device_latency = dv.latency
+                    res.device_native_latency = getattr(dv, "native_latency", None)
+                    res.device_speedup = getattr(dv, "speedup", None)
                     res.messages.append(f"device passed (max_diff={dv.max_diff}, "
-                                        f"latency_min={dv.latency}ms)")
+                                        f"latency_min={dv.latency}ms, speedup={res.device_speedup})")
                 else:
                     res.device_status = "failed"
                     res.failure_category = dv.failure_category or "device"

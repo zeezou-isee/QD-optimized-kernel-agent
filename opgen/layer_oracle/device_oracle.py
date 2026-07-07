@@ -143,7 +143,7 @@ class DeviceOracle:
                weight_flags: Sequence[int] = (), tol: float = 2e-3,
                extra_sources: Sequence[str | Path] = (), extra_includes: Sequence[str | Path] = (),
                packing: int = 0, bench: int = 20, simpleperf: bool = False,
-               backend: str = "arm") -> OracleResult:
+               backend: str = "arm", native_type: str = "", measure_speedup: bool = True) -> OracleResult:
         ok, why = self.available()
         if not ok:
             return OracleResult(ok=False, skipped=True, error=f"device skip: {why}", detail=why)
@@ -245,6 +245,33 @@ class DeviceOracle:
                           f"reference: max_diff={res.max_diff:.6f} mean_diff={res.mean_diff:.6f} "
                           f"tol={tol}. Likely NEON/fp reordering or an arm-path bug that the host "
                           f"build masks.")
+
+        # native baseline on the SAME device + SAME runner via create_layer(native_type)
+        # -> speedup with ZERO extra compile (libncnn's built-in op, bins already pushed).
+        # fair single-layer fp32 ratio (native_latency / ours); only for native-supported ops.
+        if measure_speedup and native_type and res.passed and latency:
+            nargv = [f"./{runner.name}", "--layer", native_type]
+            if params:
+                nargv += ["--param", ",".join(LayerOracle._fmt_param(k, v) for k, v in params.items())]
+            for i in range(len(inputs)):
+                nargv += ["--input", f"in{i}.bin"]
+            for i in range(len(weights)):
+                nargv += ["--weight", f"w{i}.bin"]
+                flag = weight_flags[i] if i < len(weight_flags) else 0
+                nargv += ["--weight-flag", str(int(flag))]
+            nargv += ["--out", "out_native.bin", "--bench", str(bench)]
+            try:
+                ncmd = (f"cd {self.device_dir} && LD_LIBRARY_PATH={self.device_dir} "
+                        f"{' '.join(nargv)} 2>&1")
+                ntxt = _adb("shell", ncmd, timeout=300).stdout
+                nm = re.search(r"BENCH_MIN_MS=([\d.]+)", ntxt)
+                if nm and "RUNNER_OK" in ntxt:
+                    res.native_latency = float(nm.group(1))
+                    if res.native_latency and latency:
+                        res.speedup = round(res.native_latency / latency, 3)
+                        res.detail += f" | native={res.native_latency}ms speedup={res.speedup}x(fair)"
+            except Exception:  # noqa: BLE001 — speedup is a bonus, never break the gate
+                pass
         return res
 
 

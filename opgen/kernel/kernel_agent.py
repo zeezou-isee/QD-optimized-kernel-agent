@@ -54,6 +54,7 @@ class KernelAgent:
                                                     # the actual ncnn layer type pnnx emits
         device_verify: str = "off",                 # off | auto | on — on-phone gate after host
         device_simpleperf: bool = False,            # also collect PMU on device (default off)
+        device_speedup: bool = True,                # also time native ncnn op on device -> speedup
     ) -> None:
         self.task_name = task_name
         self.cfg = cfg or GraphConfig()
@@ -61,6 +62,7 @@ class KernelAgent:
         self.backend = backend
         self.device_verify = (device_verify or "off").strip().lower()
         self.device_simpleperf = bool(device_simpleperf)
+        self.device_speedup = bool(device_speedup)
         self.base_kernel_code = base_kernel_code or {}
         self.base_profile_dict = base_profile or {}
         # e2e_repair seeding: when set, KernelAgent skips analyzer + round-0
@@ -308,7 +310,8 @@ class KernelAgent:
                              extra_includes=tuple(self._extra_includes),
                              packing=self._packing,
                              device_verify=self.device_verify,
-                             device_simpleperf=self.device_simpleperf)
+                             device_simpleperf=self.device_simpleperf,
+                             device_speedup=self.device_speedup)
 
     def _save_round(self, idx: int, phase: str, prompt: str, response: str, result: KernelResult) -> None:
         rd = self.run_dir / f"round_{idx:02d}"
@@ -791,6 +794,8 @@ class KernelAgent:
             "rounds": len(self.history),
             "device_status": (result.device_status if result else "none"),
             "device_latency": (result.device_latency if result else None),
+            "device_native_latency": (result.device_native_latency if result else None),
+            "device_speedup": (result.device_speedup if result else None),
             "kernel_profile": self.profile.to_dict() if self.profile else {},
             "history": [h.to_dict() for h in self.history],
             "final_result": result.to_dict() if result else {},

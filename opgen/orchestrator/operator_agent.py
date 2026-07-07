@@ -76,6 +76,7 @@ class OperatorAgent:
                                               # (vs. the legacy guess-driven KernelAgent reseed)
         device_verify: str = "off",           # device-in-the-loop gate: off | auto | on
         device_simpleperf: bool = False,      # device gate also collects PMU (default off)
+        device_speedup: bool = True,          # device gate also times native op -> speedup (default on)
         llm_query: Callable[[str, str], str] | None = None,
     ) -> None:
         self.task_name = task_name
@@ -108,6 +109,7 @@ class OperatorAgent:
         self.adapt_e2e = bool(adapt_e2e)
         self.device_verify = (device_verify or "off").strip().lower()
         self.device_simpleperf = bool(device_simpleperf)
+        self.device_speedup = bool(device_speedup)
         # ncnn-tree guard is armed lazily in run() so __init__ stays non-throwing.
         self._ncnn_guard = None
         # baseline probe cache populated by _early_baseline_probe()
@@ -172,7 +174,8 @@ class OperatorAgent:
                                  llm_query=self.llm_query,
                                  force_analog_layer=force_analog,
                                  device_verify=self.device_verify,
-                                 device_simpleperf=self.device_simpleperf).run()
+                                 device_simpleperf=self.device_simpleperf,
+                                 device_speedup=self.device_speedup).run()
         kernel_ok = kernel_sum.get("status") == "success"
         kprof = kernel_sum.get("kernel_profile") or {}
         kcode = (kernel_sum.get("final_result") or {}).get("response_code") or {}
@@ -183,6 +186,8 @@ class OperatorAgent:
             "class_name": cls,
             "device_status": kernel_sum.get("device_status"),
             "device_latency": kernel_sum.get("device_latency"),
+            "device_speedup": kernel_sum.get("device_speedup"),
+            "device_native_latency": kernel_sum.get("device_native_latency"),
         }
         print(f"[orchestrator] kernel: {kernel_sum.get('status')} (class={cls})")
         if not kernel_ok:
@@ -199,7 +204,8 @@ class OperatorAgent:
                                   cfg=self._cfg(run_numeric=True), llm_query=self.llm_query,
                                   backend="arm", base_kernel_code=kcode, base_profile=kprof,
                                   device_verify=self.device_verify,
-                                  device_simpleperf=self.device_simpleperf).run()
+                                  device_simpleperf=self.device_simpleperf,
+                                  device_speedup=self.device_speedup).run()
             arm_ok = arm_sum.get("status") == "success"
             arm_code = (arm_sum.get("final_result") or {}).get("response_code") or {}
             summary["phases"]["kernel_arm"] = {
@@ -208,6 +214,8 @@ class OperatorAgent:
                 "class_name": (arm_sum.get("kernel_profile") or {}).get("class_name"),
                 "device_status": arm_sum.get("device_status"),
                 "device_latency": arm_sum.get("device_latency"),
+                "device_speedup": arm_sum.get("device_speedup"),
+                "device_native_latency": arm_sum.get("device_native_latency"),
             }
             print(f"[orchestrator] arm kernel: {arm_sum.get('status')}")
             # A requested target backend is a hard gate by default: if arm fails the

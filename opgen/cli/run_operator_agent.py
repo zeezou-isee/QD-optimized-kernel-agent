@@ -80,6 +80,9 @@ def main() -> None:
                         "off (default) = host-only.")
     p.add_argument("--device-simpleperf", action="store_true",
                    help="device gate also collects PMU via simpleperf (default off).")
+    p.add_argument("--no-device-speedup", action="store_true",
+                   help="disable inline speedup (default: device gate also times the native ncnn "
+                        "op on the same runner -> fair single-layer speedup, zero extra compile).")
     args = p.parse_args()
 
     summary = OperatorAgent(
@@ -100,6 +103,7 @@ def main() -> None:
         auto_cleanup_ncnn=args.auto_cleanup,
         device_verify=args.device_verify,
         device_simpleperf=args.device_simpleperf,
+        device_speedup=not args.no_device_speedup,
     ).run()
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

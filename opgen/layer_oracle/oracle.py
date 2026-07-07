@@ -199,6 +199,8 @@ class OracleResult:
     error: str = ""
     skipped: bool = False   # vulkan/device: no device available -> treat as skipped, not fail
     latency: float | None = None   # device: min single-forward ms (runner --bench), else None
+    native_latency: float | None = None   # device: native ncnn op latency (create_layer), for speedup
+    speedup: float | None = None          # device: native_latency / latency (>1 = ours faster)
 
     # filled by verify()
     passed: bool | None = None
