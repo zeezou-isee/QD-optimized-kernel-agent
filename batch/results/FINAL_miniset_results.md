@@ -87,3 +87,30 @@
 - **P3 完成**(整网 e2e chain 4-op 在 shape [1,32,256,256] 真机测:ncnn 高档位 fp16+packed 8.43ms vs 我们 fp32 8.73ms,差 3.6%,单算子结论组网后成立)。
 - **真机数据齐**:CPU fp32 公平对比(ours 快 2–8×)+ vulkan GPU 8 算子 + e2e 4-op chain。
 - 剩余大件(vulkan .comp SPIR-V 烘焙)是纯工程量,不影响 P0-P3 实验结论。
+
+---
+
+# Device-in-the-loop + 加速比测量四象限(2026-07-07)
+
+## 新增能力:device-in-the-loop 验证门(arm + vulkan)
+authoring 循环从「host 代理验证」升级为「host 过后上真机验证 + 失败回喂 LLM,无设备回退 host」。真机门用**独立 runner 链接预编译 lib**,不污染 ncnn 树。就地加速比通过 `create_layer` / `create_layer_vulkan` 在**同一个已编 runner** 上跑 ncnn 内建层(vulkan 用烘焙 SPIR-V)—— **零额外编译**。
+- **真机门抓到 host 漏掉的 bug(核心价值证据)**:vulkan Greater/Mul host MoltenVK 数值 PASS,但真机 Adreno FAIL → 回喂 → 修好。纯 host 验证发现不了。
+
+## 全量数据集 device-in-loop(190 算子,base+arm,昨夜)
+- 190/190 完成;**compile 167/167(100%)、production 167/167(100%)**、e2e 167/172;**真机门 172/172 全部通过(0 fail / 0 skip)**——每个 host 过的 kernel 都在真机 arm64 上验证通过(NDK 可移植 + 数值正确)。
+- (注:该轮早于「就地加速比」功能落地,故未测 inline speedup;arm 全量 inline 加速比待补跑一版。)
+
+## 加速比四象限(arm/vulkan × inline / sweep)
+
+| | **inline**(同 runner,fair 单层,authoring 时免费) | **sweep**(`run_perf_compare`) |
+|---|---|---|
+| **arm** | 已验证 Abs **1.38×**(全量待补) | 全量 109 op:shipped 中位 **1.25×**(60/109 赢)、fair 中位 1.0×(50/107),范围 0.006–12.8× |
+| **vulkan** | miniset:ReduceSum **13.7×**、elementwise ~1×、conv/gemm <1 | 24-op(21 出比值,4 无 native 变体):shipped 中位 **2.93×**、16/21 赢、范围 0.06–52×(Reshape 52×/ReduceMean 37×/Abs 25×/ReduceSum 18× 赢;ConvTranspose 0.06×/Gemm 0.44×/Winograd 0.51× 输) |
+
+**一致规律(两后端、两路线)**:reduce / elementwise / pooling / norm 我们从零生成的 kernel **赢**(ncnn 对这些未深度优化);**conv / gemm / matmul 输**(ncnn 的 Winograd/sgemm/im2col + fp16 高度优化)。
+
+## caveat(必读,避免误读倍数)
+- **inline = fair 同精度单层**(elempack=1 fp32,同 runner)—— 最公平的 kernel-vs-kernel。
+- **sweep(Route B)= cross-runner**:ours 是 oracle 单层、native 是 benchncnn 整网 gpu=0(含 Input 层 + GPU 每次 dispatch 同步的框架开销)。所以**便宜算子的 sweep 倍数被 native 框架开销虚高**(如 vulkan Abs sweep 20× vs inline ~1×)。要纯 kernel 对比看 inline;要「vs ncnn 出厂整网」的档位感看 sweep。
+- **shipped vs fair**:shipped = ncnn 出厂 fp16+packing 整网;fair = 强制同 fp32。
+- arm CPU 真机门 0 device-fail(host arm64 ≈ 手机 arm64,同 ISA,数值几乎不分歧);host≠device 的戏剧性分歧在 vulkan(MoltenVK→Adreno)。

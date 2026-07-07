@@ -1,0 +1,1 @@
+Abs,Add,And,AveragePool,BatchNormalization,Concat,Conv,ConvTranspose_dilations,Dense_Convolution_2D,Greater,Group_Convolution_2D_kernel,LayerNorm,Log,MatMul_3d,MaxPool,Mul,ReduceMax,ReduceMean,ReduceSum,Relu,Reshape,Sin,Softmax,Winograd_Convolution_2D

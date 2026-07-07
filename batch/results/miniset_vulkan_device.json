@@ -2,42 +2,42 @@
   "Abs": {
     "op": "Abs",
     "ran": true,
-    "gpu_latency_min_ms": 0.1922,
+    "gpu_latency_min_ms": 0.1831,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "Add": {
     "op": "Add",
     "ran": true,
-    "gpu_latency_min_ms": 0.1858,
+    "gpu_latency_min_ms": 0.1306,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "And": {
     "op": "And",
     "ran": true,
-    "gpu_latency_min_ms": 0.1909,
+    "gpu_latency_min_ms": 0.1896,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "AveragePool": {
     "op": "AveragePool",
     "ran": true,
-    "gpu_latency_min_ms": 0.2276,
+    "gpu_latency_min_ms": 0.2362,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "BatchNormalization": {
     "op": "BatchNormalization",
     "ran": true,
-    "gpu_latency_min_ms": 0.557,
+    "gpu_latency_min_ms": 0.5418,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "Conv": {
     "op": "Conv",
     "ran": true,
-    "gpu_latency_min_ms": 0.3134,
+    "gpu_latency_min_ms": 0.312,
     "max_diff_vs_host": 3.814697265625e-06,
     "tail": ""
   },
@@ -51,22 +51,122 @@
   "Greater": {
     "op": "Greater",
     "ran": true,
-    "gpu_latency_min_ms": 0.3916,
+    "gpu_latency_min_ms": 0.4545,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "Mul": {
     "op": "Mul",
     "ran": true,
-    "gpu_latency_min_ms": 0.1951,
+    "gpu_latency_min_ms": 0.2029,
     "max_diff_vs_host": 0.0,
     "tail": ""
   },
   "ReduceSum": {
     "op": "ReduceSum",
     "ran": true,
-    "gpu_latency_min_ms": 0.2553,
+    "gpu_latency_min_ms": 0.2544,
     "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "Concat": {
+    "op": "Concat",
+    "ran": true,
+    "gpu_latency_min_ms": 0.2095,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "ConvTranspose_dilations": {
+    "op": "ConvTranspose_dilations",
+    "ran": true,
+    "gpu_latency_min_ms": 24.8909,
+    "max_diff_vs_host": 0.0001068115234375,
+    "tail": ""
+  },
+  "Dense_Convolution_2D": {
+    "op": "Dense_Convolution_2D",
+    "ran": true,
+    "gpu_latency_min_ms": 9.229,
+    "max_diff_vs_host": 5.960464477539062e-07,
+    "tail": ""
+  },
+  "Group_Convolution_2D_kernel": {
+    "op": "Group_Convolution_2D_kernel",
+    "error": "build failed",
+    "log": "ernel_vulkan.cpp:20:27: error: use of undeclared identifier 'groups'; did you mean 'group'?\n   20 |     const int num_group = groups;\n      |                           ^~~~~~\n      |                           group\n/tmp/vkrun_Group_Convolution_2D_kernel/src/cand_group_convolution_2d_kernel.h:25:9: note: 'group' declared here\n   25 |     int group;\n      |         ^\n1 error generated.\nmake[2]: *** [CMakeFiles/runner.dir/src/cand_group_convolution_2d_kernel_vulkan.cpp.o] Error 1\nmake[2]: *** Waiting for unfinished jobs....\nmake[1]: *** [CMakeFiles/runner.dir/all] Error 2\nmake: *** [all] Error 2\n"
+  },
+  "LayerNorm": {
+    "op": "LayerNorm",
+    "ran": true,
+    "gpu_latency_min_ms": 0.4405,
+    "max_diff_vs_host": 4.76837158203125e-07,
+    "tail": ""
+  },
+  "Log": {
+    "op": "Log",
+    "ran": true,
+    "gpu_latency_min_ms": 0.1889,
+    "max_diff_vs_host": 2.384185791015625e-07,
+    "tail": ""
+  },
+  "MatMul_3d": {
+    "op": "MatMul_3d",
+    "ran": true,
+    "gpu_latency_min_ms": 0.2045,
+    "max_diff_vs_host": 1.6689300537109375e-06,
+    "tail": ""
+  },
+  "MaxPool": {
+    "op": "MaxPool",
+    "ran": true,
+    "gpu_latency_min_ms": 0.2285,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "ReduceMax": {
+    "op": "ReduceMax",
+    "error": "missing host=False cand=None prof=True"
+  },
+  "ReduceMean": {
+    "op": "ReduceMean",
+    "ran": true,
+    "gpu_latency_min_ms": 0.253,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "Relu": {
+    "op": "Relu",
+    "ran": true,
+    "gpu_latency_min_ms": 0.2115,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "Reshape": {
+    "op": "Reshape",
+    "ran": true,
+    "gpu_latency_min_ms": 0.1898,
+    "max_diff_vs_host": 0.0,
+    "tail": ""
+  },
+  "Sin": {
+    "op": "Sin",
+    "ran": true,
+    "gpu_latency_min_ms": 0.1961,
+    "max_diff_vs_host": 4.470348358154297e-07,
+    "tail": ""
+  },
+  "Softmax": {
+    "op": "Softmax",
+    "ran": true,
+    "gpu_latency_min_ms": 3.2168,
+    "max_diff_vs_host": 5.820766091346741e-10,
+    "tail": ""
+  },
+  "Winograd_Convolution_2D": {
+    "op": "Winograd_Convolution_2D",
+    "ran": true,
+    "gpu_latency_min_ms": 29.5098,
+    "max_diff_vs_host": 7.152557373046875e-07,
     "tail": ""
   }
 }

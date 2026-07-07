@@ -1,0 +1,125 @@
+
+=== Abs [vulkan] native_type=UnaryOp supported=True ===
+  ours(oracle): 0.1831 ms  err=None
+  native_shipped: 4.65 ms  native_fair: 3.96 ms
+
+=== Add [vulkan] native_type=BinaryOp supported=True ===
+  ours(oracle): 0.1306 ms  err=None
+  native_shipped: 0.57 ms  native_fair: 0.59 ms
+
+=== And [vulkan] native_type=torch.logical_and supported=False ===
+  ours(oracle): 0.1896 ms  err=None
+
+=== AveragePool [vulkan] native_type=Pooling supported=True ===
+  ours(oracle): 0.2362 ms  err=None
+  native_shipped: 0.66 ms  native_fair: 0.67 ms
+
+=== BatchNormalization [vulkan] native_type=BatchNorm supported=True ===
+  ours(oracle): 0.5418 ms  err=None
+  native_shipped: 4.78 ms  native_fair: 5.38 ms
+
+=== Concat [vulkan] native_type=Concat supported=True ===
+  ours(oracle): 0.2095 ms  err=None
+  native_shipped: 0.64 ms  native_fair: 0.71 ms
+
+=== Conv [vulkan] native_type=Convolution supported=True ===
+  ours(oracle): 0.312 ms  err=None
+  native_shipped: 0.32 ms  native_fair: 0.15 ms
+
+=== ConvTranspose_dilations [vulkan] native_type=Deconvolution supported=True ===
+  ours(oracle): 24.8909 ms  err=None
+  native_shipped: 1.37 ms  native_fair: 1.86 ms
+
+=== Dense_Convolution_2D [vulkan] native_type=Convolution supported=True ===
+  ours(oracle): 9.229 ms  err=None
+  native_shipped: 3.23 ms  native_fair: 6.04 ms
+
+=== Greater [vulkan] native_type=torch.gt supported=False ===
+  ours(oracle): 0.4545 ms  err=None
+
+=== Group_Convolution_2D_kernel [vulkan] native_type=ConvolutionDepthWise supported=True ===
+  ours(oracle): None ms  err=build failed
+  native_shipped: 2.97 ms  native_fair: 4.17 ms
+
+=== LayerNorm [vulkan] native_type=LayerNorm supported=True ===
+  ours(oracle): 0.4405 ms  err=None
+  native_shipped: 0.94 ms  native_fair: 1.0 ms
+
+=== Log [vulkan] native_type=UnaryOp supported=True ===
+  ours(oracle): 0.1889 ms  err=None
+  native_shipped: 0.62 ms  native_fair: 0.6 ms
+
+=== MatMul_3d [vulkan] native_type=MatMul supported=True ===
+  ours(oracle): 0.2045 ms  err=None
+  native_shipped: 0.15 ms  native_fair: 0.15 ms
+
+=== MaxPool [vulkan] native_type=Pooling supported=True ===
+  ours(oracle): 0.2285 ms  err=None
+  native_shipped: 0.67 ms  native_fair: 0.7 ms
+
+=== Mul [vulkan] native_type=BinaryOp supported=True ===
+  ours(oracle): 0.2029 ms  err=None
+  native_shipped: 1.08 ms  native_fair: 1.02 ms
+
+=== ReduceMax [vulkan] native_type=Reduction supported=True ===
+  ours(oracle): None ms  err=missing host=False cand=None prof=True
+  native_shipped: 9.48 ms  native_fair: 9.49 ms
+
+=== ReduceMean [vulkan] native_type=Reduction supported=True ===
+  ours(oracle): 0.253 ms  err=None
+  native_shipped: 9.49 ms  native_fair: 11.76 ms
+
+=== ReduceSum [vulkan] native_type=Reduction supported=True ===
+  ours(oracle): 0.2544 ms  err=None
+  native_shipped: 4.66 ms  native_fair: 6.51 ms
+
+=== Relu [vulkan] native_type=ReLU supported=True ===
+  ours(oracle): 0.2115 ms  err=None
+  native_shipped: 0.92 ms  native_fair: 0.92 ms
+
+=== Reshape [vulkan] native_type=Reshape supported=True ===
+  ours(oracle): 0.1898 ms  err=None
+  native_shipped: 9.94 ms  native_fair: 10.5 ms
+
+=== Sin [vulkan] native_type=UnaryOp supported=True ===
+  ours(oracle): 0.1961 ms  err=None
+  native_shipped: 0.34 ms  native_fair: 0.35 ms
+
+=== Softmax [vulkan] native_type=Softmax supported=True ===
+  ours(oracle): 3.2168 ms  err=None
+  native_shipped: 4.33 ms  native_fair: 5.36 ms
+
+=== Winograd_Convolution_2D [vulkan] native_type=Convolution supported=True ===
+  ours(oracle): 29.5098 ms  err=None
+  native_shipped: 15.08 ms  native_fair: 24.27 ms
+
+========================================================================================
+op                   backend      ours  nat(ship)  nat(fair)   x_ship   x_fair
+----------------------------------------------------------------------------------------
+Abs                   vulkan    0.1831       4.65       3.96   25.396   21.628
+Add                   vulkan    0.1306       0.57       0.59    4.364    4.518
+And                   vulkan    0.1896       None       None        -        -
+AveragePool           vulkan    0.2362       0.66       0.67    2.794    2.837
+BatchNormalization    vulkan    0.5418       4.78       5.38    8.822     9.93
+Concat                vulkan    0.2095       0.64       0.71    3.055    3.389
+Conv                  vulkan     0.312       0.32       0.15    1.026    0.481
+ConvTranspose_dilations  vulkan   24.8909       1.37       1.86    0.055    0.075
+Dense_Convolution_2D  vulkan     9.229       3.23       6.04     0.35    0.654
+Greater               vulkan    0.4545       None       None        -        -
+Group_Convolution_2D_kernel  vulkan      None       2.97       4.17        -        -
+LayerNorm             vulkan    0.4405       0.94        1.0    2.134     2.27
+Log                   vulkan    0.1889       0.62        0.6    3.282    3.176
+MatMul_3d             vulkan    0.2045       0.15       0.15    0.733    0.733
+MaxPool               vulkan    0.2285       0.67        0.7    2.932    3.063
+Mul                   vulkan    0.2029       1.08       1.02    5.323    5.027
+ReduceMax             vulkan      None       9.48       9.49        -        -
+ReduceMean            vulkan     0.253       9.49      11.76    37.51   46.482
+ReduceSum             vulkan    0.2544       4.66       6.51   18.318    25.59
+Relu                  vulkan    0.2115       0.92       0.92     4.35     4.35
+Reshape               vulkan    0.1898       9.94       10.5   52.371   55.321
+Sin                   vulkan    0.1961       0.34       0.35    1.734    1.785
+Softmax               vulkan    3.2168       4.33       5.36    1.346    1.666
+Winograd_Convolution_2D  vulkan   29.5098      15.08      24.27    0.511    0.822
+========================================================================================
+speedup = native_latency / ours_latency  (>1 = OUR kernel is faster)
+results -> batch/results/perf_compare.json
