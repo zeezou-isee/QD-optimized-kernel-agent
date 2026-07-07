@@ -1,0 +1,12 @@
+{
+  "total": 185,
+  "host_success": 131,
+  "device_passed": 126,
+  "device_failed": 1,
+  "inline_speedup_n": 74,
+  "median": 0.95,
+  "mean": 2.925,
+  "wins": 29,
+  "min": 0.017,
+  "max": 29.049
+}

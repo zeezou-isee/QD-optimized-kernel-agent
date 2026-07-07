@@ -105,7 +105,7 @@ authoring 循环从「host 代理验证」升级为「host 过后上真机验证
 | | **inline**(同 runner,fair 单层,authoring 时免费) | **sweep**(`run_perf_compare`) |
 |---|---|---|
 | **arm** | 已验证 Abs **1.38×**(全量待补) | 全量 109 op:shipped 中位 **1.25×**(60/109 赢)、fair 中位 1.0×(50/107),范围 0.006–12.8× |
-| **vulkan** | miniset:ReduceSum **13.7×**、elementwise ~1×、conv/gemm <1 | 24-op(21 出比值,4 无 native 变体):shipped 中位 **2.93×**、16/21 赢、范围 0.06–52×(Reshape 52×/ReduceMean 37×/Abs 25×/ReduceSum 18× 赢;ConvTranspose 0.06×/Gemm 0.44×/Winograd 0.51× 输) |
+| **vulkan** | **全量 185(host 131 成功,device 126 过,74 出比值)**:median **0.95×**、mean 2.93×、29/74 赢、0.02–29×(ReduceMean_keepdims 29×/ReduceProd 27×/ReduceMax 15× 赢;Gemm/InstanceNorm_3d/Stft <0.15× 输)。同 runner 单层公平真机数 | 24-op cross-runner:shipped 中位 2.93×、16/21 赢、0.06–52×(数字偏高:ours 单层 vs native 整网框架开销) |
 
 **一致规律(两后端、两路线)**:reduce / elementwise / pooling / norm 我们从零生成的 kernel **赢**(ncnn 对这些未深度优化);**conv / gemm / matmul 输**(ncnn 的 Winograd/sgemm/im2col + fp16 高度优化)。
 

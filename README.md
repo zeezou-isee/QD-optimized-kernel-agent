@@ -222,7 +222,7 @@ python opgen/cli/run_operator_agent.py --task Greater --backends base,arm \
        --optimize --optimize-policy map_elites
 
 # --- batch a whole set end-to-end (kernel + graph + e2e + production per op) ---
-# sets: miniset (11) | subset (~26) | all (183). Resumable: ops already in the
+# sets: miniset (11) | subset (~26) | all (190). Resumable: ops already in the
 # results json are skipped, so you can pre-seed it to skip already-tested ops.
 DEEPSEEK_API_KEY=... python batch/batch_runner.py --set miniset --model deepseek-v4-pro
 python batch/batch_runner.py --set subset --ops Gemm,LayerNorm    # debug a few ops
