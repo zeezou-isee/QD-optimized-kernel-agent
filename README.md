@@ -247,7 +247,75 @@ Key flags: `--policy {linear,map_elites}`, `--backends base[,arm]`,
 
 ---
 
-## Measuring performance vs ncnn native (real device)
+## Device-in-the-loop verification (+ inline speedup)
+
+By default the authoring loop verifies on the **host** (Mac arm64 / MoltenVK). With
+a phone attached you can add a **device gate**: after each round's host verify
+passes, the kernel is compiled + run on the **real phone**, and device failures are
+fed back to the LLM to repair. No device → falls back to host-only.
+
+```bash
+# kernel authoring with the on-phone gate (host stays the fast first filter)
+python opgen/cli/run_kernel_agent.py --task Abs --backend arm  --device-verify auto \
+       --dataset-root dataset/Mobilekernelbench
+python opgen/cli/run_kernel_agent.py --task Abs --backend vulkan --device-verify auto ...
+# full operator pipeline / batch with the gate
+python opgen/cli/run_operator_agent.py --task Greater --backends base,arm --device-verify auto
+python batch/batch_runner.py --set all --model claude-opus-4-8 --device-verify auto
+```
+
+Flags (on `run_kernel_agent` / `run_operator_agent` / `batch_runner`):
+- **`--device-verify {off,auto,on}`** — `off` (default) = host-only; `auto` = use the
+  phone if `adb` sees one, else host; `on` = same but warn if none.
+- **`--device-simpleperf`** — also collect PMU (IPC/cache-miss) on device. **Default
+  off** — correctness + latency need no simpleperf, and it adds ~2× overhead.
+- **`--no-device-speedup`** — disable the inline speedup (default: measure it).
+
+**Inline speedup — zero extra compile.** The candidate device runner already links
+`libncnn` (arm) / `libncnn-vk` (vulkan), which contain `create_layer(<type>)` /
+`create_layer_vulkan(<type>)`. So for a natively-supported op the gate instantiates
+the **built-in ncnn op on the SAME already-compiled runner** (`--layer <type>`, using
+ncnn's baked SPIR-V for vulkan) and times it — no separate native build. It records
+into the kernel/op summary:
+- `device_status` (`passed`/`failed`/`skipped`), `device_latency` (ours, ms),
+- `device_native_latency` (native, ms), `device_speedup` (`native/ours`, **fair
+  single-layer**, >1 = ours faster). Ops with no matching native variant → speedup skipped.
+
+Failure policy: if the phone keeps rejecting a kernel to max-rounds but the host
+passed, the op is still recorded `success` with `device_status=failed` (a flaky
+device never hard-fails an otherwise-correct kernel). The device gate **never mutates
+the ncnn source tree** (standalone runner linked against the prebuilt lib).
+
+Validated: arm Abs ours 13.7ms vs native 18.9ms → **1.38×**; vulkan ReduceSum
+0.95ms vs native 13.1ms → **13.7×** on Adreno; and the gate caught vulkan Greater/Mul
+kernels that passed host MoltenVK but **failed on Adreno**, then repaired them in-loop.
+
+---
+
+## Measuring speedup vs ncnn native — two routes
+
+There are **two** ways to get the our-vs-native speedup, with different tiers:
+
+| | **inline** (device-in-the-loop) | **sweep** (`run_perf_compare.py`) |
+|---|---|---|
+| when | during authoring, after host verify | standalone, post-hoc |
+| tier | **fair** single-layer (elempack=1 fp32) | **shipped** fp16+packing whole-net **and** fair |
+| cost | ~free (reuses the same device runner via `create_layer`) | rebuilds benchncnn per op |
+| native op | `create_layer[_vulkan](<type>)` on the same runner | benchncnn built-in / gpu=0 |
+| output | `device_speedup` in the kernel/op summary | `batch/results/perf_compare.json` |
+
+Use **inline** for a quick fair signal every time a kernel is authored; use the
+**sweep** for the authoritative as-shipped (fp16+packing) numbers. See the two
+sections below.
+
+### Route A — inline speedup (device-in-the-loop)
+
+See "Device-in-the-loop verification" above: pass `--device-verify auto`; the gate
+also times the native ncnn op via `create_layer`/`create_layer_vulkan` on the SAME
+device runner (zero extra compile) and records `device_speedup` (fair single-layer,
+`native/ours`, >1 = ours faster). Disable with `--no-device-speedup`.
+
+### Route B — sweep (`run_perf_compare.py`)
 
 `opgen/cli/run_perf_compare.py` benchmarks **our generated kernel** against
 **ncnn's native built-in op** on the same backend, on a **real phone** (never a
@@ -274,11 +342,22 @@ python opgen/cli/run_perf_compare.py --task Conv --backend vulkan --perf-comp-ba
   and `speedup_fair` (both fp32). The fair tier needs the opt-in `fp16=`/`packing=`
   args added to `benchncnn.cpp` (already patched; defaults unchanged) — rebuild
   benchncnn after pulling.
-- Other flags: `--scale N` (grow the input's first dim so the kernel dominates
-  net latency), `--loop N`, `--record-timeout S` (raise for slow fp16 paths on big
-  shapes), `--out <json>`.
+- **`--no-simpleperf`** — latency-only: run benchncnn directly (no simpleperf).
+  ~2× faster + no profiler perturbation (cleaner latency); loses PMU (IPC/cache-miss).
+  Recommended for a pure speedup sweep. Default: simpleperf ON (collects PMU).
+- **Adaptive loop**: the sweep probes per-iter latency and sizes `--loop` so each
+  profile is ~10s regardless of op weight (a fixed 4000 loops stalls heavy ops — a
+  186ms/iter deconv × 4000 = 744s). `--loop N` is the cap.
+- Other flags: `--scale N` (grow the input's first dim so the kernel dominates net
+  latency; only the first bracket is scaled so weight/bias inputs stay intact),
+  `--record-timeout S`, `--dataset <root>` (default full Mobilekernelbench), `--out <json>`.
 - Output: `batch/results/perf_compare.json`, keyed `"<op>:<backend>"`, merged
   incrementally (re-runnable).
+- Full example (fair-tier arm sweep, latency-only):
+  ```bash
+  python opgen/cli/run_perf_compare.py --ops "$(cat batch/results/_success_ops.txt)" \
+      --backend arm --perf-comp-base --scale 8 --loop 4000 --no-simpleperf
+  ```
 
 ---
 
@@ -330,11 +409,12 @@ The three headline metrics live in different places: per-op **compile** and
 `perf_compare.json`. `scripts/rollup_stats.py` joins them into one table + rates:
 
 ```bash
-# roll up the 190-op operator run, join arm speedups
-python scripts/rollup_stats.py --source batch/results/all.json --backend arm
+# roll up a device-in-loop run; name outputs per backend so they don't clobber
+python scripts/rollup_stats.py --source batch/results/all_devloop.json --backend arm \
+    --out-csv batch/results/rollup_devloop_arm.csv \
+    --out-json batch/results/rollup_devloop_arm_summary.json
 # or an explicit op list / a full scan of runs/*/operator/summary.json
 python scripts/rollup_stats.py --ops Abs,Conv,Gemm --backend arm
-python scripts/rollup_stats.py
 ```
 
 What it does:
@@ -343,16 +423,19 @@ What it does:
   `all.json` alone, where they're a single `production` bool).
 - Pulls all functional checkpoints: `phases.kernel.status` (numeric vs PyTorch),
   `end_to_end_numeric.passed` (whole `ncnn::Net`), `production.correctness.passed`.
-- **Joins speedup** from `perf_compare.json` by `op:backend`
+- **Device columns** (from a `--device-verify` run): `device_status` +
+  `device_latency` + inline `device_speedup` per op, and a device-gate pass-rate +
+  inline-speedup summary (read from `phases.kernel[_arm]`, backend-appropriate).
+- **Joins sweep speedup** from `perf_compare.json` by `op:backend`
   (`speedup_shipped` / `speedup_fair` + latencies).
-- Outputs `batch/results/rollup.csv` (one row per op) + `rollup_summary.json`
-  (compile / kernel-numeric / e2e / correctness pass-rates, native-supported rate,
-  and speedup stats: median/mean/range + how many beat native at each tier), and
-  prints the summary.
+- Outputs the CSV + `_summary.json` (pass through `--out-csv`/`--out-json` to keep
+  backends separate, e.g. `rollup_devloop_arm.*`, `rollup_vulkan_device.csv`).
 
-Typical flow for a full statistics pass: `batch_runner.py` (correctness across the
-set) → `run_perf_compare.py` (speedup on the device) → `rollup_stats.py` (join +
-rates).
+Typical flows:
+- **inline** (one pass): `batch_runner.py --device-verify auto` → `rollup_stats.py`
+  (correctness + device + fair speedup, all from the same run).
+- **shipped sweep**: `batch_runner.py` → `run_perf_compare.py` (whole-net fp16
+  speedup) → `rollup_stats.py` (join).
 
 ---
 
