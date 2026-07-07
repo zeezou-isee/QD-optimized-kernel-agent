@@ -1,0 +1,34 @@
+===== Abs =====
+[round 0] phase=identify_and_generate ok=False compile=False numeric=failed device=none max_diff=None
+[round 1] phase=compile_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== Add =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== And =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== AveragePool =====
+[round 0] phase=identify_and_generate ok=True compile=True numeric=passed device=passed max_diff=5.960464477539063e-08
+===== BatchNormalization =====
+[round 0] phase=identify_and_generate ok=False compile=False numeric=failed device=none max_diff=None
+[round 1] phase=compile_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== Conv =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== Gemm =====
+[round 0] phase=identify_and_generate ok=False compile=False numeric=failed device=none max_diff=None
+[round 1] phase=compile_repair ok=False compile=True numeric=failed device=none max_diff=None
+[round 2] phase=numeric_repair ok=False compile=True numeric=failed device=none max_diff=1.9531618356704712
+[round 3] phase=numeric_repair ok=False compile=True numeric=failed device=none max_diff=1.9531618356704712
+===== Greater =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== Mul =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=False compile=True numeric=passed device=failed max_diff=0.0
+[round 2] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=0.0
+===== ReduceSum =====
+[round 0] phase=identify_and_generate ok=False compile=True numeric=failed device=none max_diff=None
+[round 1] phase=numeric_repair ok=False compile=True numeric=failed device=none max_diff=None
+[round 2] phase=numeric_repair ok=True compile=True numeric=passed device=passed max_diff=5.340576171875e-05
+===== DONE =====

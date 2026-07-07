@@ -3,18 +3,18 @@
     "IDEALAB:55a594...9622": {
       "provider": "idealab",
       "first_seen": "2026-07-05T23:40:04",
-      "last_seen": "2026-07-07T10:29:37",
-      "total_calls": 2404,
+      "last_seen": "2026-07-07T10:41:44",
+      "total_calls": 2427,
       "models": {
         "claude-opus-4-8": {
-          "calls": 2404,
-          "input_tokens": 25797982,
-          "output_tokens": 3930944,
+          "calls": 2427,
+          "input_tokens": 26305286,
+          "output_tokens": 3993527,
           "cache_read_tokens": 0,
           "cache_creation_tokens": 0
         }
       }
     }
   },
-  "updated_at": "2026-07-07T10:29:37"
+  "updated_at": "2026-07-07T10:41:44"
 }
