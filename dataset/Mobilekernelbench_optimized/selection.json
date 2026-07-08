@@ -90,6 +90,16 @@
     "tag": "kept from v1"
   },
   {
+    "op": "Group_Convolution_2D_kernel",
+    "category": "Convolution",
+    "file": "Convolution/Group_Convolution_2D_kernel.py",
+    "native": "ConvolutionDepthWise",
+    "sf": 0.134,
+    "ss": 5.268,
+    "ours_ms": 20.54,
+    "tag": "slow+hard: grouped conv (kernel variant, replaces crash Einsum; sf 0.134, 20ms)"
+  },
+  {
     "op": "Strassen_Convolution_2D",
     "category": "Convolution",
     "file": "Convolution/Strassen_Convolution_2D.py",
@@ -110,14 +120,14 @@
     "tag": "kept from v1"
   },
   {
-    "op": "Einsum",
-    "category": "Matrix",
-    "file": "Matrix/Einsum.py",
-    "native": "Einsum",
-    "sf": null,
-    "ss": null,
-    "ours_ms": 0.0,
-    "tag": "kept from v1"
+    "op": "Winograd_Convolution_2D_padding",
+    "category": "Convolution",
+    "file": "Convolution/Winograd_Convolution_2D_padding.py",
+    "native": "Convolution",
+    "sf": 0.084,
+    "ss": 0.065,
+    "ours_ms": 61.53,
+    "tag": "slow+hard: padded Winograd (sf 0.084, 61ms)"
   },
   {
     "op": "Einsum_sum_all",
@@ -227,16 +237,6 @@
     "sf": 1.357,
     "ss": 1.053,
     "ours_ms": 0.14,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "StridedSlice",
-    "category": "Tensor",
-    "file": "Tensor/StridedSlice.py",
-    "native": "Crop",
-    "sf": 0.333,
-    "ss": 3.667,
-    "ours_ms": 0.03,
     "tag": "kept from v1"
   },
   {

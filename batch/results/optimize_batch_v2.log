@@ -1,0 +1,51 @@
+========================================================================
+BATCH OPTIMIZE  backend=arm policy=map_elites model=claude-opus-4-8 key=efe0c9...7d26
+  dataset  : Mobilekernelbench_optimized
+  device   : --device-verify auto  (simpleperf OFF)
+  budget   : map=15  per-op timeout=5400s
+  ops      : 30 total | 13 to run | 17 skipped (have summary)
+  skipping : Conv3D, ConvTranspose_dilations, Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__, Dense_Convolution_2D, Group_Convolution_2D, Strassen_Convolution_2D, Winograd_Convolution_2D, Einsum_sum_all, Gemm_no_bias, MatMul, InstanceNormalization, LayerNorm, CumSum, DepthToSpace, Cos, Exp, Floor
+========================================================================
+
+----- [1/13] Softplus_3d -----
+  -> success in 126.1s  improved=True self_speedup=1.166 base=18.415458500385284ms best=15.793291851878166ms
+
+----- [2/13] Conv -----
+  -> success in 151.2s  improved=True self_speedup=210.6063 base=18.048958852887154ms best=0.0857ms
+
+----- [3/13] Conv_with_strides_padding -----
+  -> success in 162.2s  improved=True self_speedup=2.0519 base=0.1939ms best=0.0945ms
+
+----- [4/13] DeconvolutionDepthwise_2D_stride -----
+  -> success in 169.6s  improved=True self_speedup=1.3381 base=0.9522ms best=0.7116ms
+
+----- [5/13] Winograd_Convolution_2D_padding -----
+  -> success in 327.6s  improved=True self_speedup=2.1217 base=1.4629ms best=0.6895ms
+
+----- [6/13] Einsum -----
+  -> crash in 2.8s  improved=None self_speedup=None base=Nonems best=Nonems
+
+----- [7/13] BatchNormalization -----
+  -> success in 168.1s  improved=True self_speedup=1.0528 base=0.1256ms best=0.1193ms
+
+----- [8/13] ReduceMax_with_negative_values -----
+  -> success in 191.6s  improved=False self_speedup=1.0 base=1.1669ms best=1.1669ms
+
+----- [9/13] ReduceMean -----
+  -> success in 215.3s  improved=False self_speedup=1.0 base=1.1361ms best=1.1361ms
+
+----- [10/13] Clip -----
+  -> success in 254.3s  improved=True self_speedup=1.0019 base=6.7054ms best=6.6924ms
+
+----- [11/13] Sinh -----
+  -> success in 149.0s  improved=True self_speedup=1.0483 base=5.6457ms best=5.3856ms
+
+----- [12/13] Tan -----
+  -> success in 191.0s  improved=True self_speedup=1.0193 base=1.0171ms best=0.9978ms
+
+----- [13/13] Round -----
+  -> success in 161.4s  improved=True self_speedup=1.0069 base=3.5552ms best=3.5309ms
+
+========================================================================
+DONE  39/42 success | 34 improved over baseline
+results -> /Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/batch/results/optimize_batch.json
