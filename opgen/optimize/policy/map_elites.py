@@ -106,6 +106,7 @@ def run_map_elites(
     wiki_root: Path | str | None = None,     # None => Σ read-only (synthesized fallback, no write-back)
     task_name: str = "",                     # for cross-task N_promote accounting
     n_promote: int = _sigma.DEFAULT_N_PROMOTE,
+    record_trace: bool = False,              # persist per-round inner trajectory + pruned + param_space
 ) -> dict:
     rng = random.Random(rng_seed)
     arc = archive or Archive()
@@ -211,12 +212,24 @@ def run_map_elites(
         _prof = getattr(_bs, "profile", None) if _bs is not None else None
         refine = posthoc_bd(_prof)
 
-        iters.append({"round": len(iters), "directive": directive, "cell": list(cell),
-                      "kept": kept, "novel": novel or None, "posthoc_refine": refine or None,
-                      "cand_latency": basin.best_latency_ms,
-                      "best_latency": best_lat, "coverage": arc.coverage(),
-                      "evaluated": basin.n_evaluated, "pruned": basin.n_pruned,
-                      "failure_summary": _summarize_failures(basin)})
+        rec = {"round": len(iters), "directive": directive, "cell": list(cell),
+               "kept": kept, "novel": novel or None, "posthoc_refine": refine or None,
+               "cand_latency": basin.best_latency_ms,
+               "best_latency": best_lat, "coverage": arc.coverage(),
+               "evaluated": basin.n_evaluated, "pruned": basin.n_pruned,
+               "failure_summary": _summarize_failures(basin)}
+        if record_trace:
+            # full inner-search story for paper viz: the per-point climb trajectory
+            # (grid then climb, in eval order), the analytically-pruned points +
+            # reasons, and this template's parameter search space.
+            rec["techniques"] = list(template.techniques or [])
+            rec["param_space"] = {n: list(ps.values) for n, ps in (template.params or {}).items()}
+            rec["trajectory"] = [
+                {"point": sm.point, "latency_ms": sm.latency_ms, "correct": sm.correct,
+                 "stage": sm.stage, "error": sm.error or None} for sm in basin.samples]
+            rec["pruned_points"] = list(basin.pruned)
+            rec["best_params"] = basin.best_params
+        iters.append(rec)
 
         # convergence (§8.2): no global improvement for `patience` candidates
         if stale >= patience:

@@ -2,7 +2,7 @@
 
 30 ops · real=30 suspect=0 tainted=0 crash=0
 
-real-win self-speedup: median **1.199×** mean 1.599× max 6.646× · improved(>1.02×) 24/30
+real-win self-speedup: median **1.199×** mean 1.672× max 6.646× · improved(>1.02×) 24/30
 
 
 flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · tainted=speedup>8× degenerate/path-mix · crash=no summary (e.g. arm kernel -100)
@@ -17,8 +17,8 @@ flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · ta
 | op | cat | regime | rounds | kept | cov | base_bin | win_bin | baseline_ms | best_ms | self_speedup | flag |
 |----|-----|--------|-------:|-----:|----:|----------|---------|------------:|--------:|-------------:|------|
 | `Group_Convolution_2D_kernel` | Convolution | compute_bound | 18 | 2 | 3 | direct/scalar | gemm/vec | 0.376 | 0.057 | 6.646 | real |
+| `Dense_Convolution_2D` | Convolution | compute_bound | 16 | 4 | 2 | direct/scalar | direct/vec | 8.573 | 1.686 | 5.084 | real |
 | `Conv` | Convolution | compute_bound | 15 | 3 | 3 | direct/scalar | direct/vec | 0.141 | 0.047 | 3.015 | real |
-| `Dense_Convolution_2D` | Convolution | compute_bound | 16 | 4 | 3 | direct/scalar | direct/vec | 51.597 | 17.753 | 2.906 | real |
 | `CumSum` | Tensor | memory_bound | 15 | 1 | 2 | nchw/none | packed/single | 40.901 | 17.618 | 2.322 | real |
 | `Winograd_Convolution_2D_padding` | Convolution | compute_bound | 16 | 3 | 3 | direct/scalar | direct/vec | 1.463 | 0.690 | 2.122 | real |
 | `Conv_with_strides_padding` | Convolution | compute_bound | 15 | 2 | 3 | direct/scalar | gemm/vec | 0.194 | 0.095 | 2.052 | real |
@@ -50,8 +50,8 @@ flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · ta
 ## Covered bins per op (niche → best latency ms; ⚑=winner, ○=baseline niche)
 
 - **Group_Convolution_2D_kernel** (3 bins): `gemm/vec`=0.0565 ⚑ · `direct/vec`=0.1698 · `direct/scalar`=0.3755 ○
+- **Dense_Convolution_2D** (2 bins): `direct/vec`=1.686 ⚑ · `direct/scalar`=2.822 ○
 - **Conv** (3 bins): `direct/vec`=0.0466 ⚑ · `direct/scalar`=0.1405 ○ · `gemm/vec`=0.1669
-- **Dense_Convolution_2D** (3 bins): `direct/vec`=17.75 ⚑ · `gemm/vec`=28.73 · `direct/scalar`=51.6 ○
 - **CumSum** (2 bins): `packed/single`=17.62 ⚑ · `nchw/none`=40.9 ○
 - **Winograd_Convolution_2D_padding** (3 bins): `direct/vec`=0.6895 ⚑ · `gemm/vec`=0.7087 · `direct/scalar`=1.463 ○
 - **Conv_with_strides_padding** (3 bins): `gemm/vec`=0.0945 ⚑ · `direct/vec`=0.1091 · `direct/scalar`=0.1939 ○

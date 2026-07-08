@@ -102,6 +102,8 @@ def run_one(op: str, args, env: dict) -> dict:
         argv += ["--inner-budget", str(args.inner_budget)]
     if args.max_rounds is not None:
         argv += ["--max-rounds", str(args.max_rounds)]
+    if args.record_trace:
+        argv += ["--record-trace"]
 
     t0 = time.time()
     proc = subprocess.Popen(argv, cwd=str(ROOT), env=env, start_new_session=True,
@@ -142,6 +144,8 @@ def main() -> None:
     ap.add_argument("--map-budget", type=int, default=None, help="map_elites outer budget (else run_optimize default)")
     ap.add_argument("--inner-budget", type=int, default=None, help="inner-search budget per template (else run_optimize default)")
     ap.add_argument("--max-rounds", type=int, default=None)
+    ap.add_argument("--record-trace", action="store_true",
+                    help="persist full inner-search trace for paper viz (bloats summaries)")
     ap.add_argument("--timeout", type=int, default=5400, help="per-op wall-clock seconds (default 90 min)")
     ap.add_argument("--force", action="store_true", help="re-run even if an optimize summary exists")
     ap.add_argument("--out", default=str(RESULTS_DIR / "optimize_batch.json"))

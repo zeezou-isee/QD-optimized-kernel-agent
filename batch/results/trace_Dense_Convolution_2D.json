@@ -1,0 +1,325 @@
+{
+  "op": "Dense_Convolution_2D",
+  "backend": "arm",
+  "regime": "compute_bound",
+  "has_trace": true,
+  "bd_axes": {
+    "axis1": {
+      "name": "algo_family",
+      "values": [
+        "direct",
+        "gemm",
+        "winograd",
+        "fft",
+        "dw"
+      ]
+    },
+    "axis2": {
+      "name": "compute_mapping",
+      "values": [
+        "scalar",
+        "vec",
+        "dotprod"
+      ]
+    }
+  },
+  "inner_config": {
+    "map_budget": 15,
+    "inner_budget": 5,
+    "coverage_target": 4,
+    "patience": 4,
+    "coarse_per_axis": 3,
+    "coarse_max_points": 12
+  },
+  "baseline_cell": "direct/scalar",
+  "winner_cell": "direct/vec",
+  "baseline_latency_ms": 8.5727,
+  "best_latency_ms": 1.6863,
+  "coverage": 2,
+  "rounds_explored": 16,
+  "grid": [
+    {
+      "cell": "direct/scalar",
+      "latency_ms": 2.8221,
+      "is_baseline": true,
+      "is_winner": false
+    },
+    {
+      "cell": "direct/vec",
+      "latency_ms": 1.6863,
+      "is_baseline": false,
+      "is_winner": true
+    }
+  ],
+  "rounds": [
+    {
+      "round": 0,
+      "cell": "direct/scalar",
+      "directive": "diversify",
+      "kept": true,
+      "cand_latency_ms": 2.8221,
+      "best_latency_ms": 2.8221,
+      "evaluated": 5,
+      "pruned": 0,
+      "param_space": {
+        "TILE_M": [
+          1,
+          2,
+          4
+        ],
+        "VEC_W": [
+          1,
+          2,
+          4
+        ],
+        "UNROLL_K": [
+          1,
+          2,
+          4
+        ]
+      },
+      "best_params": {
+        "TILE_M": 1,
+        "VEC_W": 2,
+        "UNROLL_K": 2
+      },
+      "trajectory": [
+        {
+          "point": {
+            "TILE_M": 1,
+            "VEC_W": 1,
+            "UNROLL_K": 1
+          },
+          "latency_ms": 4.6873,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "TILE_M": 1,
+            "VEC_W": 1,
+            "UNROLL_K": 2
+          },
+          "latency_ms": 4.6617,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "TILE_M": 1,
+            "VEC_W": 1,
+            "UNROLL_K": 4
+          },
+          "latency_ms": 4.9445,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "TILE_M": 1,
+            "VEC_W": 2,
+            "UNROLL_K": 1
+          },
+          "latency_ms": 2.9257,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "TILE_M": 1,
+            "VEC_W": 2,
+            "UNROLL_K": 2
+          },
+          "latency_ms": 2.8221,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        }
+      ],
+      "pruned_points": []
+    },
+    {
+      "round": 1,
+      "cell": "direct/vec",
+      "directive": "diversify",
+      "kept": true,
+      "cand_latency_ms": 2.13,
+      "best_latency_ms": 2.13,
+      "evaluated": 3,
+      "pruned": 0,
+      "param_space": {
+        "VEC_LANES": [
+          1,
+          2,
+          4
+        ]
+      },
+      "best_params": {
+        "VEC_LANES": 4
+      },
+      "trajectory": [
+        {
+          "point": {
+            "VEC_LANES": 1
+          },
+          "latency_ms": 2.4514,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_LANES": 2
+          },
+          "latency_ms": 2.1689,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_LANES": 4
+          },
+          "latency_ms": 2.13,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        }
+      ],
+      "pruned_points": []
+    },
+    {
+      "round": 2,
+      "cell": "direct/vec",
+      "directive": "diversify",
+      "kept": true,
+      "cand_latency_ms": 2.0983,
+      "best_latency_ms": 2.0983,
+      "evaluated": 3,
+      "pruned": 0,
+      "param_space": {
+        "VEC_W": [
+          1,
+          2,
+          4
+        ]
+      },
+      "best_params": {
+        "VEC_W": 4
+      },
+      "trajectory": [
+        {
+          "point": {
+            "VEC_W": 1
+          },
+          "latency_ms": 2.4503,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 2
+          },
+          "latency_ms": 2.1923,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 4
+          },
+          "latency_ms": 2.0983,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        }
+      ],
+      "pruned_points": []
+    },
+    {
+      "round": 3,
+      "cell": "direct/vec",
+      "directive": "diversify",
+      "kept": true,
+      "cand_latency_ms": 1.6863,
+      "best_latency_ms": 1.6863,
+      "evaluated": 5,
+      "pruned": 0,
+      "param_space": {
+        "VEC_W": [
+          1,
+          2,
+          4
+        ],
+        "UNROLL_IC": [
+          1,
+          2,
+          4
+        ]
+      },
+      "best_params": {
+        "VEC_W": 2,
+        "UNROLL_IC": 1
+      },
+      "trajectory": [
+        {
+          "point": {
+            "VEC_W": 1,
+            "UNROLL_IC": 1
+          },
+          "latency_ms": 2.6542,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 1,
+            "UNROLL_IC": 2
+          },
+          "latency_ms": 2.9934,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 1,
+            "UNROLL_IC": 4
+          },
+          "latency_ms": 2.9751,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 2,
+            "UNROLL_IC": 1
+          },
+          "latency_ms": 1.6863,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        },
+        {
+          "point": {
+            "VEC_W": 2,
+            "UNROLL_IC": 2
+          },
+          "latency_ms": 2.1617,
+          "correct": true,
+          "stage": "grid",
+          "error": null
+        }
+      ],
+      "pruned_points": []
+    }
+  ]
+}

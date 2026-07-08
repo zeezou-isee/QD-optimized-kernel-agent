@@ -106,6 +106,7 @@ class MeasureSample:
     correctness: CorrectnessReport | None = None
     compile_log_tail: str = ""             # short snippet for debugging
     error: str = ""                        # "compile failed" / "runtime crash" / ...
+    stage: str = ""                        # inner-search stage: "grid" | "climb" (trace)
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +124,7 @@ class BasinValue:
     n_failed: int = 0                      # compile/runtime failures during search
     samples: list[MeasureSample] = field(default_factory=list)
     noise_floor_ms: float | None = None    # σ estimate at best point
+    pruned: list[dict[str, Any]] = field(default_factory=list)  # analytically-pruned {point, reason}
 
 
 # ---------------------------------------------------------------------------

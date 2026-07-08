@@ -129,6 +129,11 @@ def main() -> None:
                    help="measure candidate + baseline latency on the REAL phone (auto = use "
                         "device if adb sees one, else host wall-clock). MANDATORY for a "
                         "meaningful latency objective — host subprocess wall-clock is not phone time.")
+    p.add_argument("--record-trace", action="store_true",
+                   help="persist the full inner-search trace (per-round climb trajectory, "
+                        "analytically-pruned points + reasons, param space) + bd_axes/inner_config "
+                        "into summary.json for paper visualization. Bloats the summary — use for "
+                        "case-study ops. Export with scripts/optimize_trace.py.")
     p.add_argument("--runs-root", default=None,
                    help="override the root that holds runs/<task>/{kernel,kernel_arm,...} "
                         "when loading baselines. Default: opgen/runs")
@@ -187,7 +192,7 @@ def main() -> None:
         run_baseline_comparison=args.baseline_compare, op_class=args.task,
         backend=args.backend, base_files=base_files, n_promote=args.n_promote,
         device_measure=(args.device_verify in ("auto", "on")),
-        ncnn_py=_ncnn_py,
+        ncnn_py=_ncnn_py, record_trace=args.record_trace,
     )
     res: OptimizeResult = agent.run()
 

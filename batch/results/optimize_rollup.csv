@@ -6,7 +6,7 @@ ConvTranspose_dilations,Convolution,arm,success,compute_bound,19,3,4,True,27.213
 Conv_with_strides_padding,Convolution,arm,success,compute_bound,15,3,2,True,0.1939,0.0945,2.0519,direct/scalar,gemm/vec,gemm/vec=0.0945; direct/vec=0.1091; direct/scalar=0.1939,budget (15) reached,real
 DeconvolutionDepthwise_2D_stride,Convolution,arm,success,memory_bound,15,2,2,True,0.9522,0.7116,1.3381,nchw/none,nchw/single,nchw/single=0.7116; nchw/none=0.9522,budget (15) reached,real
 Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__,Convolution,arm,success,compute_bound,15,3,3,True,21.34660421870649,19.746021134778857,1.0811,direct/scalar,gemm/vec,gemm/vec=19.75; direct/scalar=21.35; gemm/scalar=24.07,budget (15) reached,real
-Dense_Convolution_2D,Convolution,arm,success,compute_bound,16,3,4,True,51.59672908484936,17.752874409779906,2.9064,direct/scalar,direct/vec,direct/vec=17.75; gemm/vec=28.73; direct/scalar=51.6,budget (15) reached,real
+Dense_Convolution_2D,Convolution,arm,success,compute_bound,16,2,4,True,8.5727,1.6863,5.0837,direct/scalar,direct/vec,direct/vec=1.686; direct/scalar=2.822,budget (15) reached,real
 Group_Convolution_2D,Convolution,arm,success,compute_bound,19,3,5,True,20.738541381433606,16.830541659146547,1.2322,direct/scalar,direct/vec,direct/vec=16.83; gemm/vec=16.9; direct/scalar=20.74,budget (15) reached,real
 Group_Convolution_2D_kernel,Convolution,arm,success,compute_bound,18,3,2,True,0.3755,0.0565,6.646,direct/scalar,gemm/vec,gemm/vec=0.0565; direct/vec=0.1698; direct/scalar=0.3755,budget (15) reached,real
 Strassen_Convolution_2D,Convolution,arm,success,compute_bound,18,2,2,True,17.74202100932598,17.19352090731263,1.0319,direct/scalar,gemm/vec,gemm/vec=17.19; direct/scalar=17.74,budget (15) reached,real

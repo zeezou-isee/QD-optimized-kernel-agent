@@ -42,21 +42,24 @@ def inner_search(
     def _key(p: dict[str, Any]) -> tuple:
         return tuple(sorted(p.items()))
 
-    def measure(point: dict[str, Any]) -> float | None:
+    def measure(point: dict[str, Any], stage: str = "grid") -> float | None:
         """Feasibility → cache → real evaluate. Returns latency or None (unusable).
-        Updates basin counters and the running best as a side effect."""
+        Updates basin counters and the running best as a side effect. `stage` tags
+        the sample ("grid" | "climb") for the paper-viz trace."""
         key = _key(point)
         if key in seen:
             s = seen[key]
             return s.latency_ms if s.correct else None
-        # ① analytic pruning (免实测)
+        # ① analytic pruning (免实测) — record which point + why, for the trace
         feas = engine.feasible(point, template.constraints)
         if not feas.ok:
             basin.n_pruned += 1
+            basin.pruned.append({"point": dict(point), "reason": feas.reason, "stage": stage})
             return None
         if basin.n_evaluated >= budget:
             return None        # out of measurement budget
         sample = evaluator.evaluate(template, point)
+        sample.stage = stage
         seen[key] = sample
         basin.samples.append(sample)
         basin.n_evaluated += 1
@@ -77,7 +80,7 @@ def inner_search(
                             max_points=coarse_max_points):
         if basin.n_evaluated >= budget:
             break
-        measure(pt)
+        measure(pt, "grid")
 
     # ③ hill climb from the best coarse point (if any), spending leftover budget
     if basin.best_params is not None and template.params:
@@ -85,7 +88,7 @@ def inner_search(
         if remaining > 0:
             best_pt, best_lat, _used = hill_climb(
                 basin.best_params, basin.best_latency_ms, template.params,
-                measure, budget=remaining)
+                lambda p: measure(p, "climb"), budget=remaining)
             # measure() already folded improvements into basin via side effects.
 
     return basin

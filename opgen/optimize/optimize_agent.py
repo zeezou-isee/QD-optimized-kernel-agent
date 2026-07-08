@@ -78,6 +78,7 @@ class OptimizeAgent:
         n_promote: int = 3,                     # axis-extension: cross-task wins to grow Σ
         device_measure: bool = False,           # measure candidate+baseline latency on the REAL phone
         ncnn_py: str | Path | None = None,      # pnnx _ncnn.py: per-blob input squeeze policy
+        record_trace: bool = False,             # persist per-round inner trajectory + pruned + bd_axes
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -114,6 +115,7 @@ class OptimizeAgent:
         self.n_promote = n_promote
         self.device_measure = bool(device_measure)
         self.ncnn_py = str(ncnn_py) if ncnn_py else None
+        self.record_trace = bool(record_trace)
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -363,7 +365,8 @@ class OptimizeAgent:
             budget=self.map_budget, inner_budget=self.inner_budget,
             coverage_target=self.coverage_target, patience=self.patience,
             backend=self.backend, wiki_root=wiki_root,
-            task_name=self.op_class or self.task_name, n_promote=self.n_promote)
+            task_name=self.op_class or self.task_name, n_promote=self.n_promote,
+            record_trace=self.record_trace)
 
         # optional best-first control arm (§7.5)
         cmp = None
@@ -387,10 +390,21 @@ class OptimizeAgent:
         res.best_perf = {"avg": best_lat, "min": best_lat}
         res.best_round = 0 if improved else -1
         res.stopped_reason = me.get("stopped_reason", "")
+        # BD grid definition (how the bins are partitioned) + inner-search config —
+        # persisted so a paper figure can reconstruct the niche grid without re-
+        # deriving it from the Σ registry.
+        from policy import axes
+        (a1n, a1v), (a2n, a2v) = axes(regime)
+        bd_axes = {"axis1": {"name": a1n, "values": list(a1v)},
+                   "axis2": {"name": a2n, "values": list(a2v)}}
+        inner_config = {"map_budget": self.map_budget, "inner_budget": self.inner_budget,
+                        "coverage_target": self.coverage_target, "patience": self.patience,
+                        "coarse_per_axis": 3, "coarse_max_points": 12}
         res.extra = {"regime": regime, "roofline": rl.__dict__ if rl else None,
                      "coverage": me.get("coverage"), "rounds": me.get("rounds"),
                      "argmin_cell": me.get("grid_argmin_cell"),
                      "baseline_cell": list(baseline_cell), "baseline_latency_ms": base_lat,
+                     "bd_axes": bd_axes, "inner_config": inner_config,
                      "archive": me.get("archive"), "iterations": me.get("iterations"),
                      "baseline_comparison": cmp,
                      # axis-extension telemetry (Method M2.5.2 / Figure E)
