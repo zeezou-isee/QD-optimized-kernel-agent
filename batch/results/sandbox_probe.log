@@ -1,0 +1,16 @@
+[1/16] Asin                                         avg=4.3030 min=3.6476 max=6.2276ms
+[2/16] Asinh                                        avg=0.3905 min=0.3812 max=0.4527ms
+[3/16] Cosh                                         avg=0.2407 min=0.2370 max=0.3092ms
+[4/16] Atanh                                        avg=0.2087 min=0.2061 max=0.2658ms
+[5/16] Sign                                         avg=0.0693 min=0.0646 max=0.1214ms
+[6/16] Dense_Convolution_2D_kernel                  avg=223.3389 min=199.6144 max=225.1384ms
+[7/16] Conv                                         avg=0.1854 min=0.1802 max=0.3533ms
+[8/16] Group_Convolution_2D_kernel                  avg=0.2635 min=0.2607 max=0.3055ms
+[9/16] DeconvolutionDepthwise_2D_kernel             avg=1.2339 min=1.2172 max=1.3393ms
+[10/16] Dense_Convolution_1D                         avg=2.2364 min=2.2055 max=2.2896ms
+[11/16] Deconvolution_1D                             avg=0.7102 min=0.6768 max=0.8269ms
+[12/16] ReduceMean_keepdims                          avg=2.0672 min=1.9486 max=3.6939ms
+[13/16] ReduceMin_with_negative_values               avg=1.2140 min=1.1610 max=3.2939ms
+[14/16] BatchNormalization_momentum                  avg=0.1558 min=0.1466 max=0.2068ms
+[15/16] AveragePool                                  avg=0.0026 min=0.0025 max=0.0027ms
+[16/16] MaxPool                                      avg=0.0045 min=0.0039 max=0.0585ms

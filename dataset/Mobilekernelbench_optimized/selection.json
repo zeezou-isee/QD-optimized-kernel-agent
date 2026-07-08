@@ -1,302 +1,272 @@
 [
   {
-    "op": "Softplus_3d",
-    "category": "Activation",
-    "file": "Activation/Softplus_3d.py",
-    "native": "Softplus",
-    "sf": 2.013,
-    "ss": 2.013,
-    "ours_ms": 0.75,
-    "tag": "softplus activation (0.75ms)"
-  },
-  {
-    "op": "Conv",
-    "category": "Convolution",
-    "file": "Convolution/Conv.py",
-    "native": "Convolution",
-    "sf": 0.075,
-    "ss": 0.42,
-    "ours_ms": 4.27,
-    "tag": "slow direct conv (sf 0.075, 4.3ms)"
-  },
-  {
-    "op": "Conv3D",
-    "category": "Convolution",
-    "file": "Convolution/Conv3D.py",
-    "native": "Convolution3D",
-    "sf": null,
-    "ss": null,
-    "ours_ms": null,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "ConvTranspose_dilations",
-    "category": "Convolution",
-    "file": "Convolution/ConvTranspose_dilations.py",
-    "native": "Deconvolution",
-    "sf": 0.234,
-    "ss": 0.244,
-    "ours_ms": 31.52,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Conv_with_strides_padding",
-    "category": "Convolution",
-    "file": "Convolution/Conv_with_strides_padding.py",
-    "native": "Convolution",
-    "sf": 1.04,
-    "ss": 0.329,
-    "ours_ms": 1.24,
-    "tag": "strided conv config (1.2ms)"
-  },
-  {
-    "op": "DeconvolutionDepthwise_2D_stride",
-    "category": "Convolution",
-    "file": "Convolution/DeconvolutionDepthwise_2D_stride.py",
-    "native": "DeconvolutionDepthWise",
-    "sf": 7.855,
-    "ss": 0.92,
-    "ours_ms": 23.34,
-    "tag": "deconv-depthwise, heavy (23ms)"
-  },
-  {
-    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
-    "category": "Convolution",
-    "file": "Convolution/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.py",
-    "native": "Deconvolution",
-    "sf": 0.08,
-    "ss": 0.086,
-    "ours_ms": 276.17,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Dense_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Dense_Convolution_2D.py",
-    "native": "Convolution",
-    "sf": 0.01,
-    "ss": 0.006,
-    "ours_ms": 406.42,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Group_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Group_Convolution_2D.py",
-    "native": "ConvolutionDepthWise",
-    "sf": 0.036,
-    "ss": 0.048,
-    "ours_ms": 55.13,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Group_Convolution_2D_kernel",
-    "category": "Convolution",
-    "file": "Convolution/Group_Convolution_2D_kernel.py",
-    "native": "ConvolutionDepthWise",
-    "sf": 0.134,
-    "ss": 5.268,
-    "ours_ms": 20.54,
-    "tag": "slow+hard: grouped conv (kernel variant, replaces crash Einsum; sf 0.134, 20ms)"
-  },
-  {
-    "op": "Strassen_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Strassen_Convolution_2D.py",
-    "native": "Convolution",
-    "sf": 0.09,
-    "ss": 0.088,
-    "ours_ms": 38.09,
-    "tag": "kept from v1"
-  },
-  {
     "op": "Winograd_Convolution_2D",
+    "group": "slower",
     "category": "Convolution",
     "file": "Convolution/Winograd_Convolution_2D.py",
     "native": "Convolution",
-    "sf": 0.111,
-    "ss": 0.057,
-    "ours_ms": 734.85,
-    "tag": "kept from v1"
+    "speedup_fair": 0.111,
+    "sandbox_ms": 25.0174
   },
   {
-    "op": "Winograd_Convolution_2D_padding",
+    "op": "Dense_Convolution_2D_kernel",
+    "group": "slower",
     "category": "Convolution",
-    "file": "Convolution/Winograd_Convolution_2D_padding.py",
+    "file": "Convolution/Dense_Convolution_2D_kernel.py",
     "native": "Convolution",
-    "sf": 0.084,
-    "ss": 0.065,
-    "ours_ms": 61.53,
-    "tag": "slow+hard: padded Winograd (sf 0.084, 61ms)"
+    "speedup_fair": 0.149,
+    "sandbox_ms": 223.3389
   },
   {
-    "op": "Einsum_sum_all",
-    "category": "Matrix",
-    "file": "Matrix/Einsum_sum_all.py",
-    "native": "Reduction",
-    "sf": 0.5,
-    "ss": 0.5,
-    "ours_ms": 0.02,
-    "tag": "kept from v1"
+    "op": "ConvTranspose_dilations",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/ConvTranspose_dilations.py",
+    "native": "Deconvolution",
+    "speedup_fair": 0.234,
+    "sandbox_ms": 13.9396
   },
   {
-    "op": "Gemm_no_bias",
-    "category": "Matrix",
-    "file": "Matrix/Gemm_no_bias.py",
-    "native": "Gemm",
-    "sf": 0.047,
-    "ss": 0.028,
-    "ours_ms": 1.06,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "MatMul",
-    "category": "Matrix",
-    "file": "Matrix/MatMul.py",
-    "native": "MatMul",
-    "sf": null,
-    "ss": null,
-    "ours_ms": null,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "BatchNormalization",
-    "category": "Normalization",
-    "file": "Normalization/BatchNormalization.py",
-    "native": "BatchNorm",
-    "sf": 2.097,
-    "ss": 1.254,
-    "ours_ms": 0.72,
-    "tag": "batchnorm (0.72ms, new norm type)"
-  },
-  {
-    "op": "InstanceNormalization",
-    "category": "Normalization",
-    "file": "Normalization/InstanceNormalization.py",
-    "native": "InstanceNorm",
-    "sf": 1.0,
-    "ss": 1.373,
-    "ours_ms": 0.83,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "LayerNorm",
-    "category": "Normalization",
-    "file": "Normalization/LayerNorm.py",
-    "native": "LayerNorm",
-    "sf": 1.771,
-    "ss": 1.61,
-    "ours_ms": 0.35,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "ReduceMax_with_negative_values",
-    "category": "Reduction",
-    "file": "Reduction/ReduceMax_with_negative_values.py",
-    "native": "Reduction",
-    "sf": 8.813,
-    "ss": 8.831,
-    "ours_ms": 2.19,
-    "tag": "reduction variant (2.2ms)"
-  },
-  {
-    "op": "ReduceMean",
-    "category": "Reduction",
-    "file": "Reduction/ReduceMean.py",
-    "native": "Reduction",
-    "sf": 6.963,
-    "ss": 6.93,
-    "ours_ms": 2.71,
-    "tag": "reduction, ms-scale (2.7ms)"
-  },
-  {
-    "op": "Clip",
-    "category": "Tensor",
-    "file": "Tensor/Clip.py",
-    "native": "Clip",
-    "sf": 2.158,
-    "ss": 4.88,
-    "ours_ms": 1.58,
-    "tag": "clip activation (1.6ms)"
-  },
-  {
-    "op": "CumSum",
-    "category": "Tensor",
-    "file": "Tensor/CumSum.py",
-    "native": "CumulativeSum",
-    "sf": 1.0,
-    "ss": 1.0,
-    "ours_ms": 0.01,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "DepthToSpace",
-    "category": "Tensor",
-    "file": "Tensor/DepthToSpace.py",
-    "native": "PixelShuffle",
-    "sf": 1.357,
-    "ss": 1.053,
-    "ours_ms": 0.14,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Cos",
-    "category": "Trigonometry",
-    "file": "Trigonometry/Cos.py",
-    "native": "UnaryOp",
-    "sf": 0.835,
-    "ss": 0.651,
-    "ours_ms": 1.09,
-    "tag": "kept from v1"
+    "op": "Dense_Convolution_2D",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Dense_Convolution_2D.py",
+    "native": "Convolution",
+    "speedup_fair": 0.01,
+    "sandbox_ms": 9.4377
   },
   {
     "op": "Sinh",
+    "group": "slower",
     "category": "Trigonometry",
     "file": "Trigonometry/Sinh.py",
     "native": "UnaryOp",
-    "sf": 0.953,
-    "ss": 0.866,
-    "ours_ms": 9.0,
-    "tag": "slow heavy unary (sf 0.953, 9ms)"
+    "speedup_fair": 0.953,
+    "sandbox_ms": 5.617
   },
   {
-    "op": "Tan",
+    "op": "Asin",
+    "group": "slower",
     "category": "Trigonometry",
-    "file": "Trigonometry/Tan.py",
+    "file": "Trigonometry/Asin.py",
     "native": "UnaryOp",
-    "sf": 0.875,
-    "ss": 2.326,
-    "ours_ms": 1.84,
-    "tag": "slow unary trig (sf 0.875, 1.8ms)"
+    "speedup_fair": 0.938,
+    "sandbox_ms": 4.303
   },
   {
-    "op": "Exp",
-    "category": "Unary",
-    "file": "Unary/Exp.py",
-    "native": "UnaryOp",
-    "sf": 0.8,
-    "ss": 1.277,
-    "ours_ms": 2.35,
-    "tag": "kept from v1"
-  },
-  {
-    "op": "Floor",
-    "category": "Unary",
-    "file": "Unary/Floor.py",
-    "native": "UnaryOp",
-    "sf": 0.676,
-    "ss": 2.206,
-    "ours_ms": 0.34,
-    "tag": "kept from v1"
+    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.py",
+    "native": "Deconvolution",
+    "speedup_fair": 0.08,
+    "sandbox_ms": 3.9111
   },
   {
     "op": "Round",
+    "group": "slower",
     "category": "Unary",
     "file": "Unary/Round.py",
     "native": "UnaryOp",
-    "sf": 0.995,
-    "ss": 2.451,
-    "ours_ms": 2.08,
-    "tag": "slow unary round (sf 0.995, 2.1ms)"
+    "speedup_fair": 0.995,
+    "sandbox_ms": 3.1966
+  },
+  {
+    "op": "Exp",
+    "group": "slower",
+    "category": "Unary",
+    "file": "Unary/Exp.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.8,
+    "sandbox_ms": 2.8279
+  },
+  {
+    "op": "Group_Convolution_2D",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Group_Convolution_2D.py",
+    "native": "ConvolutionDepthWise",
+    "speedup_fair": 0.036,
+    "sandbox_ms": 2.2345
+  },
+  {
+    "op": "Cos",
+    "group": "slower",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Cos.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.835,
+    "sandbox_ms": 1.7598
+  },
+  {
+    "op": "Winograd_Convolution_2D_padding",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Winograd_Convolution_2D_padding.py",
+    "native": "Convolution",
+    "speedup_fair": 0.084,
+    "sandbox_ms": 1.4619
+  },
+  {
+    "op": "Floor",
+    "group": "slower",
+    "category": "Unary",
+    "file": "Unary/Floor.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.676,
+    "sandbox_ms": 1.335
+  },
+  {
+    "op": "Strassen_Convolution_2D",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Strassen_Convolution_2D.py",
+    "native": "Convolution",
+    "speedup_fair": 0.09,
+    "sandbox_ms": 1.1576
+  },
+  {
+    "op": "Tan",
+    "group": "slower",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Tan.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.875,
+    "sandbox_ms": 1.0255
+  },
+  {
+    "op": "Asinh",
+    "group": "slower",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Asinh.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.829,
+    "sandbox_ms": 0.3905
+  },
+  {
+    "op": "Group_Convolution_2D_kernel",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Group_Convolution_2D_kernel.py",
+    "native": "ConvolutionDepthWise",
+    "speedup_fair": 0.134,
+    "sandbox_ms": 0.2635
+  },
+  {
+    "op": "Cosh",
+    "group": "slower",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Cosh.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.932,
+    "sandbox_ms": 0.2407
+  },
+  {
+    "op": "Atanh",
+    "group": "slower",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Atanh.py",
+    "native": "UnaryOp",
+    "speedup_fair": 0.882,
+    "sandbox_ms": 0.2087
+  },
+  {
+    "op": "Conv",
+    "group": "slower",
+    "category": "Convolution",
+    "file": "Convolution/Conv.py",
+    "native": "Convolution",
+    "speedup_fair": 0.075,
+    "sandbox_ms": 0.1854
+  },
+  {
+    "op": "Conv3D",
+    "group": "other",
+    "category": "Convolution",
+    "file": "Convolution/Conv3D.py",
+    "native": "Convolution3D",
+    "speedup_fair": null,
+    "sandbox_ms": 38.8112
+  },
+  {
+    "op": "Clip",
+    "group": "other",
+    "category": "Tensor",
+    "file": "Tensor/Clip.py",
+    "native": "Clip",
+    "speedup_fair": 2.158,
+    "sandbox_ms": 7.1187
+  },
+  {
+    "op": "Dense_Convolution_1D",
+    "group": "other",
+    "category": "Convolution",
+    "file": "Convolution/Dense_Convolution_1D.py",
+    "native": "Convolution1D",
+    "speedup_fair": 1.737,
+    "sandbox_ms": 2.2364
+  },
+  {
+    "op": "DeconvolutionDepthwise_2D_kernel",
+    "group": "other",
+    "category": "Convolution",
+    "file": "Convolution/DeconvolutionDepthwise_2D_kernel.py",
+    "native": "DeconvolutionDepthWise",
+    "speedup_fair": 2.918,
+    "sandbox_ms": 1.2339
+  },
+  {
+    "op": "DeconvolutionDepthwise_2D_stride",
+    "group": "other",
+    "category": "Convolution",
+    "file": "Convolution/DeconvolutionDepthwise_2D_stride.py",
+    "native": "DeconvolutionDepthWise",
+    "speedup_fair": 7.855,
+    "sandbox_ms": 1.1501
+  },
+  {
+    "op": "Deconvolution_1D",
+    "group": "other",
+    "category": "Convolution",
+    "file": "Convolution/Deconvolution_1D.py",
+    "native": "Deconvolution1D",
+    "speedup_fair": 7.0,
+    "sandbox_ms": 0.7102
+  },
+  {
+    "op": "ReduceMean",
+    "group": "other",
+    "category": "Reduction",
+    "file": "Reduction/ReduceMean.py",
+    "native": "Reduction",
+    "speedup_fair": 6.963,
+    "sandbox_ms": 1.0356
+  },
+  {
+    "op": "ReduceMax_with_negative_values",
+    "group": "other",
+    "category": "Reduction",
+    "file": "Reduction/ReduceMax_with_negative_values.py",
+    "native": "Reduction",
+    "speedup_fair": 8.813,
+    "sandbox_ms": 1.019
+  },
+  {
+    "op": "ReduceMin_with_negative_values",
+    "group": "other",
+    "category": "Reduction",
+    "file": "Reduction/ReduceMin_with_negative_values.py",
+    "native": "Reduction",
+    "speedup_fair": 8.818,
+    "sandbox_ms": 1.214
+  },
+  {
+    "op": "MatMul",
+    "group": "other",
+    "category": "Matrix",
+    "file": "Matrix/MatMul.py",
+    "native": "MatMul",
+    "speedup_fair": null,
+    "sandbox_ms": 0.4336
   }
 ]

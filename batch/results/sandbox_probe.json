@@ -1,0 +1,114 @@
+{
+  "Asin": {
+    "ok": true,
+    "avg_ms": 4.303,
+    "min_ms": 3.6476,
+    "max_ms": 6.2276,
+    "n": 100
+  },
+  "Asinh": {
+    "ok": true,
+    "avg_ms": 0.3905,
+    "min_ms": 0.3812,
+    "max_ms": 0.4527,
+    "n": 100
+  },
+  "Cosh": {
+    "ok": true,
+    "avg_ms": 0.2407,
+    "min_ms": 0.237,
+    "max_ms": 0.3092,
+    "n": 100
+  },
+  "Atanh": {
+    "ok": true,
+    "avg_ms": 0.2087,
+    "min_ms": 0.2061,
+    "max_ms": 0.2658,
+    "n": 100
+  },
+  "Sign": {
+    "ok": true,
+    "avg_ms": 0.0693,
+    "min_ms": 0.0646,
+    "max_ms": 0.1214,
+    "n": 100
+  },
+  "Dense_Convolution_2D_kernel": {
+    "ok": true,
+    "avg_ms": 223.3389,
+    "min_ms": 199.6144,
+    "max_ms": 225.1384,
+    "n": 100
+  },
+  "Conv": {
+    "ok": true,
+    "avg_ms": 0.1854,
+    "min_ms": 0.1802,
+    "max_ms": 0.3533,
+    "n": 100
+  },
+  "Group_Convolution_2D_kernel": {
+    "ok": true,
+    "avg_ms": 0.2635,
+    "min_ms": 0.2607,
+    "max_ms": 0.3055,
+    "n": 100
+  },
+  "DeconvolutionDepthwise_2D_kernel": {
+    "ok": true,
+    "avg_ms": 1.2339,
+    "min_ms": 1.2172,
+    "max_ms": 1.3393,
+    "n": 100
+  },
+  "Dense_Convolution_1D": {
+    "ok": true,
+    "avg_ms": 2.2364,
+    "min_ms": 2.2055,
+    "max_ms": 2.2896,
+    "n": 100
+  },
+  "Deconvolution_1D": {
+    "ok": true,
+    "avg_ms": 0.7102,
+    "min_ms": 0.6768,
+    "max_ms": 0.8269,
+    "n": 100
+  },
+  "ReduceMean_keepdims": {
+    "ok": true,
+    "avg_ms": 2.0672,
+    "min_ms": 1.9486,
+    "max_ms": 3.6939,
+    "n": 100
+  },
+  "ReduceMin_with_negative_values": {
+    "ok": true,
+    "avg_ms": 1.214,
+    "min_ms": 1.161,
+    "max_ms": 3.2939,
+    "n": 100
+  },
+  "BatchNormalization_momentum": {
+    "ok": true,
+    "avg_ms": 0.1558,
+    "min_ms": 0.1466,
+    "max_ms": 0.2068,
+    "n": 100
+  },
+  "AveragePool": {
+    "ok": true,
+    "avg_ms": 0.0026,
+    "min_ms": 0.0025,
+    "max_ms": 0.0027,
+    "n": 100
+  },
+  "MaxPool": {
+    "ok": true,
+    "avg_ms": 0.0045,
+    "min_ms": 0.0039,
+    "max_ms": 0.0585,
+    "n": 100
+  }
+}
