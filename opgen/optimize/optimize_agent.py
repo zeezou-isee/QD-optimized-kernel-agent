@@ -144,6 +144,20 @@ class OptimizeAgent:
             return self._run_map_elites()
         return self._run_rich()
 
+    def _device_serial(self) -> str | None:
+        """adb serial of the phone the data is measured on (recorded into the
+        summary so the rollup filename reflects WHERE it was measured, not just
+        whatever is plugged in at rollup time). None if unavailable."""
+        if not self.device_measure:
+            return None
+        try:
+            import subprocess
+            out = subprocess.run(["adb", "get-serialno"], capture_output=True,
+                                 text=True, timeout=15).stdout.strip()
+            return out or None
+        except Exception:  # noqa: BLE001
+            return None
+
     def _device_ok(self) -> tuple[bool, str]:
         """Cheap preflight: is a usable phone (adb + NDK/lib) present? Mirrors the
         exact availability check the on-device measurer uses (no compile)."""
@@ -435,6 +449,7 @@ class OptimizeAgent:
                      "coverage": me.get("coverage"), "rounds": me.get("rounds"),
                      "argmin_cell": me.get("grid_argmin_cell"),
                      "baseline_cell": list(baseline_cell), "baseline_latency_ms": base_lat,
+                     "device_serial": self._device_serial() if self.device_measure else None,
                      "bd_axes": bd_axes, "inner_config": inner_config,
                      "archive": me.get("archive"), "iterations": me.get("iterations"),
                      "baseline_comparison": cmp,

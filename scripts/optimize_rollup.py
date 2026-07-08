@@ -48,7 +48,7 @@ def row_for(op: str, category: str, backend: str) -> dict:
            "kept_rounds": None, "improved": None,
            "baseline_ms": None, "best_ms": None, "self_speedup": None,
            "baseline_cell": None, "winner_cell": None, "bins_covered": None,
-           "stopped_reason": None, "flag": "crash"}
+           "device": None, "stopped_reason": None, "flag": "crash"}
     if not sp.exists():
         return row
     try:
@@ -83,6 +83,7 @@ def row_for(op: str, category: str, backend: str) -> dict:
                stopped_reason=s.get("stopped_reason"))
     row["_bins"] = bins   # for the per-op MD breakdown (dropped from CSV)
     row["_inner_config"] = ex.get("inner_config") or {}   # for filename budget derivation (dropped from CSV)
+    row["device"] = ex.get("device_serial")   # where it was measured (for filename + audit)
     # reliability flag
     if isinstance(spd, (int, float)) and spd > SPEEDUP_CAP:
         row["flag"] = "tainted"
@@ -112,17 +113,26 @@ def main() -> None:
     ap.add_argument("--ops", default=None, help="comma list (else the v2 dataset)")
     ap.add_argument("--outer", type=int, default=None, help="outer (map) budget for the filename; else derived")
     ap.add_argument("--inner", type=int, default=None, help="inner budget for the filename; else derived")
+    ap.add_argument("--device", default=None, help="device id for the filename; else most-common recorded serial")
     ap.add_argument("--out-csv", default=None, help="override (else optimize_rollup_<backend>_<outer>_<inner>.csv)")
     ap.add_argument("--out-md", default=None, help="override (else optimize_rollup_<backend>_<outer>_<inner>.md)")
     args = ap.parse_args()
 
     rows = [row_for(op, cat, args.backend) for op, cat in _ops(args.ops)]
 
-    # filename: optimize_rollup_<backend>_<outer>_<inner> (outer/inner from args or derived)
+    # filename: optimize_rollup_<backend>_<outer>_<inner>_<device>
     d_outer, d_inner = _derive_budget(rows)
     outer = args.outer if args.outer is not None else d_outer
     inner = args.inner if args.inner is not None else d_inner
-    stem = f"optimize_rollup_{args.backend}_{outer if outer is not None else 'NA'}_{inner if inner is not None else 'NA'}"
+    # device id = arg, else the most-common serial actually recorded in summaries
+    if args.device:
+        device = args.device
+    else:
+        from collections import Counter
+        serials = Counter(r["device"] for r in rows if r.get("device"))
+        device = serials.most_common(1)[0][0] if serials else "nodev"
+    stem = (f"optimize_rollup_{args.backend}_{outer if outer is not None else 'NA'}"
+            f"_{inner if inner is not None else 'NA'}_{device}")
     args.out_csv = args.out_csv or str(RESULTS / f"{stem}.csv")
     args.out_md = args.out_md or str(RESULTS / f"{stem}.md")
 
