@@ -60,6 +60,15 @@ def _child_env() -> dict:
     return env
 
 
+def _device_online() -> bool:
+    """True if adb sees at least one authorized device (cheap preflight)."""
+    try:
+        out = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=15).stdout
+    except Exception:  # noqa: BLE001
+        return False
+    return any(line.strip().endswith("\tdevice") for line in out.splitlines()[1:])
+
+
 def _summary_path(op: str, backend: str) -> Path:
     return paths.backend_optimize_dir(RUNS, op, backend) / "summary.json"
 
@@ -163,6 +172,14 @@ def main() -> None:
     if not args.dry_run and args.model_name in ("claude-opus-4-8",) and not key:
         sys.exit("IDEALAB_API_KEY not set. Run: IDEALAB_API_KEY=<key> .venv/bin/python "
                  "batch/run_optimize_batch.py")
+
+    # --- device gate: on-device measurement needs a phone. Abort the WHOLE batch
+    # now (before any LLM call) if none is connected — a device-less run silently
+    # falls back to host wall-clock (fake ms numbers) and burns tokens for nothing.
+    if not args.dry_run and args.device_verify in ("auto", "on") and not _device_online():
+        sys.exit("ABORT: --device-verify is on but no phone device is connected (adb sees none). "
+                 "On-device measurement would silently fall back to host wall-clock and waste "
+                 "tokens. Connect a device, or run with --device-verify off.")
 
     ops = [o.strip() for o in args.ops.split(",")] if args.ops else _ops_from_dataset()
     env = _child_env()

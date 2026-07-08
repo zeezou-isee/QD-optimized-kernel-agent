@@ -129,9 +129,31 @@ class OptimizeAgent:
     def run(self) -> OptimizeResult:
         if not self._rich:
             return self._run_legacy()
+        # device gate: if on-device measurement is requested but no phone is
+        # connected, ABORT before any LLM call — a device-less run silently falls
+        # back to host wall-clock (fake ms-scale numbers) AND wastes tokens. Fail
+        # fast with a clear reason instead.
+        if self.device_measure:
+            ok, why = self._device_ok()
+            if not ok:
+                raise RuntimeError(
+                    f"device_measure is on but no usable phone device: {why}. "
+                    f"Aborting BEFORE any LLM call to avoid wasting tokens. "
+                    f"Connect a device (adb) or run with --device-verify off.")
         if self.policy == "map_elites":
             return self._run_map_elites()
         return self._run_rich()
+
+    def _device_ok(self) -> tuple[bool, str]:
+        """Cheap preflight: is a usable phone (adb + NDK/lib) present? Mirrors the
+        exact availability check the on-device measurer uses (no compile)."""
+        try:
+            from layer_oracle import DeviceOracle, VulkanDeviceOracle
+            oracle = (VulkanDeviceOracle(ncnn_root=self.ncnn_root) if self.backend == "vulkan"
+                      else DeviceOracle(ncnn_root=self.ncnn_root))
+            return oracle.available()
+        except Exception as exc:  # noqa: BLE001
+            return False, f"device check failed: {exc}"
 
     # ------------------------------------------------------------------ rich M1
     def _run_rich(self) -> OptimizeResult:
