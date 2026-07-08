@@ -1,0 +1,31 @@
+op,category,backend,status,regime,rounds,coverage,kept_rounds,improved,baseline_ms,best_ms,self_speedup,baseline_cell,winner_cell,bins_covered,device,stopped_reason,flag
+Winograd_Convolution_2D,Convolution,arm,success,compute_bound,36,3,3,True,22.752,7.3773,3.0841,direct/scalar,winograd/vec,winograd/vec=7.377; gemm/vec=16.52; direct/scalar=22.75,f390edc4,budget (30) reached,real
+Dense_Convolution_2D_kernel,Convolution,arm,success,compute_bound,30,3,3,True,224.7289,37.3133,6.0228,direct/scalar,direct/vec,direct/vec=37.31; gemm/vec=61.48; direct/scalar=224.7,f390edc4,budget (30) reached,real
+ConvTranspose_dilations,Convolution,arm,success,compute_bound,14,3,2,False,13.8493,13.8493,1.0,direct/scalar,direct/scalar,direct/scalar=13.85; gemm/vec=30.73; gemm/scalar=93.21,f390edc4,converged (patience),real
+Dense_Convolution_2D,Convolution,arm,success,compute_bound,35,3,4,True,9.7394,1.2721,7.6562,direct/scalar,gemm/vec,gemm/vec=1.272; direct/vec=1.375; direct/scalar=9.739,f390edc4,budget (30) reached,real
+Sinh,Trigonometry,arm,success,memory_bound,30,4,4,True,5.5903,4.3581,1.2827,nchw/none,nchw/single,nchw/single=4.358; packed/double=4.6; nchw/none=5.59; nhwc/none=12.43,f390edc4,budget (30) reached,real
+Asin,Trigonometry,arm,success,memory_bound,36,3,6,True,4.3543,2.8935,1.5049,nchw/none,packed/none,packed/none=2.893; nchw/single=2.966; nchw/none=3.732,f390edc4,budget (30) reached,real
+Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__,Convolution,arm,success,compute_bound,31,3,3,True,3.645,3.4498,1.0566,direct/scalar,gemm/vec,gemm/vec=3.45; direct/scalar=3.645; direct/vec=14.36,f390edc4,converged (patience),real
+Round,Unary,arm,success,memory_bound,29,5,5,True,3.0425,2.7907,1.0902,nchw/none,nhwc/none,nhwc/none=2.791; nchw/single=2.925; packed/single=2.934; nchw/double=3.028; nchw/none=3.042,f390edc4,converged (patience),real
+Exp,Unary,arm,success,memory_bound,35,4,5,True,2.8777,2.3113,1.2451,nchw/none,packed/double,packed/double=2.311; nhwc/single=2.47; packed/single=2.778; nchw/none=2.878,f390edc4,budget (30) reached,real
+Group_Convolution_2D,Convolution,arm,success,compute_bound,15,3,4,True,2.1885,0.5025,4.3552,direct/scalar,gemm/vec,gemm/vec=0.5025; direct/vec=0.5174; direct/scalar=0.5401,f390edc4,converged (patience),real
+Cos,Trigonometry,arm,success,memory_bound,30,4,5,True,2.0477,1.5965,1.2826,nchw/none,nchw/single,nchw/single=1.597; nhwc/none=1.657; packed/single=1.671; nchw/none=2.048,f390edc4,converged (patience),real
+Winograd_Convolution_2D_padding,Convolution,arm,success,compute_bound,23,3,3,True,1.4635,0.5832,2.5094,direct/scalar,gemm/vec,gemm/vec=0.5832; direct/vec=1.343; direct/scalar=1.393,f390edc4,converged (patience),real
+Floor,Unary,arm,success,memory_bound,30,3,2,True,1.2422,1.1896,1.0442,nchw/none,nhwc/single,nhwc/single=1.19; nchw/single=1.193; nchw/none=1.242,f390edc4,budget (30) reached,real
+Strassen_Convolution_2D,Convolution,arm,success,compute_bound,31,3,5,True,0.832,0.3284,2.5335,direct/scalar,gemm/vec,gemm/vec=0.3284; direct/vec=0.4981; direct/scalar=0.832,f390edc4,converged (patience),real
+Tan,Trigonometry,arm,success,memory_bound,34,5,4,True,1.01,0.8807,1.1468,nchw/none,packed/single,packed/single=0.8807; nchw/none=1.01; packed/double=1.013; nchw/single=1.018; nhwc/single=1.024,f390edc4,budget (30) reached,real
+Asinh,Trigonometry,arm,success,memory_bound,34,4,4,True,0.3911,0.2472,1.5821,nchw/none,nchw/single,nchw/single=0.2472; nhwc/none=0.3099; packed/single=0.3856; nchw/none=0.3911,f390edc4,budget (30) reached,real
+Group_Convolution_2D_kernel,Convolution,arm,success,compute_bound,29,3,2,True,0.2657,0.0355,7.4845,direct/scalar,gemm/vec,gemm/vec=0.0355; direct/vec=0.0391; direct/scalar=0.2657,f390edc4,converged (patience),real
+Cosh,Trigonometry,arm,success,memory_bound,32,3,3,True,0.2406,0.2065,1.1651,nchw/none,packed/single,packed/single=0.2065; nchw/none=0.2406; nhwc/single=0.2431,f390edc4,budget (30) reached,real
+Atanh,Trigonometry,arm,success,memory_bound,32,4,4,True,0.206,0.0349,5.9026,nchw/none,nchw/single,nchw/single=0.0349; nhwc/none=0.1879; nhwc/single=0.1897; nchw/none=0.206,f390edc4,budget (30) reached,real
+Conv,Convolution,arm,success,compute_bound,32,3,3,True,0.1798,0.0595,3.0218,direct/scalar,direct/vec,direct/vec=0.0595; gemm/vec=0.1544; direct/scalar=0.1798,f390edc4,budget (30) reached,real
+Conv3D,Convolution,arm,success,compute_bound,24,3,4,True,39.102,5.8864,6.6428,direct/scalar,gemm/vec,gemm/vec=5.886; direct/scalar=17.4; direct/vec=17.8,f390edc4,converged (patience),real
+Clip,Tensor,arm,success,memory_bound,33,3,4,True,6.0741,5.2783,1.1508,nchw/none,nhwc/single,nhwc/single=5.278; nchw/none=5.919; packed/none=6.074,f390edc4,budget (30) reached,real
+Dense_Convolution_1D,Convolution,arm,success,compute_bound,27,3,3,True,2.2333,0.2867,7.7897,direct/scalar,gemm/vec,gemm/vec=0.2867; direct/vec=0.3182; direct/scalar=1.155,f390edc4,converged (patience),real
+DeconvolutionDepthwise_2D_kernel,Convolution,arm,success,memory_bound,16,3,2,True,1.2292,0.243,5.0584,nchw/none,nhwc/single,nhwc/single=0.243; nchw/single=0.2589; nchw/none=1.229,f390edc4,converged (patience),real
+DeconvolutionDepthwise_2D_stride,Convolution,arm,success,memory_bound,26,3,3,True,1.1609,0.637,1.8224,nchw/none,nchw/none,nchw/none=0.637; nchw/single=3.08; nhwc/single=3.426,f390edc4,converged (patience),real
+Deconvolution_1D,Convolution,arm,success,compute_bound,19,3,2,False,0.7116,0.7116,1.0,direct/scalar,direct/scalar,direct/scalar=0.7116; gemm/vec=2.53; gemm/scalar=2.566,f390edc4,converged (patience),real
+ReduceMean,Reduction,arm,success,memory_bound,30,2,3,True,1.0026,0.6055,1.6558,nchw/none,nchw/none,nchw/none=0.6055; nchw/single=0.9091,f390edc4,budget (30) reached,real
+ReduceMax_with_negative_values,Reduction,arm,success,memory_bound,16,2,2,False,0.8379,0.8379,1.0,nchw/none,nchw/none,nchw/none=0.8379; nchw/single=1.999,f390edc4,converged (patience),real
+ReduceMin_with_negative_values,Reduction,arm,success,memory_bound,27,2,1,False,1.2446,1.2446,1.0,nchw/none,nchw/none,nchw/none=1.245; nchw/single=2.433,f390edc4,converged (patience),real
+MatMul,Matrix,arm,success,compute_bound,35,4,4,True,0.4318,0.3075,1.4042,direct/scalar,gemm/vec,gemm/vec=0.3075; direct/vec=0.3773; direct/scalar=0.4318; gemm/dotprod=1.847,f390edc4,budget (30) reached,real
