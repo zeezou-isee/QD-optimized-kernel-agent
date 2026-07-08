@@ -1,31 +1,31 @@
-op,category,backend,status,regime,rounds,coverage,best_round,baseline_ms,best_ms,self_speedup,stopped_reason,flag
-Softplus_3d,Activation,arm,success,memory_bound,15,2,0,18.415458500385284,15.793291851878166,1.166,budget (15) reached,real
-Conv,Convolution,arm,success,compute_bound,15,3,0,0.1405,0.0466,3.015,budget (15) reached,real
-Conv3D,Convolution,arm,success,compute_bound,16,3,0,45.37727031856775,25.919583160430193,1.7507,budget (15) reached,real
-ConvTranspose_dilations,Convolution,arm,success,compute_bound,19,3,0,27.21300069242716,18.235166324302554,1.4923,budget (15) reached,real
-Conv_with_strides_padding,Convolution,arm,success,compute_bound,15,3,0,0.1939,0.0945,2.0519,budget (15) reached,real
-DeconvolutionDepthwise_2D_stride,Convolution,arm,success,memory_bound,15,2,0,0.9522,0.7116,1.3381,budget (15) reached,real
-Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__,Convolution,arm,success,compute_bound,15,3,0,21.34660421870649,19.746021134778857,1.0811,budget (15) reached,real
-Dense_Convolution_2D,Convolution,arm,success,compute_bound,16,3,0,51.59672908484936,17.752874409779906,2.9064,budget (15) reached,real
-Group_Convolution_2D,Convolution,arm,success,compute_bound,19,3,0,20.738541381433606,16.830541659146547,1.2322,budget (15) reached,real
-Group_Convolution_2D_kernel,Convolution,arm,success,compute_bound,18,3,0,0.3755,0.0565,6.646,budget (15) reached,real
-Strassen_Convolution_2D,Convolution,arm,success,compute_bound,18,2,0,17.74202100932598,17.19352090731263,1.0319,budget (15) reached,real
-Winograd_Convolution_2D,Convolution,arm,success,compute_bound,16,3,0,27.34077093191445,19.746833480894566,1.3846,budget (15) reached,real
-Winograd_Convolution_2D_padding,Convolution,arm,success,compute_bound,16,3,0,1.4629,0.6895,2.1217,budget (15) reached,real
-Einsum_sum_all,Matrix,arm,success,compute_bound,15,4,0,18.15714593976736,15.93912485986948,1.1392,budget (15) reached,real
-Gemm_no_bias,Matrix,arm,success,compute_bound,18,2,0,20.229208283126354,15.614332864060998,1.2956,budget (15) reached,real
-MatMul,Matrix,arm,success,compute_bound,6,3,0,18.737250473350286,16.16252097301185,1.1593,budget (6) reached,real
-BatchNormalization,Normalization,arm,success,memory_bound,15,3,0,0.1256,0.1193,1.0528,budget (15) reached,real
-InstanceNormalization,Normalization,arm,success,memory_bound,18,3,0,0.0663,0.0516,1.2849,budget (15) reached,real
-LayerNorm,Normalization,arm,success,memory_bound,17,3,0,0.0563,0.0348,1.6178,budget (15) reached,real
-ReduceMax_with_negative_values,Reduction,arm,success,memory_bound,16,3,-1,1.1669,1.1669,1.0,converged (patience),real
-ReduceMean,Reduction,arm,success,memory_bound,17,4,-1,1.1361,1.1361,1.0,converged (patience),real
-Clip,Tensor,arm,success,memory_bound,18,4,0,6.7054,6.6924,1.0019,budget (15) reached,real
-CumSum,Tensor,arm,success,memory_bound,15,2,0,40.901478845626116,17.617541598156095,2.3216,budget (15) reached,real
-DepthToSpace,Tensor,arm,success,memory_bound,16,2,0,0.026,0.0167,1.5569,budget (15) reached,real
-Cos,Trigonometry,arm,success,memory_bound,18,3,0,0.1059,0.0926,1.1436,budget (15) reached,real
-Sinh,Trigonometry,arm,success,memory_bound,15,3,0,5.6457,5.3856,1.0483,budget (15) reached,real
-Tan,Trigonometry,arm,success,memory_bound,18,3,0,1.0171,0.9978,1.0193,budget (15) reached,real
-Exp,Unary,arm,success,memory_bound,18,5,0,0.1936,0.1768,1.095,budget (15) reached,real
-Floor,Unary,arm,success,memory_bound,15,3,0,0.1336,0.1323,1.0098,budget (15) reached,real
-Round,Unary,arm,success,memory_bound,15,3,0,3.5552,3.5309,1.0069,budget (15) reached,real
+op,category,backend,status,regime,rounds,coverage,kept_rounds,improved,baseline_ms,best_ms,self_speedup,stopped_reason,flag
+Softplus_3d,Activation,arm,success,memory_bound,15,2,1,True,18.415458500385284,15.793291851878166,1.166,budget (15) reached,real
+Conv,Convolution,arm,success,compute_bound,15,3,3,True,0.1405,0.0466,3.015,budget (15) reached,real
+Conv3D,Convolution,arm,success,compute_bound,16,3,2,True,45.37727031856775,25.919583160430193,1.7507,budget (15) reached,real
+ConvTranspose_dilations,Convolution,arm,success,compute_bound,19,3,4,True,27.21300069242716,18.235166324302554,1.4923,budget (15) reached,real
+Conv_with_strides_padding,Convolution,arm,success,compute_bound,15,3,2,True,0.1939,0.0945,2.0519,budget (15) reached,real
+DeconvolutionDepthwise_2D_stride,Convolution,arm,success,memory_bound,15,2,2,True,0.9522,0.7116,1.3381,budget (15) reached,real
+Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__,Convolution,arm,success,compute_bound,15,3,3,True,21.34660421870649,19.746021134778857,1.0811,budget (15) reached,real
+Dense_Convolution_2D,Convolution,arm,success,compute_bound,16,3,4,True,51.59672908484936,17.752874409779906,2.9064,budget (15) reached,real
+Group_Convolution_2D,Convolution,arm,success,compute_bound,19,3,5,True,20.738541381433606,16.830541659146547,1.2322,budget (15) reached,real
+Group_Convolution_2D_kernel,Convolution,arm,success,compute_bound,18,3,2,True,0.3755,0.0565,6.646,budget (15) reached,real
+Strassen_Convolution_2D,Convolution,arm,success,compute_bound,18,2,2,True,17.74202100932598,17.19352090731263,1.0319,budget (15) reached,real
+Winograd_Convolution_2D,Convolution,arm,success,compute_bound,16,3,3,True,27.34077093191445,19.746833480894566,1.3846,budget (15) reached,real
+Winograd_Convolution_2D_padding,Convolution,arm,success,compute_bound,16,3,3,True,1.4629,0.6895,2.1217,budget (15) reached,real
+Einsum_sum_all,Matrix,arm,success,compute_bound,15,4,3,True,18.15714593976736,15.93912485986948,1.1392,budget (15) reached,real
+Gemm_no_bias,Matrix,arm,success,compute_bound,18,2,3,True,20.229208283126354,15.614332864060998,1.2956,budget (15) reached,real
+MatMul,Matrix,arm,success,compute_bound,6,3,2,True,18.737250473350286,16.16252097301185,1.1593,budget (6) reached,real
+BatchNormalization,Normalization,arm,success,memory_bound,15,3,3,True,0.1256,0.1193,1.0528,budget (15) reached,real
+InstanceNormalization,Normalization,arm,success,memory_bound,18,3,2,True,0.0663,0.0516,1.2849,budget (15) reached,real
+LayerNorm,Normalization,arm,success,memory_bound,17,3,3,True,0.0563,0.0348,1.6178,budget (15) reached,real
+ReduceMax_with_negative_values,Reduction,arm,success,memory_bound,16,3,2,False,1.1669,1.1669,1.0,converged (patience),real
+ReduceMean,Reduction,arm,success,memory_bound,17,4,4,False,1.1361,1.1361,1.0,converged (patience),real
+Clip,Tensor,arm,success,memory_bound,18,4,4,True,6.7054,6.6924,1.0019,budget (15) reached,real
+CumSum,Tensor,arm,success,memory_bound,15,2,1,True,40.901478845626116,17.617541598156095,2.3216,budget (15) reached,real
+DepthToSpace,Tensor,arm,success,memory_bound,16,2,1,True,0.026,0.0167,1.5569,budget (15) reached,real
+Cos,Trigonometry,arm,success,memory_bound,18,3,4,True,0.1059,0.0926,1.1436,budget (15) reached,real
+Sinh,Trigonometry,arm,success,memory_bound,15,3,2,True,5.6457,5.3856,1.0483,budget (15) reached,real
+Tan,Trigonometry,arm,success,memory_bound,18,3,2,True,1.0171,0.9978,1.0193,budget (15) reached,real
+Exp,Unary,arm,success,memory_bound,18,5,4,True,0.1936,0.1768,1.095,budget (15) reached,real
+Floor,Unary,arm,success,memory_bound,15,3,3,True,0.1336,0.1323,1.0098,budget (15) reached,real
+Round,Unary,arm,success,memory_bound,15,3,2,True,3.5552,3.5309,1.0069,budget (15) reached,real
