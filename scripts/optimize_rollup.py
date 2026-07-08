@@ -82,6 +82,7 @@ def row_for(op: str, category: str, backend: str) -> dict:
                bins_covered="; ".join(f"{b['cell']}={b['latency_ms']:.4g}" for b in bins if b["cell"]),
                stopped_reason=s.get("stopped_reason"))
     row["_bins"] = bins   # for the per-op MD breakdown (dropped from CSV)
+    row["_inner_config"] = ex.get("inner_config") or {}   # for filename budget derivation (dropped from CSV)
     # reliability flag
     if isinstance(spd, (int, float)) and spd > SPEEDUP_CAP:
         row["flag"] = "tainted"
@@ -92,19 +93,42 @@ def row_for(op: str, category: str, backend: str) -> dict:
     return row
 
 
+def _derive_budget(rows: list[dict]) -> tuple[int | None, int | None]:
+    """Most-common (map_budget, inner_budget) across the ops' summaries, so the
+    output filename can encode the run config even when --outer/--inner omitted."""
+    from collections import Counter
+    outer, inner = Counter(), Counter()
+    for r in rows:
+        ic = r.get("_inner_config") or {}
+        if ic.get("map_budget") is not None: outer[ic["map_budget"]] += 1
+        if ic.get("inner_budget") is not None: inner[ic["inner_budget"]] += 1
+    return (outer.most_common(1)[0][0] if outer else None,
+            inner.most_common(1)[0][0] if inner else None)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Roll up OptimizeAgent results (rounds + speedup).")
     ap.add_argument("--backend", default="arm")
     ap.add_argument("--ops", default=None, help="comma list (else the v2 dataset)")
-    ap.add_argument("--out-csv", default=str(RESULTS / "optimize_rollup.csv"))
-    ap.add_argument("--out-md", default=str(RESULTS / "optimize_rollup.md"))
+    ap.add_argument("--outer", type=int, default=None, help="outer (map) budget for the filename; else derived")
+    ap.add_argument("--inner", type=int, default=None, help="inner budget for the filename; else derived")
+    ap.add_argument("--out-csv", default=None, help="override (else optimize_rollup_<backend>_<outer>_<inner>.csv)")
+    ap.add_argument("--out-md", default=None, help="override (else optimize_rollup_<backend>_<outer>_<inner>.md)")
     args = ap.parse_args()
 
     rows = [row_for(op, cat, args.backend) for op, cat in _ops(args.ops)]
 
+    # filename: optimize_rollup_<backend>_<outer>_<inner> (outer/inner from args or derived)
+    d_outer, d_inner = _derive_budget(rows)
+    outer = args.outer if args.outer is not None else d_outer
+    inner = args.inner if args.inner is not None else d_inner
+    stem = f"optimize_rollup_{args.backend}_{outer if outer is not None else 'NA'}_{inner if inner is not None else 'NA'}"
+    args.out_csv = args.out_csv or str(RESULTS / f"{stem}.csv")
+    args.out_md = args.out_md or str(RESULTS / f"{stem}.md")
+
     # write CSV (drop the nested _bins list; bins_covered string carries it)
     out_csv = Path(args.out_csv); out_csv.parent.mkdir(parents=True, exist_ok=True)
-    cols = [k for k in rows[0].keys() if k != "_bins"]
+    cols = [k for k in rows[0].keys() if not k.startswith("_")]
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader(); w.writerows(rows)
