@@ -170,6 +170,11 @@ def main() -> None:
             params = {int(k): v for k, v in (prof.get("params") or {}).items()}
             break
 
+    # pnnx-emitted _ncnn.py holds the per-blob input squeeze policy; without it the
+    # evaluator falls back to blanket "drop axis 0", which corrupts batch-less
+    # matrices (MatMul/Einsum). Resolve it from the op's cached pnnx probe.
+    _ncnn_py = next(iter(sorted((runs_root / args.task).rglob("*_ncnn.py"))), None)
+
     agent = OptimizeAgent(
         task_name=args.task, baseline_kernel_code=baseline,
         model_py=model_py, ncnn_root=ncnn_root, llm_query=query_llm,
@@ -182,6 +187,7 @@ def main() -> None:
         run_baseline_comparison=args.baseline_compare, op_class=args.task,
         backend=args.backend, base_files=base_files, n_promote=args.n_promote,
         device_measure=(args.device_verify in ("auto", "on")),
+        ncnn_py=_ncnn_py,
     )
     res: OptimizeResult = agent.run()
 

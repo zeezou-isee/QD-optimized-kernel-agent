@@ -101,6 +101,14 @@
       }
     }
   },
-  "pending": {},
+  "pending": {
+    "compute_bound|algo_family|tree": {
+      "wins": 1,
+      "tasks": [
+        "Einsum_sum_all"
+      ],
+      "which": "axis1"
+    }
+  },
   "promoted": []
 }

@@ -1,57 +1,23 @@
 [
   {
-    "op": "Dense_Convolution_2D",
+    "op": "Softplus_3d",
+    "category": "Activation",
+    "file": "Activation/Softplus_3d.py",
+    "native": "Softplus",
+    "sf": 2.013,
+    "ss": 2.013,
+    "ours_ms": 0.75,
+    "tag": "softplus activation (0.75ms)"
+  },
+  {
+    "op": "Conv",
     "category": "Convolution",
-    "file": "Convolution/Dense_Convolution_2D.py",
+    "file": "Convolution/Conv.py",
     "native": "Convolution",
-    "sf": 0.01,
-    "ss": 0.006,
-    "tag": "slow+hard: im2col/GEMM conv, biggest gap"
-  },
-  {
-    "op": "Group_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Group_Convolution_2D.py",
-    "native": "ConvolutionDepthWise",
-    "sf": 0.036,
-    "ss": 0.048,
-    "tag": "slow+hard: grouped conv"
-  },
-  {
-    "op": "Winograd_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Winograd_Convolution_2D.py",
-    "native": "Convolution",
-    "sf": 0.111,
-    "ss": 0.057,
-    "tag": "slow+hard: Winograd algorithm"
-  },
-  {
-    "op": "Strassen_Convolution_2D",
-    "category": "Convolution",
-    "file": "Convolution/Strassen_Convolution_2D.py",
-    "native": "Convolution",
-    "sf": 0.09,
-    "ss": 0.088,
-    "tag": "slow+hard: Strassen algorithm"
-  },
-  {
-    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
-    "category": "Convolution",
-    "file": "Convolution/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.py",
-    "native": "Deconvolution",
-    "sf": 0.08,
-    "ss": 0.086,
-    "tag": "slow+hard: deconv, dilated/padded/strided"
-  },
-  {
-    "op": "ConvTranspose_dilations",
-    "category": "Convolution",
-    "file": "Convolution/ConvTranspose_dilations.py",
-    "native": "Deconvolution",
-    "sf": 0.234,
-    "ss": 0.244,
-    "tag": "slow: transposed conv w/ dilation"
+    "sf": 0.075,
+    "ss": 0.42,
+    "ours_ms": 4.27,
+    "tag": "slow direct conv (sf 0.075, 4.3ms)"
   },
   {
     "op": "Conv3D",
@@ -60,34 +26,88 @@
     "native": "Convolution3D",
     "sf": null,
     "ss": null,
-    "tag": "hard+diverse: 3D convolution"
+    "ours_ms": null,
+    "tag": "kept from v1"
   },
   {
-    "op": "Gemm_no_bias",
-    "category": "Matrix",
-    "file": "Matrix/Gemm_no_bias.py",
-    "native": "Gemm",
-    "sf": 0.047,
-    "ss": 0.028,
-    "tag": "slow+hard: GEMM"
+    "op": "ConvTranspose_dilations",
+    "category": "Convolution",
+    "file": "Convolution/ConvTranspose_dilations.py",
+    "native": "Deconvolution",
+    "sf": 0.234,
+    "ss": 0.244,
+    "ours_ms": 31.52,
+    "tag": "kept from v1"
   },
   {
-    "op": "MatMul",
-    "category": "Matrix",
-    "file": "Matrix/MatMul.py",
-    "native": "MatMul",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: batched matmul"
+    "op": "Conv_with_strides_padding",
+    "category": "Convolution",
+    "file": "Convolution/Conv_with_strides_padding.py",
+    "native": "Convolution",
+    "sf": 1.04,
+    "ss": 0.329,
+    "ours_ms": 1.24,
+    "tag": "strided conv config (1.2ms)"
   },
   {
-    "op": "Einsum_sum_all",
-    "category": "Matrix",
-    "file": "Matrix/Einsum_sum_all.py",
-    "native": "Reduction",
-    "sf": 0.5,
-    "ss": 0.5,
-    "tag": "slow: einsum full reduction"
+    "op": "DeconvolutionDepthwise_2D_stride",
+    "category": "Convolution",
+    "file": "Convolution/DeconvolutionDepthwise_2D_stride.py",
+    "native": "DeconvolutionDepthWise",
+    "sf": 7.855,
+    "ss": 0.92,
+    "ours_ms": 23.34,
+    "tag": "deconv-depthwise, heavy (23ms)"
+  },
+  {
+    "op": "Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__",
+    "category": "Convolution",
+    "file": "Convolution/Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__.py",
+    "native": "Deconvolution",
+    "sf": 0.08,
+    "ss": 0.086,
+    "ours_ms": 276.17,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Dense_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Dense_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.01,
+    "ss": 0.006,
+    "ours_ms": 406.42,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Group_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Group_Convolution_2D.py",
+    "native": "ConvolutionDepthWise",
+    "sf": 0.036,
+    "ss": 0.048,
+    "ours_ms": 55.13,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Strassen_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Strassen_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.09,
+    "ss": 0.088,
+    "ours_ms": 38.09,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Winograd_Convolution_2D",
+    "category": "Convolution",
+    "file": "Convolution/Winograd_Convolution_2D.py",
+    "native": "Convolution",
+    "sf": 0.111,
+    "ss": 0.057,
+    "ours_ms": 734.85,
+    "tag": "kept from v1"
   },
   {
     "op": "Einsum",
@@ -96,43 +116,48 @@
     "native": "Einsum",
     "sf": null,
     "ss": null,
-    "tag": "hard+diverse: general einsum"
+    "ours_ms": 0.0,
+    "tag": "kept from v1"
   },
   {
-    "op": "CumSum",
-    "category": "Tensor",
-    "file": "Tensor/CumSum.py",
-    "native": "CumulativeSum",
-    "sf": 1.0,
-    "ss": 1.0,
-    "tag": "hard+diverse: prefix scan"
+    "op": "Einsum_sum_all",
+    "category": "Matrix",
+    "file": "Matrix/Einsum_sum_all.py",
+    "native": "Reduction",
+    "sf": 0.5,
+    "ss": 0.5,
+    "ours_ms": 0.02,
+    "tag": "kept from v1"
   },
   {
-    "op": "TopK",
-    "category": "Tensor",
-    "file": "Tensor/TopK.py",
-    "native": "torch.topk",
+    "op": "Gemm_no_bias",
+    "category": "Matrix",
+    "file": "Matrix/Gemm_no_bias.py",
+    "native": "Gemm",
+    "sf": 0.047,
+    "ss": 0.028,
+    "ours_ms": 1.06,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "MatMul",
+    "category": "Matrix",
+    "file": "Matrix/MatMul.py",
+    "native": "MatMul",
     "sf": null,
     "ss": null,
-    "tag": "hard+diverse: sort/select"
+    "ours_ms": null,
+    "tag": "kept from v1"
   },
   {
-    "op": "ArgMax",
-    "category": "Reduction",
-    "file": "Reduction/ArgMax.py",
-    "native": "torch.argmax",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: arg-reduction"
-  },
-  {
-    "op": "LayerNorm",
+    "op": "BatchNormalization",
     "category": "Normalization",
-    "file": "Normalization/LayerNorm.py",
-    "native": "LayerNorm",
-    "sf": 1.771,
-    "ss": 1.61,
-    "tag": "hard+diverse: transformer LayerNorm"
+    "file": "Normalization/BatchNormalization.py",
+    "native": "BatchNorm",
+    "sf": 2.097,
+    "ss": 1.254,
+    "ours_ms": 0.72,
+    "tag": "batchnorm (0.72ms, new norm type)"
   },
   {
     "op": "InstanceNormalization",
@@ -141,115 +166,58 @@
     "native": "InstanceNorm",
     "sf": 1.0,
     "ss": 1.373,
-    "tag": "hard+diverse: instance norm"
+    "ours_ms": 0.83,
+    "tag": "kept from v1"
   },
   {
-    "op": "MaxPool_2d_ceil",
-    "category": "Pooling",
-    "file": "Pooling/MaxPool_2d_ceil.py",
-    "native": "Pooling",
-    "sf": 0.333,
-    "ss": 1.333,
-    "tag": "slow: pooling ceil-mode"
+    "op": "LayerNorm",
+    "category": "Normalization",
+    "file": "Normalization/LayerNorm.py",
+    "native": "LayerNorm",
+    "sf": 1.771,
+    "ss": 1.61,
+    "ours_ms": 0.35,
+    "tag": "kept from v1"
   },
   {
-    "op": "GridSample",
+    "op": "ReduceMax_with_negative_values",
+    "category": "Reduction",
+    "file": "Reduction/ReduceMax_with_negative_values.py",
+    "native": "Reduction",
+    "sf": 8.813,
+    "ss": 8.831,
+    "ours_ms": 2.19,
+    "tag": "reduction variant (2.2ms)"
+  },
+  {
+    "op": "ReduceMean",
+    "category": "Reduction",
+    "file": "Reduction/ReduceMean.py",
+    "native": "Reduction",
+    "sf": 6.963,
+    "ss": 6.93,
+    "ours_ms": 2.71,
+    "tag": "reduction, ms-scale (2.7ms)"
+  },
+  {
+    "op": "Clip",
     "category": "Tensor",
-    "file": "Tensor/GridSample.py",
-    "native": "GridSample",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: grid sampling/interp"
+    "file": "Tensor/Clip.py",
+    "native": "Clip",
+    "sf": 2.158,
+    "ss": 4.88,
+    "ours_ms": 1.58,
+    "tag": "clip activation (1.6ms)"
   },
   {
-    "op": "Celu",
-    "category": "Activation",
-    "file": "Activation/Celu.py",
-    "native": "CELU",
-    "sf": 0.267,
-    "ss": 0.439,
-    "tag": "slow: CELU activation"
-  },
-  {
-    "op": "Softmax",
-    "category": "Activation",
-    "file": "Activation/Softmax.py",
-    "native": "Softmax",
-    "sf": 0.263,
-    "ss": 0.229,
-    "tag": "slow+hard: softmax normalization"
-  },
-  {
-    "op": "Sub",
-    "category": "Binary",
-    "file": "Binary/Sub.py",
-    "native": "BinaryOp",
-    "sf": 0.25,
-    "ss": 6.25,
-    "tag": "slow: binary elementwise"
-  },
-  {
-    "op": "Exp",
-    "category": "Unary",
-    "file": "Unary/Exp.py",
-    "native": "UnaryOp",
-    "sf": 0.8,
-    "ss": 1.277,
-    "tag": "slow: unary transcendental"
-  },
-  {
-    "op": "Floor",
-    "category": "Unary",
-    "file": "Unary/Floor.py",
-    "native": "UnaryOp",
-    "sf": 0.676,
-    "ss": 2.206,
-    "tag": "slow: unary rounding"
-  },
-  {
-    "op": "Cos",
-    "category": "Trigonometry",
-    "file": "Trigonometry/Cos.py",
-    "native": "UnaryOp",
-    "sf": 0.835,
-    "ss": 0.651,
-    "tag": "slow: unary trig"
-  },
-  {
-    "op": "Concat",
+    "op": "CumSum",
     "category": "Tensor",
-    "file": "Tensor/Concat.py",
-    "native": "Concat",
-    "sf": 0.333,
-    "ss": 3.333,
-    "tag": "slow: concat/layout"
-  },
-  {
-    "op": "StridedSlice",
-    "category": "Tensor",
-    "file": "Tensor/StridedSlice.py",
-    "native": "Crop",
-    "sf": 0.333,
-    "ss": 3.667,
-    "tag": "slow+diverse: strided slice/crop"
-  },
-  {
-    "op": "ScatterElements",
-    "category": "Tensor",
-    "file": "Tensor/ScatterElements.py",
-    "native": "aten::scatter",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: scatter/indexing"
-  },
-  {
-    "op": "Gather",
-    "category": "Tensor",
-    "file": "Tensor/Gather.py",
-    "native": "torch.index_select",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: gather/index_select"
+    "file": "Tensor/CumSum.py",
+    "native": "CumulativeSum",
+    "sf": 1.0,
+    "ss": 1.0,
+    "ours_ms": 0.01,
+    "tag": "kept from v1"
   },
   {
     "op": "DepthToSpace",
@@ -258,15 +226,77 @@
     "native": "PixelShuffle",
     "sf": 1.357,
     "ss": 1.053,
-    "tag": "diverse: pixel-shuffle layout"
+    "ours_ms": 0.14,
+    "tag": "kept from v1"
   },
   {
-    "op": "Det",
-    "category": "Matrix",
-    "file": "Matrix/Det.py",
-    "native": "aten::linalg_det",
-    "sf": null,
-    "ss": null,
-    "tag": "hard+diverse: matrix determinant"
+    "op": "StridedSlice",
+    "category": "Tensor",
+    "file": "Tensor/StridedSlice.py",
+    "native": "Crop",
+    "sf": 0.333,
+    "ss": 3.667,
+    "ours_ms": 0.03,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Cos",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Cos.py",
+    "native": "UnaryOp",
+    "sf": 0.835,
+    "ss": 0.651,
+    "ours_ms": 1.09,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Sinh",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Sinh.py",
+    "native": "UnaryOp",
+    "sf": 0.953,
+    "ss": 0.866,
+    "ours_ms": 9.0,
+    "tag": "slow heavy unary (sf 0.953, 9ms)"
+  },
+  {
+    "op": "Tan",
+    "category": "Trigonometry",
+    "file": "Trigonometry/Tan.py",
+    "native": "UnaryOp",
+    "sf": 0.875,
+    "ss": 2.326,
+    "ours_ms": 1.84,
+    "tag": "slow unary trig (sf 0.875, 1.8ms)"
+  },
+  {
+    "op": "Exp",
+    "category": "Unary",
+    "file": "Unary/Exp.py",
+    "native": "UnaryOp",
+    "sf": 0.8,
+    "ss": 1.277,
+    "ours_ms": 2.35,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Floor",
+    "category": "Unary",
+    "file": "Unary/Floor.py",
+    "native": "UnaryOp",
+    "sf": 0.676,
+    "ss": 2.206,
+    "ours_ms": 0.34,
+    "tag": "kept from v1"
+  },
+  {
+    "op": "Round",
+    "category": "Unary",
+    "file": "Unary/Round.py",
+    "native": "UnaryOp",
+    "sf": 0.995,
+    "ss": 2.451,
+    "ours_ms": 2.08,
+    "tag": "slow unary round (sf 0.995, 2.1ms)"
   }
 ]

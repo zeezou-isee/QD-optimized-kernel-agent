@@ -131,9 +131,10 @@ class CpuRunner:
     # ----- helpers ---------------------------------------------------------
     @staticmethod
     def _fmt_param(key: int, value) -> str:
-        if isinstance(value, float):
-            return f"{key}={value:.8g}"
-        return f"{key}={int(value)}"
+        # single source of truth: LayerOracle._fmt_param handles ARRAY params
+        # (the -23300 trick, e.g. Einsum's equation int-array) + float ".0"
+        # pinning. This local copy previously did int(value) -> crashed on lists.
+        return LayerOracle._fmt_param(key, value)
 
     @staticmethod
     def read_output(art: RunArtifacts) -> np.ndarray:

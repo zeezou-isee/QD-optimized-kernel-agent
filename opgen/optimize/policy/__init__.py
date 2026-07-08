@@ -1,7 +1,7 @@
 """Policy layer (Workflow §4/§7/§8): roofline split + BD + MAP-Elites + experience pool."""
 
 from .roofline import (COMPUTE_BOUND, MEMORY_BOUND, DeviceRoofline, OperatorProfile,
-                       RooflineResult, diagnose, estimate_operator_profile)
+                       RooflineResult, diagnose, estimate_operator_profile, guess_regime)
 from .bd import axes, classify, classify_with_novelty, grid_size, posthoc_bd
 from .archive import Archive, Elite
 from .experience_pool import ExperiencePool, PoolRecord
@@ -11,7 +11,7 @@ from . import sigma
 
 __all__ = [
     "COMPUTE_BOUND", "MEMORY_BOUND", "DeviceRoofline", "OperatorProfile",
-    "RooflineResult", "diagnose", "estimate_operator_profile",
+    "RooflineResult", "diagnose", "estimate_operator_profile", "guess_regime",
     "axes", "classify", "classify_with_novelty", "grid_size", "posthoc_bd",
     "Archive", "Elite",
     "ExperiencePool", "PoolRecord",

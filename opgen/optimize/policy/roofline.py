@@ -74,6 +74,59 @@ def diagnose(op: OperatorProfile, dev: DeviceRoofline | None = None) -> Roofline
                           regime=regime, min_latency_ms=min_latency_ms)
 
 
+# --- op-family regime heuristic (used until a real roofline is wired in) --------
+# High arithmetic-intensity families (many FLOP per byte -> compute_bound) vs
+# low-intensity families (streaming / reduction / gather -> memory_bound). Keyed
+# on substrings of the op/task name OR its ncnn layer type. Convolution/GEMM/
+# MatMul/Deconv/attention/recurrent/linalg are compute_bound; everything else
+# (elementwise, activation, pooling, reduction, norm, softmax, layout/index ops)
+# is memory_bound. Unknown -> compute_bound default (per project decision: the
+# compute_bound coordinate's algo_family axis is the richer search space, and a
+# genuinely heavy op mis-labelled memory_bound loses its algorithmic variants).
+_COMPUTE_KEYS = (
+    "conv", "deconv", "convtranspose", "gemm", "matmul", "innerproduct",
+    "linear", "winograd", "strassen", "im2col", "attention", "lstm", "gru",
+    "rnn", "einsum", "det", "linalg", "bmm", "dense",
+)
+_MEMORY_KEYS = (
+    "unary", "binary", "elementwise", "relu", "sigmoid", "tanh", "gelu",
+    "softmax", "softplus", "hardsigmoid", "hardswish", "celu", "elu", "prelu",
+    "clip", "abs", "exp", "log", "floor", "ceil", "round", "sign", "neg",
+    "sqrt", "reciprocal", "sin", "cos", "tan", "add", "sub", "mul", "div",
+    "pool", "reduce", "reduction", "argmax", "argmin", "cumsum", "cumulative",
+    "norm", "batchnorm", "layernorm", "instancenorm", "groupnorm",
+    "concat", "slice", "crop", "reshape", "permute", "transpose", "pad",
+    "gather", "scatter", "index", "topk", "sort", "where", "grid", "sample",
+    "depthtospace", "pixelshuffle", "upsample", "interp", "resize",
+)
+
+
+def guess_regime(name: str, ncnn_layer: str = "", default: str = COMPUTE_BOUND) -> str:
+    """Rough regime guess from the op/task name + ncnn layer type, for use until a
+    real roofline (device peaks + per-op FLOP/byte) is available. compute_bound ->
+    algo_family × mapping grid; memory_bound -> layout × tiling grid.
+
+    Compute-bound families win when matched (conv/gemm/matmul/deconv/etc.), since a
+    heavy op mis-labelled memory_bound would never explore its algorithmic axis.
+    """
+    nm = (name or "").lower()
+    layer = (ncnn_layer or "").lower().strip()
+
+    def _decide(blob: str) -> str | None:
+        if any(k in blob for k in _COMPUTE_KEYS):
+            # pure depthwise conv is memory-bound (grouped conv stays compute)
+            if ("depthwise" in blob or "dwconv" in blob) and "group" not in nm:
+                return MEMORY_BOUND
+            return COMPUTE_BOUND
+        if any(k in blob for k in _MEMORY_KEYS):
+            return MEMORY_BOUND
+        return None
+
+    # the resolved ncnn layer type is the most reliable signal (e.g. an einsum
+    # that lowers to a Reduction is memory-bound despite its name) -> check first.
+    return (layer and _decide(layer)) or _decide(nm) or default
+
+
 def estimate_operator_profile(model_py: str) -> OperatorProfile:
     """Rough naive-cost estimate from the PyTorch reference model.
 

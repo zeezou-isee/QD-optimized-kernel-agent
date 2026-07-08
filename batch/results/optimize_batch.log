@@ -1,0 +1,101 @@
+========================================================================
+BATCH OPTIMIZE  backend=arm policy=map_elites model=claude-opus-4-8 key=406d74...bfb1
+  dataset  : Mobilekernelbench_optimized
+  device   : --device-verify auto  (simpleperf OFF)
+  budget   : map=15  per-op timeout=5400s
+  ops      : 30 total | 30 to run | 0 skipped (have summary)
+========================================================================
+
+----- [1/30] Dense_Convolution_2D -----
+  -> success in 208.2s  improved=True self_speedup=2.9064 base=51.59672908484936ms best=17.752874409779906ms
+
+----- [2/30] Group_Convolution_2D -----
+  -> success in 235.1s  improved=True self_speedup=1.2322 base=20.738541381433606ms best=16.830541659146547ms
+
+----- [3/30] Winograd_Convolution_2D -----
+  -> success in 218.5s  improved=True self_speedup=1.3846 base=27.34077093191445ms best=19.746833480894566ms
+
+----- [4/30] Strassen_Convolution_2D -----
+  -> success in 197.8s  improved=True self_speedup=1.0319 base=17.74202100932598ms best=17.19352090731263ms
+
+----- [5/30] Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__ -----
+  -> success in 246.4s  improved=True self_speedup=1.0811 base=21.34660421870649ms best=19.746021134778857ms
+
+----- [6/30] ConvTranspose_dilations -----
+  -> success in 292.9s  improved=True self_speedup=1.4923 base=27.21300069242716ms best=18.235166324302554ms
+
+----- [7/30] Conv3D -----
+  -> success in 209.2s  improved=True self_speedup=1.7507 base=45.37727031856775ms best=25.919583160430193ms
+
+----- [8/30] Gemm_no_bias -----
+  -> success in 191.0s  improved=True self_speedup=1.2956 base=20.229208283126354ms best=15.614332864060998ms
+
+----- [9/30] MatMul -----
+  -> crash in 2.6s  improved=None self_speedup=None base=Nonems best=Nonems
+
+----- [10/30] Einsum_sum_all -----
+  -> success in 165.6s  improved=True self_speedup=1.1392 base=18.15714593976736ms best=15.93912485986948ms
+
+----- [11/30] Einsum -----
+  -> crash in 2.7s  improved=None self_speedup=None base=Nonems best=Nonems
+
+----- [12/30] CumSum -----
+  -> success in 192.6s  improved=True self_speedup=2.3216 base=40.901478845626116ms best=17.617541598156095ms
+
+----- [13/30] TopK -----
+  -> success in 198.6s  improved=True self_speedup=30685.9368 base=24.548749439418316ms best=0.0008ms
+
+----- [14/30] ArgMax -----
+  -> success in 225.6s  improved=True self_speedup=5.0 base=0.0045ms best=0.0009ms
+
+----- [15/30] LayerNorm -----
+  -> success in 217.4s  improved=True self_speedup=1.6178 base=0.0563ms best=0.0348ms
+
+----- [16/30] InstanceNormalization -----
+  -> success in 214.0s  improved=True self_speedup=1.2849 base=0.0663ms best=0.0516ms
+
+----- [17/30] MaxPool_2d_ceil -----
+  -> success in 187.0s  improved=True self_speedup=2.5417 base=0.0061ms best=0.0024ms
+
+----- [18/30] GridSample -----
+  -> success in 296.8s  improved=False self_speedup=1.0 base=0.0005ms best=0.0005ms
+
+----- [19/30] Celu -----
+  -> success in 209.6s  improved=True self_speedup=1.1111 base=0.001ms best=0.0009ms
+
+----- [20/30] Softmax -----
+  -> success in 241.4s  improved=True self_speedup=1.037 base=0.0028ms best=0.0027ms
+
+----- [21/30] Sub -----
+  -> success in 190.0s  improved=True self_speedup=1.1111 base=0.008ms best=0.0072ms
+
+----- [22/30] Exp -----
+  -> success in 208.9s  improved=True self_speedup=1.095 base=0.1936ms best=0.1768ms
+
+----- [23/30] Floor -----
+  -> success in 190.1s  improved=True self_speedup=1.0098 base=0.1336ms best=0.1323ms
+
+----- [24/30] Cos -----
+  -> success in 206.0s  improved=True self_speedup=1.1436 base=0.1059ms best=0.0926ms
+
+----- [25/30] Concat -----
+  -> success in 197.6s  improved=True self_speedup=1.1563 base=0.0111ms best=0.0096ms
+
+----- [26/30] StridedSlice -----
+  -> crash in 2.6s  improved=None self_speedup=None base=Nonems best=Nonems
+
+----- [27/30] ScatterElements -----
+  -> success in 184.9s  improved=True self_speedup=1.1724 base=0.0034ms best=0.0029ms
+
+----- [28/30] Gather -----
+  -> success in 234.8s  improved=False self_speedup=1.0 base=0.0003ms best=0.0003ms
+
+----- [29/30] DepthToSpace -----
+  -> success in 161.3s  improved=True self_speedup=1.5569 base=0.026ms best=0.0167ms
+
+----- [30/30] Det -----
+  -> success in 206.5s  improved=False self_speedup=1.0 base=0.0001ms best=0.0001ms
+
+========================================================================
+DONE  27/30 success | 24 improved over baseline
+results -> /Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/batch/results/optimize_batch.json

@@ -25,7 +25,8 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from layer_oracle import LayerOracle, VulkanLayerOracle, torch_to_ncnn_input
+from layer_oracle import (LayerOracle, VulkanLayerOracle, torch_to_ncnn_input,
+                          pnnx_driven_ncnn_inputs)
 from schemas import (
     CorrectnessReport,
     MeasureSample,
@@ -93,11 +94,13 @@ class Evaluator:
         base_files: dict[str, str] | None = None,   # arm: verified base layer code
         device_measure: bool = False,   # measure candidate latency on the REAL phone
         device_bench: int = 20,         # runner --bench iterations for device latency
+        ncnn_py: str | Path | None = None,  # pnnx-emitted _ncnn.py: per-blob squeeze policy
     ) -> None:
         self.baseline_kernel = dict(baseline_kernel)
         self.model_py = str(model_py)
         self.backend = backend
         self._ncnn_root = ncnn_root
+        self._ncnn_py = str(ncnn_py) if ncnn_py else None
         cpp, hdr = _split_files(self.baseline_kernel)
         self.class_name = class_name or _detect_class_name(self.baseline_kernel)
         self.header = header or hdr or ""
@@ -154,6 +157,18 @@ class Evaluator:
         # no device. Correctness stays on the host LayerOracle (fast).
         self.device_measure = bool(device_measure)
         self._measurer = None
+        # real-phone noise floor + degenerate-winner guard. A candidate whose
+        # device latency drops below the floor, or collapses to >CAP× faster than
+        # the baseline, is almost never a real kernel win — it's timer-resolution
+        # noise (μs ops) or a degenerate kernel that slipped the sandbox对拍
+        # (e.g. TopK 24ms->0.001ms = 30685×). Such a candidate is rejected
+        # (correct=False) so the QD search can't crown it. Baseline is exempt
+        # (first eval). Tunable via env.
+        import os
+        self._dev_floor_ms = float(os.environ.get("DEVICE_NOISE_FLOOR_MS", "0.02"))
+        self._dev_speedup_cap = float(os.environ.get("DEVICE_SPEEDUP_CAP", "8.0"))
+        self._baseline_dev_lat: float | None = None
+        self._baseline_captured = False
         if self.device_measure:
             from .device_measure import DeviceMeasurer
             self._measurer = DeviceMeasurer(backend, ncnn_root=self._ncnn_root, bench=device_bench)
@@ -167,7 +182,15 @@ class Evaluator:
         init = mod.get_init_inputs() if hasattr(mod, "get_init_inputs") else []
         model = (mod.Model(*init) if init else mod.Model()).eval()
         inputs = mod.get_inputs()
-        ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
+        # Prefer pnnx's own per-blob squeeze policy (from the op's _ncnn.py) over
+        # the blanket "drop axis 0" — the latter corrupts batch-less matrices
+        # (MatMul/Einsum inputs (N,M) -> 1-D -> kernel rejects). Falls back to
+        # torch_to_ncnn_input when no _ncnn.py is provided (unchanged behavior).
+        if self._ncnn_py:
+            in_names = [f"in{i}" for i in range(len(inputs))]
+            ncnn_inputs = pnnx_driven_ncnn_inputs(inputs, in_names, self._ncnn_py)
+        else:
+            ncnn_inputs = [torch_to_ncnn_input(t.detach().numpy()) for t in inputs]
         sd = model.state_dict()
         weights = []
         for k in self.weight_keys:
@@ -273,6 +296,22 @@ class Evaluator:
                 extra_sources=self.extra_sources, extra_includes=self.extra_includes,
                 packing=self.packing, shader=self._shader_path())
             if dev_lat is not None:
+                # baseline (first device eval) is exempt & sets the reference.
+                if not self._baseline_captured:
+                    self._baseline_captured = True
+                    self._baseline_dev_lat = dev_lat
+                else:
+                    bad_floor = dev_lat < self._dev_floor_ms
+                    bad_collapse = (self._baseline_dev_lat is not None
+                                    and self._baseline_dev_lat >= self._dev_floor_ms
+                                    and dev_lat < self._baseline_dev_lat / self._dev_speedup_cap)
+                    if bad_floor or bad_collapse:
+                        why = ("below device noise floor "
+                               f"({dev_lat:.5f}<{self._dev_floor_ms}ms)" if bad_floor
+                               else f"implausible collapse ({self._baseline_dev_lat:.4f}->"
+                                    f"{dev_lat:.5f}ms > {self._dev_speedup_cap}x)")
+                        return MeasureSample(point=point, correct=False, correctness=report,
+                                             error=f"rejected degenerate candidate: {why}")
                 return MeasureSample(
                     point=point, correct=True, latency_ms=dev_lat, latency_min_ms=dev_lat,
                     latency_median_ms=dev_lat, latency_std_ms=0.0,

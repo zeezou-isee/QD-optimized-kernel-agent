@@ -1,49 +1,51 @@
-# Mobilekernelbench_optimized — 30 ops for OptimizeAgent
+# Mobilekernelbench_optimized — 30 ops for OptimizeAgent (v2)
 
-Selected from the 190-op set to run through OptimizeAgent. Priorities:
+Curated 30-op subset for OptimizeAgent. **v2 revision**: dropped 11 ops whose real-phone baseline latency was **below the device noise floor (<0.02 ms)** — TopK, Det, Gather, GridSample, Softmax, Concat, ScatterElements, ArgMax, Sub, Celu, MaxPool_2d_ceil — where any measured 'speedup' is timer noise (TopK even produced a degenerate 30685× false win). Replaced with ms-scale ops that give a measurable optimization signal.
 
-1. **Slower than ncnn native** (most optimization headroom) — 17/30 have speedup_fair<1.0 on arm.
+Priorities (unchanged): 1) slower than ncnn native, 2) hard ops, 3) diversity.
 
-2. **Hard operators** — conv variants (Dense/Group/Winograd/Strassen/3D), Deconv, GEMM/MatMul, Det, TopK, GridSample, Einsum, CumSum, Scatter.
+- slower than native (speedup_fair<1): 16/30
 
-3. **Category diversity** — Tensor×8, Convolution×7, Matrix×5, Normalization×2, Activation×2, Unary×2, Reduction×1, Pooling×1, Binary×1, Trigonometry×1.
-
-
-> DECOMPOSED ops (LogSoftmax, Gemm_alpha, GlobalPool, Reduce* …) are **deliberately excluded**: pnnx runs them as a native chain, so a QD winner for the monolithic Cand never lands (see audit_decomposed_ops.py).
+- categories: Convolution×10, Matrix×4, Tensor×4, Normalization×3, Trigonometry×3, Unary×3, Reduction×2, Activation×1
 
 
-`speedup_fair` = native_fair_ms / ours_fair_ms (both fp32); <1.0 ⇒ we're slower.
+> Decomposed ops still excluded (QD winner never lands — see audit_decomposed_ops.py).
+
+> ⚠ 3 ops still crash at baseline-reference (LayerOracle sandbox gap, not yet fixed): **Einsum** (array param), **MatMul** (batch-less 2-D squeeze), **StridedSlice** (empty Crop params).
 
 
-| # | op | category | ncnn layer | speedup_fair | speedup_shipped | why |
-|---|----|----------|-----------|-------------:|----------------:|-----|
-| 1 | `Dense_Convolution_2D` | Convolution | Convolution | 0.010 | 0.006 | slow+hard: im2col/GEMM conv, biggest gap |
-| 2 | `Group_Convolution_2D` | Convolution | ConvolutionDepthWise | 0.036 | 0.048 | slow+hard: grouped conv |
-| 3 | `Gemm_no_bias` | Matrix | Gemm | 0.047 | 0.028 | slow+hard: GEMM |
-| 4 | `Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__` | Convolution | Deconvolution | 0.080 | 0.086 | slow+hard: deconv, dilated/padded/strided |
-| 5 | `Strassen_Convolution_2D` | Convolution | Convolution | 0.090 | 0.088 | slow+hard: Strassen algorithm |
-| 6 | `Winograd_Convolution_2D` | Convolution | Convolution | 0.111 | 0.057 | slow+hard: Winograd algorithm |
-| 7 | `ConvTranspose_dilations` | Convolution | Deconvolution | 0.234 | 0.244 | slow: transposed conv w/ dilation |
-| 8 | `Sub` | Binary | BinaryOp | 0.250 | 6.250 | slow: binary elementwise |
-| 9 | `Softmax` | Activation | Softmax | 0.263 | 0.229 | slow+hard: softmax normalization |
-| 10 | `Celu` | Activation | CELU | 0.267 | 0.439 | slow: CELU activation |
-| 11 | `MaxPool_2d_ceil` | Pooling | Pooling | 0.333 | 1.333 | slow: pooling ceil-mode |
-| 12 | `Concat` | Tensor | Concat | 0.333 | 3.333 | slow: concat/layout |
-| 13 | `StridedSlice` | Tensor | Crop | 0.333 | 3.667 | slow+diverse: strided slice/crop |
-| 14 | `Einsum_sum_all` | Matrix | Reduction | 0.500 | 0.500 | slow: einsum full reduction |
-| 15 | `Floor` | Unary | UnaryOp | 0.676 | 2.206 | slow: unary rounding |
-| 16 | `Exp` | Unary | UnaryOp | 0.800 | 1.277 | slow: unary transcendental |
-| 17 | `Cos` | Trigonometry | UnaryOp | 0.835 | 0.651 | slow: unary trig |
-| 18 | `CumSum` | Tensor | CumulativeSum | 1.000 | 1.000 | hard+diverse: prefix scan |
-| 19 | `InstanceNormalization` | Normalization | InstanceNorm | 1.000 | 1.373 | hard+diverse: instance norm |
-| 20 | `DepthToSpace` | Tensor | PixelShuffle | 1.357 | 1.053 | diverse: pixel-shuffle layout |
-| 21 | `LayerNorm` | Normalization | LayerNorm | 1.771 | 1.610 | hard+diverse: transformer LayerNorm |
-| 22 | `Conv3D` | Convolution | Convolution3D | — | — | hard+diverse: 3D convolution |
-| 23 | `MatMul` | Matrix | MatMul | — | — | hard+diverse: batched matmul |
-| 24 | `Einsum` | Matrix | Einsum | — | — | hard+diverse: general einsum |
-| 25 | `TopK` | Tensor | torch.topk | — | — | hard+diverse: sort/select |
-| 26 | `ArgMax` | Reduction | torch.argmax | — | — | hard+diverse: arg-reduction |
-| 27 | `GridSample` | Tensor | GridSample | — | — | hard+diverse: grid sampling/interp |
-| 28 | `ScatterElements` | Tensor | aten::scatter | — | — | hard+diverse: scatter/indexing |
-| 29 | `Gather` | Tensor | torch.index_select | — | — | hard+diverse: gather/index_select |
-| 30 | `Det` | Matrix | aten::linalg_det | — | — | hard+diverse: matrix determinant |
+`speedup_fair` = native_fair/ours (fp32); <1 ⇒ we're slower. `ours_ms` = our fp32 min latency (arm).
+
+
+| # | op | category | ncnn layer | ours_ms | speedup_fair | note |
+|---|----|----------|-----------|--------:|-------------:|------|
+| 1 | `Dense_Convolution_2D` | Convolution | Convolution | 406.42 | 0.010 | kept from v1 |
+| 2 | `Group_Convolution_2D` | Convolution | ConvolutionDepthWise | 55.13 | 0.036 | kept from v1 |
+| 3 | `Gemm_no_bias` | Matrix | Gemm | 1.06 | 0.047 | kept from v1 |
+| 4 | `Conv` | Convolution | Convolution | 4.27 | 0.075 | slow direct conv (sf 0.075, 4.3ms) |
+| 5 | `Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__` | Convolution | Deconvolution | 276.17 | 0.080 | kept from v1 |
+| 6 | `Strassen_Convolution_2D` | Convolution | Convolution | 38.09 | 0.090 | kept from v1 |
+| 7 | `Winograd_Convolution_2D` | Convolution | Convolution | 734.85 | 0.111 | kept from v1 |
+| 8 | `ConvTranspose_dilations` | Convolution | Deconvolution | 31.52 | 0.234 | kept from v1 |
+| 9 | `StridedSlice` | Tensor | Crop | 0.03 | 0.333 | kept from v1 ⚠CRASH |
+| 10 | `Einsum_sum_all` | Matrix | Reduction | 0.02 | 0.500 | kept from v1 |
+| 11 | `Floor` | Unary | UnaryOp | 0.34 | 0.676 | kept from v1 |
+| 12 | `Exp` | Unary | UnaryOp | 2.35 | 0.800 | kept from v1 |
+| 13 | `Cos` | Trigonometry | UnaryOp | 1.09 | 0.835 | kept from v1 |
+| 14 | `Tan` | Trigonometry | UnaryOp | 1.84 | 0.875 | slow unary trig (sf 0.875, 1.8ms) |
+| 15 | `Sinh` | Trigonometry | UnaryOp | 9.00 | 0.953 | slow heavy unary (sf 0.953, 9ms) |
+| 16 | `Round` | Unary | UnaryOp | 2.08 | 0.995 | slow unary round (sf 0.995, 2.1ms) |
+| 17 | `InstanceNormalization` | Normalization | InstanceNorm | 0.83 | 1.000 | kept from v1 |
+| 18 | `CumSum` | Tensor | CumulativeSum | 0.01 | 1.000 | kept from v1 |
+| 19 | `Conv_with_strides_padding` | Convolution | Convolution | 1.24 | 1.040 | strided conv config (1.2ms) |
+| 20 | `DepthToSpace` | Tensor | PixelShuffle | 0.14 | 1.357 | kept from v1 |
+| 21 | `LayerNorm` | Normalization | LayerNorm | 0.35 | 1.771 | kept from v1 |
+| 22 | `Softplus_3d` | Activation | Softplus | 0.75 | 2.013 | softplus activation (0.75ms) |
+| 23 | `BatchNormalization` | Normalization | BatchNorm | 0.72 | 2.097 | batchnorm (0.72ms, new norm type) |
+| 24 | `Clip` | Tensor | Clip | 1.58 | 2.158 | clip activation (1.6ms) |
+| 25 | `ReduceMean` | Reduction | Reduction | 2.71 | 6.963 | reduction, ms-scale (2.7ms) |
+| 26 | `DeconvolutionDepthwise_2D_stride` | Convolution | DeconvolutionDepthWise | 23.34 | 7.855 | deconv-depthwise, heavy (23ms) |
+| 27 | `ReduceMax_with_negative_values` | Reduction | Reduction | 2.19 | 8.813 | reduction variant (2.2ms) |
+| 28 | `Conv3D` | Convolution | Convolution3D | — | — | kept from v1 |
+| 29 | `Einsum` | Matrix | Einsum | 0.00 | — | kept from v1 ⚠CRASH |
+| 30 | `MatMul` | Matrix | MatMul | — | — | kept from v1 ⚠CRASH |

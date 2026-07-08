@@ -14,7 +14,37 @@
           "cache_creation_tokens": 0
         }
       }
+    },
+    "IDEALAB:f240e8...a2c2": {
+      "provider": "idealab",
+      "first_seen": "2026-07-07T20:31:13",
+      "last_seen": "2026-07-07T20:33:31",
+      "total_calls": 3,
+      "models": {
+        "claude-opus-4-8": {
+          "calls": 3,
+          "input_tokens": 91167,
+          "output_tokens": 8206,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0
+        }
+      }
+    },
+    "IDEALAB:406d74...bfb1": {
+      "provider": "idealab",
+      "first_seen": "2026-07-07T22:14:50",
+      "last_seen": "2026-07-08T10:09:52",
+      "total_calls": 116,
+      "models": {
+        "claude-opus-4-8": {
+          "calls": 116,
+          "input_tokens": 3547182,
+          "output_tokens": 407045,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0
+        }
+      }
     }
   },
-  "updated_at": "2026-07-07T18:31:45"
+  "updated_at": "2026-07-08T10:09:52"
 }

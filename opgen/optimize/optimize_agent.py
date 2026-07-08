@@ -77,6 +77,7 @@ class OptimizeAgent:
         op_class: str = "",
         n_promote: int = 3,                     # axis-extension: cross-task wins to grow Σ
         device_measure: bool = False,           # measure candidate+baseline latency on the REAL phone
+        ncnn_py: str | Path | None = None,      # pnnx _ncnn.py: per-blob input squeeze policy
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -112,6 +113,7 @@ class OptimizeAgent:
         self.op_class = op_class
         self.n_promote = n_promote
         self.device_measure = bool(device_measure)
+        self.ncnn_py = str(ncnn_py) if ncnn_py else None
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -140,7 +142,7 @@ class OptimizeAgent:
             weight_keys=self.weight_keys, params=self.params,
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
-            device_measure=self.device_measure,
+            device_measure=self.device_measure, ncnn_py=self.ncnn_py,
         )
         proposer = self.proposer or self._build_proposer(
             hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras,
@@ -228,15 +230,19 @@ class OptimizeAgent:
         full RooflineResult). Falls back to 'unknown' on any error → the wiki
         treats 'unknown' as 'mixed' and injects both coordinate systems.
         """
-        if not self.model_py:
-            return "unknown"
+        from policy.roofline import guess_regime
+        fallback = guess_regime(self.op_class or self.task_name)
+        # Only trust the AI-based roofline when real device peaks exist; otherwise
+        # the naive profile always says memory_bound -> use the op-family heuristic.
+        if not self.model_py or self.device_roofline is None:
+            return fallback
         try:
             from policy.roofline import estimate_operator_profile, diagnose
             op_prof = self.operator_profile or estimate_operator_profile(self.model_py)
             rl = diagnose(op_prof, self.device_roofline)
-            return rl.regime or "unknown"
+            return rl.regime or fallback
         except Exception:  # noqa: BLE001
-            return "unknown"
+            return fallback
 
     # ------------------------------------------------------------------ wiki
     def _build_wiki(self):
@@ -303,7 +309,7 @@ class OptimizeAgent:
             weight_keys=self.weight_keys, params=self.params,
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
-            device_measure=self.device_measure,
+            device_measure=self.device_measure, ncnn_py=self.ncnn_py,
         )
         # roofline diagnosis first so we can pass regime into the proposer
         # (wiki v1 keys BD-axis content by regime).
@@ -311,7 +317,19 @@ class OptimizeAgent:
         if op_prof is None and self.model_py:
             op_prof = estimate_operator_profile(self.model_py)
         rl = diagnose(op_prof, self.device_roofline) if op_prof else None
-        regime = self.regime or (rl.regime if rl else "memory_bound")
+        # Regime picks the BD coordinate system. Trust the roofline ONLY when we
+        # have real device peaks; the naive estimate_operator_profile (≈1 FLOP/
+        # elem) always yields memory_bound, which starved conv/gemm of their
+        # algo_family grid. Without device peaks, use the op-family heuristic
+        # (conv/gemm/matmul/... -> compute_bound). Replace once a real roofline
+        # (device peaks + per-op FLOP/byte) is wired in.
+        from policy import guess_regime
+        if self.regime:
+            regime = self.regime
+        elif self.device_roofline is not None and rl is not None:
+            regime = rl.regime
+        else:
+            regime = guess_regime(self.op_class or self.task_name)
         proposer = self.proposer or self._build_proposer(
             hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras, regime=regime,
         )

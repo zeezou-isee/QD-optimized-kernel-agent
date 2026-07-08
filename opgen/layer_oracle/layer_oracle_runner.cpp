@@ -143,23 +143,48 @@ static std::vector<unsigned char> pack_weights_bin(const Mat* weights,
     return bin;
 }
 
+static inline bool _tok_is_float(const std::string& v)
+{
+    return v.find('.') != std::string::npos || v.find('e') != std::string::npos
+           || v.find('E') != std::string::npos;
+}
+
 static void parse_params(const std::string& s, ParamDict& pd)
 {
-    // comma-separated id=value ; value with '.'/'e' -> float else int
+    // comma-separated tokens. Scalars are "id=value". ARRAY params use ncnn's
+    // -23300 trick: "-{23300+id}=len,v0,v1,...,v{len-1}" (mirrors _fmt_param /
+    // ncnn ParamDict::load_param). Elements are plain numbers (no '='), so after
+    // an array marker we consume the next `len` tokens as its elements.
+    std::vector<std::string> toks;
     size_t i = 0;
     while (i < s.size())
     {
         size_t comma = s.find(',', i);
-        std::string tok = s.substr(i, comma == std::string::npos ? std::string::npos : comma - i);
+        toks.push_back(s.substr(i, comma == std::string::npos ? std::string::npos : comma - i));
         i = (comma == std::string::npos) ? s.size() : comma + 1;
+    }
+    for (size_t t = 0; t < toks.size(); )
+    {
+        const std::string& tok = toks[t++];
         size_t eq = tok.find('=');
-        if (eq == std::string::npos) continue;
+        if (eq == std::string::npos) continue;    // stray element (shouldn't happen)
         int id = atoi(tok.substr(0, eq).c_str());
         std::string v = tok.substr(eq + 1);
-        if (v.find('.') != std::string::npos || v.find('e') != std::string::npos || v.find('E') != std::string::npos)
-            pd.set(id, (float)atof(v.c_str()));
-        else
-            pd.set(id, atoi(v.c_str()));
+        if (id <= -23300)                          // array param
+        {
+            id = -id - 23300;
+            int len = atoi(v.c_str());
+            Mat m; m.create(len);
+            for (int j = 0; j < len && t < toks.size(); j++)
+            {
+                const std::string& e = toks[t++];
+                if (_tok_is_float(e)) ((float*)m)[j] = (float)atof(e.c_str());
+                else                  ((int*)m)[j]   = atoi(e.c_str());
+            }
+            pd.set(id, m);
+        }
+        else if (_tok_is_float(v)) pd.set(id, (float)atof(v.c_str()));
+        else                       pd.set(id, atoi(v.c_str()));
     }
 }
 
