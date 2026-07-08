@@ -176,10 +176,13 @@ def run_map_elites(
 
         kept = False
         if basin.correct and basin.best_latency_ms is not None:
+            _bsamp = basin.best_sample
             elite = Elite(cell=cell, latency_ms=basin.best_latency_ms,
                           kernel_code=materialize(template, basin.best_params or {}),
                           params=basin.best_params or {},
-                          techniques=list(template.techniques), source="search")
+                          techniques=list(template.techniques), source="search",
+                          latency_min_ms=getattr(_bsamp, "latency_min_ms", None),
+                          latency_max_ms=getattr(_bsamp, "latency_max_ms", None))
             kept = arc.place(elite, sigma=sigma)
             if basin.best_latency_ms < best_lat:
                 best_lat = basin.best_latency_ms
@@ -225,8 +228,10 @@ def run_map_elites(
             rec["techniques"] = list(template.techniques or [])
             rec["param_space"] = {n: list(ps.values) for n, ps in (template.params or {}).items()}
             rec["trajectory"] = [
-                {"point": sm.point, "latency_ms": sm.latency_ms, "correct": sm.correct,
-                 "stage": sm.stage, "error": sm.error or None} for sm in basin.samples]
+                {"point": sm.point, "latency_ms": sm.latency_ms,
+                 "latency_min_ms": sm.latency_min_ms, "latency_max_ms": sm.latency_max_ms,
+                 "correct": sm.correct, "stage": sm.stage, "error": sm.error or None}
+                for sm in basin.samples]
             rec["pruned_points"] = list(basin.pruned)
             rec["best_params"] = basin.best_params
         iters.append(rec)

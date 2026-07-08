@@ -57,8 +57,8 @@ def row_for(op: str, category: str, backend: str) -> dict:
         return row
     ex = s.get("extra") or {}
     best = s.get("best_perf") or {}
-    base = ex.get("baseline_latency_ms")
-    bestv = best.get("min") if best.get("min") is not None else best.get("avg")
+    base = ex.get("baseline_latency_ms")   # AVG (base_sample.latency_ms)
+    bestv = best.get("avg") if best.get("avg") is not None else best.get("min")  # report AVG
     spd = (base / bestv) if (isinstance(base, (int, float)) and isinstance(bestv, (int, float)) and bestv) else None
     # best_round is a binary flag in the map_elites path (0=improved, -1=baseline
     # kept), NOT the winning round index. The real signal is how many QD rounds

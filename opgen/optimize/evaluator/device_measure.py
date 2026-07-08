@@ -21,9 +21,11 @@ import numpy as np
 
 
 class DeviceMeasurer:
-    def __init__(self, backend: str, ncnn_root: str | Path | None = None, bench: int = 20) -> None:
+    def __init__(self, backend: str, ncnn_root: str | Path | None = None,
+                 bench: int = 100, warmup: int = 10) -> None:
         self.backend = backend
         self.bench = bench
+        self.warmup = warmup
         from layer_oracle import DeviceOracle, VulkanDeviceOracle
         self.oracle = (VulkanDeviceOracle(ncnn_root=ncnn_root) if backend == "vulkan"
                        else DeviceOracle(ncnn_root=ncnn_root))
@@ -40,19 +42,22 @@ class DeviceMeasurer:
                 reference: np.ndarray, weights: Sequence[np.ndarray] = (),
                 weight_flags: Sequence[int] = (), extra_sources: Sequence[str | Path] = (),
                 extra_includes: Sequence[str | Path] = (), packing: int = 0,
-                shader: str | Path | None = None) -> float | None:
-        """Min single-forward latency (ms) on the phone, or None if no device / the
-        device run didn't produce a bench number (caller falls back to host)."""
+                shader: str | Path | None = None) -> tuple[float | None, float | None, float | None]:
+        """Single-forward latency on the phone as (avg, min, max) ms over `bench`
+        timed forwards (warmup discarded). avg is the primary/reported value.
+        Returns (None,None,None) if no device / the run produced no bench number
+        (caller falls back to host)."""
         if not self.available():
-            return None
+            return (None, None, None)
         kw: dict[str, Any] = {"shader": shader} if self.backend == "vulkan" else {"packing": packing}
         try:
             r = self.oracle.verify(
                 candidate_cpp=candidate_cpp, class_name=class_name, header=header,
                 params=params, inputs=inputs, reference=reference, weights=weights,
                 weight_flags=weight_flags, extra_sources=extra_sources,
-                extra_includes=extra_includes, bench=self.bench, measure_speedup=False,
-                backend=self.backend, **kw)
+                extra_includes=extra_includes, bench=self.bench, warmup=self.warmup,
+                measure_speedup=False, backend=self.backend, **kw)
         except Exception:  # noqa: BLE001 — never break the search on a device hiccup
-            return None
-        return getattr(r, "latency", None)
+            return (None, None, None)
+        return (getattr(r, "latency", None), getattr(r, "latency_min", None),
+                getattr(r, "latency_max", None))

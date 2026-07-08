@@ -2,7 +2,7 @@
 
 30 ops · real=30 suspect=0 tainted=0 crash=0
 
-real-win self-speedup: median **1.199×** mean 1.672× max 6.646× · improved(>1.02×) 24/30
+real-win self-speedup: median **1.199×** mean 1.672× max 6.646× · improved(>1.02×) 25/30
 
 
 flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · tainted=speedup>8× degenerate/path-mix · crash=no summary (e.g. arm kernel -100)
@@ -39,9 +39,9 @@ flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · ta
 | `Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__` | Convolution | compute_bound | 15 | 3 | 3 | direct/scalar | gemm/vec | 21.347 | 19.746 | 1.081 | real |
 | `BatchNormalization` | Normalization | memory_bound | 15 | 3 | 3 | nchw/none | nchw/none | 0.126 | 0.119 | 1.053 | real |
 | `Sinh` | Trigonometry | memory_bound | 15 | 2 | 3 | nchw/none | nchw/single | 5.646 | 5.386 | 1.048 | real |
+| `Floor` | Unary | memory_bound | 6 | 1 | 2 | nchw/none | nhwc/single | 1.685 | 1.631 | 1.034 | real |
 | `Strassen_Convolution_2D` | Convolution | compute_bound | 18 | 2 | 2 | direct/scalar | gemm/vec | 17.742 | 17.194 | 1.032 | real |
 | `Tan` | Trigonometry | memory_bound | 18 | 2 | 3 | nchw/none | nhwc/single | 1.017 | 0.998 | 1.019 | real |
-| `Floor` | Unary | memory_bound | 15 | 3 | 3 | nchw/none | nchw/none | 0.134 | 0.132 | 1.010 | real |
 | `Round` | Unary | memory_bound | 15 | 2 | 3 | nchw/none | nchw/single | 3.555 | 3.531 | 1.007 | real |
 | `Clip` | Tensor | memory_bound | 18 | 4 | 4 | nchw/none | nhwc/none | 6.705 | 6.692 | 1.002 | real |
 | `ReduceMax_with_negative_values` | Reduction | memory_bound | 16 | 2 | 3 | nchw/none | nchw/none | 1.167 | 1.167 | 1.000 | real |
@@ -72,9 +72,9 @@ flags: real=ms-scale trustworthy · suspect=μs below noise floor (0.02ms) · ta
 - **Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__** (3 bins): `gemm/vec`=19.75 ⚑ · `direct/scalar`=21.35 ○ · `gemm/scalar`=24.07
 - **BatchNormalization** (3 bins): `nchw/none`=0.1193 ⚑ · `nchw/single`=0.1201 · `nhwc/single`=0.3091
 - **Sinh** (3 bins): `nchw/single`=5.386 ⚑ · `nchw/none`=5.646 ○ · `nhwc/single`=15.17
+- **Floor** (2 bins): `nhwc/single`=1.631 ⚑ · `nchw/none`=1.685 ○
 - **Strassen_Convolution_2D** (2 bins): `gemm/vec`=17.19 ⚑ · `direct/scalar`=17.74 ○
 - **Tan** (3 bins): `nhwc/single`=0.9978 ⚑ · `nchw/single`=1 · `nchw/none`=1.017 ○
-- **Floor** (3 bins): `nchw/none`=0.1323 ⚑ · `packed/none`=0.1323 · `nhwc/single`=0.1327
 - **Round** (3 bins): `nchw/single`=3.531 ⚑ · `nchw/none`=3.555 ○ · `nhwc/single`=3.559
 - **Clip** (4 bins): `nhwc/none`=6.692 ⚑ · `nchw/none`=6.705 ○ · `nhwc/single`=6.715 · `nchw/single`=6.727
 - **ReduceMax_with_negative_values** (3 bins): `nchw/none`=1.167 ⚑ · `nhwc/double`=3.038 · `nhwc/single`=3.737

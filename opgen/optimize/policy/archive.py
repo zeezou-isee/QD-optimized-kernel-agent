@@ -18,11 +18,13 @@ from typing import Any
 @dataclass
 class Elite:
     cell: tuple                       # niche coordinates (axis1, axis2)
-    latency_ms: float
+    latency_ms: float                 # AVG single-forward ms (primary/reported)
     kernel_code: dict[str, str]       # materialized (compilable) source
     params: dict[str, Any] = field(default_factory=dict)
     techniques: list[str] = field(default_factory=list)
     source: str = "search"            # "seed" | "search"
+    latency_min_ms: float | None = None   # recorded alongside avg (min/max/avg trio)
+    latency_max_ms: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -33,7 +35,8 @@ class Elite:
     def from_dict(cls, d: dict[str, Any]) -> "Elite":
         return cls(cell=tuple(d["cell"]), latency_ms=d["latency_ms"],
                    kernel_code=d.get("kernel_code", {}), params=d.get("params", {}),
-                   techniques=d.get("techniques", []), source=d.get("source", "search"))
+                   techniques=d.get("techniques", []), source=d.get("source", "search"),
+                   latency_min_ms=d.get("latency_min_ms"), latency_max_ms=d.get("latency_max_ms"))
 
 
 class Archive:

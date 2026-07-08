@@ -728,7 +728,7 @@ def verify_kernel(
                     header=profile.header, params=params, inputs=ncnn_inputs,
                     reference=reference, weights=weights, weight_flags=weight_flags,
                     tol=tol, extra_sources=extra_sources, extra_includes=extra_includes,
-                    bench=20, simpleperf=device_simpleperf, backend=profile.backend,
+                    bench=100, warmup=10, simpleperf=device_simpleperf, backend=profile.backend,
                     **dev_kwargs)
                 if getattr(dv, "skipped", False):
                     res.device_status = "skipped"

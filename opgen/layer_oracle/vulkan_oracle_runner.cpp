@@ -215,7 +215,8 @@ int main(int argc, char** argv)
     std::string out = "out.bin", param_str;
     int packing = 0;   // reserved; v1 runs elempack=1 on GPU
     int bench_iters = 0;   // --bench N: after the correctness run, time N GPU
-                           // forwards and print BENCH_MIN_MS (device latency)
+                           // forwards and print BENCH_{MIN,MAX,AVG}_MS (device latency)
+    int bench_warmup = 10; // discarded warmup GPU forwards before timing (default 10)
     std::string layer_name;  // --layer <name>: instantiate a BUILT-IN ncnn VULKAN layer via
                              // create_layer_vulkan (native GPU baseline) instead of the
                              // compiled-in CANDIDATE_CLASS. Reuses the SAME runner + GPU
@@ -231,6 +232,7 @@ int main(int argc, char** argv)
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--packing" && i + 1 < argc) packing = atoi(argv[++i]);
         else if (a == "--bench" && i + 1 < argc) bench_iters = atoi(argv[++i]);
+        else if (a == "--bench-warmup" && i + 1 < argc) bench_warmup = atoi(argv[++i]);
         else if (a == "--layer" && i + 1 < argc) layer_name = argv[++i];
     }
     (void)packing;
@@ -502,8 +504,8 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < in_cpus.size(); i++) { up.record_upload(in_cpus[i], gin[i], opt); pack_input(gin[i], up); }
             up.submit_and_wait();
         }
-        const int warmup = 3;
-        double best_ms = 1e30;
+        const int warmup = bench_warmup;
+        double best_ms = 1e30, worst_ms = 0.0, sum_ms = 0.0;
         for (int it = 0; it < warmup + bench_iters; it++)
         {
             VkCompute cmd(vkdev);
@@ -527,9 +529,14 @@ int main(int argc, char** argv)
             {
                 double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
                 if (ms < best_ms) best_ms = ms;
+                if (ms > worst_ms) worst_ms = ms;
+                sum_ms += ms;
             }
         }
+        double avg_ms = bench_iters > 0 ? sum_ms / bench_iters : 0.0;
         printf("BENCH_MIN_MS=%.4f\n", best_ms);
+        printf("BENCH_MAX_MS=%.4f\n", worst_ms);
+        printf("BENCH_AVG_MS=%.4f\n", avg_ms);
     }
 
     op->destroy_pipeline(opt);

@@ -196,7 +196,8 @@ int main(int argc, char** argv)
     int packing = 0;   // 0 = off (naive elempack=1); N>0 = pack inputs to elempack N (arm NC4HW4)
     int fp16_storage = 0;    // 1 = enable ncnn opt.use_fp16_storage (half-precision weights/blobs)
     int fp16_arith = 0;      // 1 = enable ncnn opt.use_fp16_arithmetic (requires HAS_ASIMDHP)
-    int bench = 0;           // N>0 = after correctness, run N timed forwards, print BENCH_MIN_MS (no simpleperf)
+    int bench = 0;           // N>0 = after correctness, run N timed forwards, print BENCH_{MIN,MAX,AVG}_MS
+    int bench_warmup = 10;   // discarded warmup iterations before timing (default 10)
     std::string layer_name;  // --layer <name>: instantiate a BUILT-IN ncnn layer via create_layer
                              // (native baseline) instead of the compiled-in CANDIDATE_CLASS.
                              // Reuses the SAME runner binary -> native latency with zero extra compile.
@@ -212,6 +213,7 @@ int main(int argc, char** argv)
         else if (a == "--fp16-storage") fp16_storage = 1;
         else if (a == "--fp16-arith")   { fp16_storage = 1; fp16_arith = 1; }
         else if (a == "--bench" && i + 1 < argc) bench = atoi(argv[++i]);
+        else if (a == "--bench-warmup" && i + 1 < argc) bench_warmup = atoi(argv[++i]);
         else if (a == "--layer" && i + 1 < argc) layer_name = argv[++i];
     }
     // default any unspecified weight flags to 0 (tagged) so the bin layout is
@@ -302,8 +304,8 @@ int main(int argc, char** argv)
     // the min single-forward wall time. Matches the vulkan runner's --bench contract.
     if (bench > 0 && ret == 0)
     {
-        const int warmup = 3;
-        double best = 1e30;
+        const int warmup = bench_warmup;
+        double best = 1e30, worst = 0.0, sum = 0.0;
         // pre-load + pre-pack inputs ONCE so only forward() is timed (no disk I/O).
         std::vector<Mat> ins;
         for (size_t i = 0; i < inputs.size(); i++) ins.push_back(pack(read_mat(inputs[i].c_str())));
@@ -329,9 +331,17 @@ int main(int argc, char** argv)
             }
             auto t1 = std::chrono::high_resolution_clock::now();
             double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-            if (it >= warmup && ms < best) best = ms;
+            if (it >= warmup)
+            {
+                if (ms < best) best = ms;
+                if (ms > worst) worst = ms;
+                sum += ms;
+            }
         }
+        double avg = bench > 0 ? sum / bench : 0.0;
         printf("BENCH_MIN_MS=%.4f\n", best);
+        printf("BENCH_MAX_MS=%.4f\n", worst);
+        printf("BENCH_AVG_MS=%.4f\n", avg);
     }
 
     op->destroy_pipeline(opt);

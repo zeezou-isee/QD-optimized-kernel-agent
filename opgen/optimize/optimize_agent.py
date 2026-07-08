@@ -79,6 +79,8 @@ class OptimizeAgent:
         device_measure: bool = False,           # measure candidate+baseline latency on the REAL phone
         ncnn_py: str | Path | None = None,      # pnnx _ncnn.py: per-blob input squeeze policy
         record_trace: bool = False,             # persist per-round inner trajectory + pruned + bd_axes
+        device_bench: int = 100,                # on-device --bench timed forwards
+        device_warmup: int = 10,                # on-device --bench-warmup discarded forwards
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -116,6 +118,8 @@ class OptimizeAgent:
         self.device_measure = bool(device_measure)
         self.ncnn_py = str(ncnn_py) if ncnn_py else None
         self.record_trace = bool(record_trace)
+        self.device_bench = int(device_bench)
+        self.device_warmup = int(device_warmup)
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -145,6 +149,7 @@ class OptimizeAgent:
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
             device_measure=self.device_measure, ncnn_py=self.ncnn_py,
+            device_bench=self.device_bench, device_warmup=self.device_warmup,
         )
         proposer = self.proposer or self._build_proposer(
             hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras,
@@ -312,6 +317,7 @@ class OptimizeAgent:
             warmup=self.warmup, runs=self.runs,
             backend=self.backend, base_files=self.base_files,
             device_measure=self.device_measure, ncnn_py=self.ncnn_py,
+            device_bench=self.device_bench, device_warmup=self.device_warmup,
         )
         # roofline diagnosis first so we can pass regime into the proposer
         # (wiki v1 keys BD-axis content by regime).
@@ -384,10 +390,13 @@ class OptimizeAgent:
                              op_class=self.op_class or ev.class_name, hardware=hw_specs.arch)
             pool.save()
 
-        best_lat = me.get("best_latency_ms")
+        best_lat = me.get("best_latency_ms")            # AVG (primary)
         improved = best_lat is not None and best_lat < base_lat
         res.best_kernel = me.get("best_kernel") or dict(self.baseline_kernel_code)
-        res.best_perf = {"avg": best_lat, "min": best_lat}
+        _best_elite = me.get("best") or {}
+        res.best_perf = {"avg": best_lat,
+                         "min": _best_elite.get("latency_min_ms"),
+                         "max": _best_elite.get("latency_max_ms")}
         res.best_round = 0 if improved else -1
         res.stopped_reason = me.get("stopped_reason", "")
         # BD grid definition (how the bins are partitioned) + inner-search config —
@@ -438,6 +447,7 @@ class OptimizeAgent:
 def _perf(sample) -> dict[str, Any]:
     return {
         "avg": sample.latency_ms, "min": sample.latency_min_ms,
+        "max": getattr(sample, "latency_max_ms", None),
         "median": sample.latency_median_ms, "std": sample.latency_std_ms,
         "n_runs": sample.n_runs,
     }

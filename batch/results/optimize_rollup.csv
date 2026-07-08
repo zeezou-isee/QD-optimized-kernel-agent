@@ -27,5 +27,5 @@ Cos,Trigonometry,arm,success,memory_bound,18,3,4,True,0.1059,0.0926,1.1436,nchw/
 Sinh,Trigonometry,arm,success,memory_bound,15,3,2,True,5.6457,5.3856,1.0483,nchw/none,nchw/single,nchw/single=5.386; nchw/none=5.646; nhwc/single=15.17,budget (15) reached,real
 Tan,Trigonometry,arm,success,memory_bound,18,3,2,True,1.0171,0.9978,1.0193,nchw/none,nhwc/single,nhwc/single=0.9978; nchw/single=1; nchw/none=1.017,budget (15) reached,real
 Exp,Unary,arm,success,memory_bound,18,5,4,True,0.1936,0.1768,1.095,nchw/none,nchw/single,nchw/single=0.1768; nhwc/none=0.1787; packed/double=0.1917; packed/single=0.1927; nchw/none=0.1936,budget (15) reached,real
-Floor,Unary,arm,success,memory_bound,15,3,3,True,0.1336,0.1323,1.0098,nchw/none,nchw/none,nchw/none=0.1323; packed/none=0.1323; nhwc/single=0.1327,budget (15) reached,real
+Floor,Unary,arm,success,memory_bound,6,2,1,True,1.6854,1.6306,1.0336,nchw/none,nhwc/single,nhwc/single=1.631; nchw/none=1.685,budget (4) reached,real
 Round,Unary,arm,success,memory_bound,15,3,2,True,3.5552,3.5309,1.0069,nchw/none,nchw/single,nchw/single=3.531; nchw/none=3.555; nhwc/single=3.559,budget (15) reached,real

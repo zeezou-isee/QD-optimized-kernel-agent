@@ -98,8 +98,9 @@ class MeasureSample:
     """The Evaluator's atomic output: one (template, point) measured once."""
     point: dict[str, Any]
     correct: bool
-    latency_ms: float | None = None       # aggregated (median or min) over N runs
+    latency_ms: float | None = None       # aggregated (avg on device / median or min on host) over N runs
     latency_min_ms: float | None = None
+    latency_max_ms: float | None = None
     latency_median_ms: float | None = None
     latency_std_ms: float | None = None    # measurement noise floor for this point
     n_runs: int = 0

@@ -198,9 +198,11 @@ class OracleResult:
     runner: str = ""
     error: str = ""
     skipped: bool = False   # vulkan/device: no device available -> treat as skipped, not fail
-    latency: float | None = None   # device: min single-forward ms (runner --bench), else None
-    native_latency: float | None = None   # device: native ncnn op latency (create_layer), for speedup
-    speedup: float | None = None          # device: native_latency / latency (>1 = ours faster)
+    latency: float | None = None   # device: AVG single-forward ms (runner --bench); primary/reported
+    latency_min: float | None = None      # device: min single-forward ms
+    latency_max: float | None = None      # device: max single-forward ms
+    native_latency: float | None = None   # device: native ncnn op AVG latency (create_layer), for speedup
+    speedup: float | None = None          # device: native_latency / latency (>1 = ours faster), avg/avg
 
     # filled by verify()
     passed: bool | None = None

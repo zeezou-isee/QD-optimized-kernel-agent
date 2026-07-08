@@ -129,6 +129,11 @@ def main() -> None:
                    help="measure candidate + baseline latency on the REAL phone (auto = use "
                         "device if adb sees one, else host wall-clock). MANDATORY for a "
                         "meaningful latency objective — host subprocess wall-clock is not phone time.")
+    p.add_argument("--bench-loop", type=int, default=100,
+                   help="on-device timed forwards per measurement (default 100). Records min/max/avg; "
+                        "the search objective + reported latency use avg.")
+    p.add_argument("--bench-warmup", type=int, default=10,
+                   help="on-device discarded warmup forwards before timing (default 10)")
     p.add_argument("--record-trace", action="store_true",
                    help="persist the full inner-search trace (per-round climb trajectory, "
                         "analytically-pruned points + reasons, param space) + bd_axes/inner_config "
@@ -193,6 +198,7 @@ def main() -> None:
         backend=args.backend, base_files=base_files, n_promote=args.n_promote,
         device_measure=(args.device_verify in ("auto", "on")),
         ncnn_py=_ncnn_py, record_trace=args.record_trace,
+        device_bench=args.bench_loop, device_warmup=args.bench_warmup,
     )
     res: OptimizeResult = agent.run()
 

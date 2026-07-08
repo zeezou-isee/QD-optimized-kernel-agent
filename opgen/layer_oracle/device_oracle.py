@@ -42,6 +42,18 @@ def _looks_like_device_drop(text: str) -> bool:
                                 "error: closed", "no such device", "device unauthorized"))
 
 
+def _parse_bench(txt: str) -> tuple[float | None, float | None, float | None]:
+    """Parse the runner's BENCH_{AVG,MIN,MAX}_MS -> (avg, min, max). avg is the
+    primary/reported value; older runners print only BENCH_MIN_MS (avg=min then)."""
+    def _g(key: str) -> float | None:
+        m = re.search(rf"{key}=([\d.]+)", txt or "")
+        return float(m.group(1)) if m else None
+    mn, mx, avg = _g("BENCH_MIN_MS"), _g("BENCH_MAX_MS"), _g("BENCH_AVG_MS")
+    if avg is None:
+        avg = mn                      # backward-compat: min-only runner
+    return avg, mn, mx
+
+
 class DeviceOracle:
     """CPU/arm on-device verification. `available()` gates the whole thing; a
     missing device/NDK/lib -> `skipped` so the caller keeps the host result."""
@@ -142,7 +154,7 @@ class DeviceOracle:
                reference: np.ndarray, weights: Sequence[np.ndarray] = (),
                weight_flags: Sequence[int] = (), tol: float = 2e-3,
                extra_sources: Sequence[str | Path] = (), extra_includes: Sequence[str | Path] = (),
-               packing: int = 0, bench: int = 20, simpleperf: bool = False,
+               packing: int = 0, bench: int = 100, warmup: int = 10, simpleperf: bool = False,
                backend: str = "arm", native_type: str = "", measure_speedup: bool = True) -> OracleResult:
         ok, why = self.available()
         if not ok:
@@ -178,7 +190,7 @@ class DeviceOracle:
         if packing > 0:
             argv += ["--packing", str(packing)]
         if bench > 0:
-            argv += ["--bench", str(bench)]
+            argv += ["--bench", str(bench), "--bench-warmup", str(warmup)]
 
         # 3) push (any adb failure here that looks like a drop -> skip -> host fallback)
         try:
@@ -209,8 +221,7 @@ class DeviceOracle:
                 return OracleResult(ok=False, skipped=True, error="device dropped during run", detail="device dropped")
             return OracleResult(ok=False, passed=False, failure_category="device_crash", run_log=txt,
                                 detail=f"[device_crash] runner did not finish on device:\n{txt[-1000:]}")
-        m = re.search(r"BENCH_MIN_MS=([\d.]+)", txt)
-        latency = float(m.group(1)) if m else None
+        latency, lat_min, lat_max = _parse_bench(txt)   # latency = AVG (primary)
 
         # 5) pull output + compare to reference
         dev_out = wd / "out_dev.bin"
@@ -223,7 +234,8 @@ class DeviceOracle:
 
         out = read_bin(dev_out)
         ref = np.asarray(reference, dtype=np.float32)
-        res = OracleResult(ok=True, outputs=[out], run_log=txt, runner=str(runner), latency=latency)
+        res = OracleResult(ok=True, outputs=[out], run_log=txt, runner=str(runner),
+                           latency=latency, latency_min=lat_min, latency_max=lat_max)
         try:
             out_r = out.reshape(ref.shape)
         except ValueError:
@@ -259,16 +271,16 @@ class DeviceOracle:
                 nargv += ["--weight", f"w{i}.bin"]
                 flag = weight_flags[i] if i < len(weight_flags) else 0
                 nargv += ["--weight-flag", str(int(flag))]
-            nargv += ["--out", "out_native.bin", "--bench", str(bench)]
+            nargv += ["--out", "out_native.bin", "--bench", str(bench), "--bench-warmup", str(warmup)]
             try:
                 ncmd = (f"cd {self.device_dir} && LD_LIBRARY_PATH={self.device_dir} "
                         f"{' '.join(nargv)} 2>&1")
                 ntxt = _adb("shell", ncmd, timeout=300).stdout
-                nm = re.search(r"BENCH_MIN_MS=([\d.]+)", ntxt)
-                if nm and "RUNNER_OK" in ntxt:
-                    res.native_latency = float(nm.group(1))
+                n_avg, _n_min, _n_max = _parse_bench(ntxt)   # native AVG
+                if n_avg and "RUNNER_OK" in ntxt:
+                    res.native_latency = n_avg
                     if res.native_latency and latency:
-                        res.speedup = round(res.native_latency / latency, 3)
+                        res.speedup = round(res.native_latency / latency, 3)   # avg/avg
                         res.detail += f" | native={res.native_latency}ms speedup={res.speedup}x(fair)"
             except Exception:  # noqa: BLE001 — speedup is a bonus, never break the gate
                 pass
@@ -325,7 +337,7 @@ class VulkanDeviceOracle:
                weight_flags: Sequence[int] = (), tol: float = 2e-3,
                extra_sources: Sequence[str | Path] = (), extra_includes: Sequence[str | Path] = (),
                shader: str | Path | None = None, extra_shaders: Sequence[str | Path] = (),
-               bench: int = 20, simpleperf: bool = False, backend: str = "vulkan",
+               bench: int = 100, warmup: int = 10, simpleperf: bool = False, backend: str = "vulkan",
                native_type: str = "", measure_speedup: bool = True,
                **_kw: Any) -> OracleResult:
         ok, why = self.available()
@@ -357,7 +369,7 @@ class VulkanDeviceOracle:
             argv += ["--weight", p.name, "--weight-flag", str(int(flag))]
         argv += ["--out", "out.bin"]
         if bench > 0:
-            argv += ["--bench", str(bench)]
+            argv += ["--bench", str(bench), "--bench-warmup", str(warmup)]
 
         try:
             _adb("shell", f"mkdir -p {self.device_dir}", timeout=15)
@@ -386,8 +398,7 @@ class VulkanDeviceOracle:
                 return OracleResult(ok=False, skipped=True, detail="device dropped (run)")
             return OracleResult(ok=False, passed=False, failure_category="device_crash", run_log=txt,
                                 detail=f"[device_crash] vulkan runner failed on Adreno:\n{txt[-1000:]}")
-        m = re.search(r"BENCH_MIN_MS=([\d.]+)", txt)
-        latency = float(m.group(1)) if m else None
+        latency, lat_min, lat_max = _parse_bench(txt)   # latency = AVG (primary)
 
         dev_out = wd / "out_dev.bin"
         rp = _adb("pull", f"{self.device_dir}/out.bin", str(dev_out), timeout=60)
@@ -395,7 +406,8 @@ class VulkanDeviceOracle:
             return OracleResult(ok=False, skipped=True, detail="could not pull vulkan output")
         out = read_bin(dev_out)
         ref = np.asarray(reference, dtype=np.float32)
-        res = OracleResult(ok=True, outputs=[out], run_log=txt, runner=str(runner), latency=latency)
+        res = OracleResult(ok=True, outputs=[out], run_log=txt, runner=str(runner),
+                           latency=latency, latency_min=lat_min, latency_max=lat_max)
         try:
             out_r = out.reshape(ref.shape)
         except ValueError:
@@ -428,16 +440,16 @@ class VulkanDeviceOracle:
                 nargv += ["--weight", f"w{i}.bin"]
                 flag = weight_flags[i] if i < len(weight_flags) else 0
                 nargv += ["--weight-flag", str(int(flag))]
-            nargv += ["--out", "out_native.bin", "--bench", str(bench)]
+            nargv += ["--out", "out_native.bin", "--bench", str(bench), "--bench-warmup", str(warmup)]
             try:
                 ncmd = (f"cd {self.device_dir} && LD_LIBRARY_PATH={self.device_dir} "
                         f"{' '.join(nargv)} 2>&1")
                 ntxt = _adb("shell", ncmd, timeout=300).stdout
-                nm = re.search(r"BENCH_MIN_MS=([\d.]+)", ntxt)
-                if nm and "RUNNER_OK" in ntxt:
-                    res.native_latency = float(nm.group(1))
+                n_avg, _n_min, _n_max = _parse_bench(ntxt)   # native AVG
+                if n_avg and "RUNNER_OK" in ntxt:
+                    res.native_latency = n_avg
                     if res.native_latency and latency:
-                        res.speedup = round(res.native_latency / latency, 3)
+                        res.speedup = round(res.native_latency / latency, 3)   # avg/avg
                         res.detail += f" | native={res.native_latency}ms speedup={res.speedup}x(fair)"
             except Exception:  # noqa: BLE001 — speedup is a bonus, never break the gate
                 pass

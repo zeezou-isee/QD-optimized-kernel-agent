@@ -93,7 +93,8 @@ class Evaluator:
         backend: str = "base",
         base_files: dict[str, str] | None = None,   # arm: verified base layer code
         device_measure: bool = False,   # measure candidate latency on the REAL phone
-        device_bench: int = 20,         # runner --bench iterations for device latency
+        device_bench: int = 100,        # runner --bench timed forwards for device latency
+        device_warmup: int = 10,        # runner --bench-warmup discarded forwards
         ncnn_py: str | Path | None = None,  # pnnx-emitted _ncnn.py: per-blob squeeze policy
     ) -> None:
         self.baseline_kernel = dict(baseline_kernel)
@@ -171,7 +172,8 @@ class Evaluator:
         self._baseline_captured = False
         if self.device_measure:
             from .device_measure import DeviceMeasurer
-            self._measurer = DeviceMeasurer(backend, ncnn_root=self._ncnn_root, bench=device_bench)
+            self._measurer = DeviceMeasurer(backend, ncnn_root=self._ncnn_root,
+                                            bench=device_bench, warmup=device_warmup)
 
     # ------------------------------------------------------------------ I/O
     def _derive_io(self) -> tuple[list[np.ndarray], list[np.ndarray]]:
@@ -289,13 +291,13 @@ class Evaluator:
         # (candidate + baseline both go through this path -> consistent real-phone
         # latency), else host wall-clock (fallback / no-device / CI).
         if self._measurer is not None:
-            dev_lat = self._measurer.latency(
+            dev_lat, dev_min, dev_max = self._measurer.latency(
                 candidate_cpp=cpp_path, class_name=self.class_name,
                 header=hdr or self.header, params=self.params or None,
                 inputs=self.inputs, reference=self._ref, weights=self.weights,
                 extra_sources=self.extra_sources, extra_includes=self.extra_includes,
                 packing=self.packing, shader=self._shader_path())
-            if dev_lat is not None:
+            if dev_lat is not None:      # dev_lat = AVG (drives the search objective)
                 # baseline (first device eval) is exempt & sets the reference.
                 if not self._baseline_captured:
                     self._baseline_captured = True
@@ -313,8 +315,9 @@ class Evaluator:
                         return MeasureSample(point=point, correct=False, correctness=report,
                                              error=f"rejected degenerate candidate: {why}")
                 return MeasureSample(
-                    point=point, correct=True, latency_ms=dev_lat, latency_min_ms=dev_lat,
-                    latency_median_ms=dev_lat, latency_std_ms=0.0,
+                    point=point, correct=True, latency_ms=dev_lat,
+                    latency_min_ms=dev_min if dev_min is not None else dev_lat,
+                    latency_max_ms=dev_max, latency_median_ms=dev_lat, latency_std_ms=0.0,
                     n_runs=self._measurer.bench, correctness=report)
 
         try:
