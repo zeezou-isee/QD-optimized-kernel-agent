@@ -184,10 +184,14 @@ class LLMProposer:
         response = self.llm(prompt, self.model)
         return parse_template(response, self.baseline_kernel)
 
-    def vary(self, parent, directive: str, history: list) -> ParameterizedTemplate:
+    def vary(self, parent, directive: str, history: list,
+             covered_cells: list | None = None) -> ParameterizedTemplate:
         """MAP-Elites variation (Workflow §7.2 step②). `parent` is an Elite
-        (has .kernel_code) or a ParameterizedTemplate (has .kernel_files)."""
+        (has .kernel_code) or a ParameterizedTemplate (has .kernel_files).
+        `covered_cells`: archive niches already filled — used on `diversify` to
+        steer the LLM toward UNCOVERED niches (BD-feedback directed exploration)."""
         from .prompts import vary_prompt
+        coverage_hint = self._coverage_hint(directive, covered_cells)
         parent_code = (getattr(parent, "kernel_code", None)
                        or getattr(parent, "kernel_files", None) or self.baseline_kernel)
         tried: list[str] = []
@@ -203,10 +207,32 @@ class LLMProposer:
             directive, sorted(set(t for t in tried if t)),
             recent_failures=fails[-3:],
             context=self._wiki_context(), backend=self.backend,
-            sigma_block=self._sigma_block(),
+            sigma_block=self._sigma_block(), coverage_hint=coverage_hint,
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)
+
+    def _coverage_hint(self, directive: str, covered_cells: list | None) -> str:
+        """On `diversify`, name covered niches + point at UNCOVERED ones so the LLM
+        explores new BD cells instead of re-filling the same 2-3 (proposer diversity
+        is the real coverage bottleneck, not budget/patience)."""
+        if directive != "diversify" or not covered_cells:
+            return ""
+        try:
+            from policy import axes as _axes
+            (_, a1), (_, a2) = _axes(self.regime)
+            allc = {(x, y) for x in a1 for y in a2}
+            cov = {tuple(c) for c in covered_cells}
+            empties = sorted(allc - cov)
+            if not empties:
+                return ""
+            covs = ", ".join(f"{x}/{y}" for x, y in sorted(cov))
+            exs = ", ".join(f"{x}/{y}" for x, y in empties[:6])
+            return (f"already covered [{covs}] — produce a variant in an UNCOVERED "
+                    f"niche (pick from the Σ axes, e.g. {exs}); do NOT repeat a "
+                    f"covered combination.")
+        except Exception:  # noqa: BLE001
+            return ""
 
     def crossover(self, a, b, history: list) -> ParameterizedTemplate:
         """MAP-Elites CROSSOVER: recombine two elites (from different niches) into

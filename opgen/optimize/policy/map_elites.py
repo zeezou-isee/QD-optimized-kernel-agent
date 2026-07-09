@@ -112,6 +112,12 @@ def run_map_elites(
 ) -> dict:
     rng = random.Random(rng_seed)
     arc = archive or Archive()
+    # does vary_fn accept covered_cells? (real proposer yes; 3-arg test stubs no)
+    try:
+        import inspect
+        _vary_takes_covered = "covered_cells" in inspect.signature(vary_fn).parameters
+    except (ValueError, TypeError):
+        _vary_takes_covered = False
 
     # Σ registry for this backend. Loaded when a wiki_root is given; only then can
     # axis-extension persist a promotion back to disk (read-only ablation passes
@@ -155,7 +161,14 @@ def run_map_elites(
                 template = crossover_fn(pa, pb, iters)
             else:
                 parent = arc.select_parents(1, rng=rng)[0]
-                template = vary_fn(parent, directive, iters)
+                # BD-feedback: on diversify, tell the proposer which niches are
+                # already covered so it targets UNCOVERED ones (only if vary_fn
+                # accepts it — keeps 3-arg test stubs working).
+                if directive == "diversify" and _vary_takes_covered:
+                    template = vary_fn(parent, directive, iters,
+                                       covered_cells=[list(c) for c in arc.cells])
+                else:
+                    template = vary_fn(parent, directive, iters)
         except Exception as exc:  # noqa: BLE001
             iters.append({"round": len(iters), "error": f"{'crossover' if use_cross else 'vary'}_failed: {exc}"})
             stale += 1

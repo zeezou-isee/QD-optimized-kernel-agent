@@ -396,8 +396,16 @@ class OptimizeAgent:
         pool = ExperiencePool(self.experience_pool_path) if self.experience_pool_path else None
         seeds = pool.seeds_for(regime, hardware=hw_specs.arch) if pool else []
 
-        def vary_fn(parent, directive, history):
-            return proposer.vary(parent, directive, history)
+        import inspect as _inspect
+        try:
+            _prop_covered = "covered_cells" in _inspect.signature(proposer.vary).parameters
+        except (ValueError, TypeError):
+            _prop_covered = False
+
+        def vary_fn(parent, directive, history, covered_cells=None):
+            if _prop_covered:
+                return proposer.vary(parent, directive, history, covered_cells=covered_cells)
+            return proposer.vary(parent, directive, history)   # 3-arg proposer (e.g. test stub)
 
         def crossover_fn(a, b, history):
             return proposer.crossover(a, b, history)

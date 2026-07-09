@@ -224,6 +224,7 @@ def vary_prompt(
     context: str = "",
     backend: str = "base",
     sigma_block: str = "",
+    coverage_hint: str = "",
 ) -> str:
     """Prompt for MAP-Elites variation: mutate a PARENT elite per a directive."""
     files = "\n\n".join(
@@ -251,6 +252,7 @@ def vary_prompt(
 
 # This round's directive
 {goal}
+{("- COVERAGE: " + coverage_hint) if coverage_hint else ""}
 
 Emit a PARAMETERIZED template (knobs as <PLACEHOLDER>s) plus the json metadata.
 List in "techniques" the structural tags of THIS variant (e.g. ["vectorize"],
