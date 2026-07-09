@@ -107,6 +107,8 @@ def run_map_elites(
     task_name: str = "",                     # for cross-task N_promote accounting
     n_promote: int = _sigma.DEFAULT_N_PROMOTE,
     record_trace: bool = False,              # persist per-round inner trajectory + pruned + param_space
+    crossover_fn=None,                       # (elite_a, elite_b, history) -> template; None = mutation-only
+    crossover_rate: float = 0.4,             # P(crossover) per round once >=2 niches exist
 ) -> dict:
     rng = random.Random(rng_seed)
     arc = archive or Archive()
@@ -140,12 +142,22 @@ def run_map_elites(
 
         # directive: b铺开 first, optimize once enough niches are covered (§7.1)
         directive = "diversify" if arc.coverage() < coverage_target else "optimize"
-        parent = arc.select_parents(1, rng=rng)[0]
 
+        # operator choice: CROSSOVER (recombine two winners of different niches)
+        # with prob `crossover_rate` once ≥2 niches exist, else MUTATION (vary one
+        # elite). Offspring classify freely (may open a novel niche -> Σ growth).
+        use_cross = (crossover_fn is not None and len(arc.cells) >= 2
+                     and rng.random() < crossover_rate)
         try:
-            template = vary_fn(parent, directive, iters)
+            if use_cross:
+                pa, pb = arc.select_parents(2, rng=rng)   # distinct elites (no replacement)
+                directive = "crossover"
+                template = crossover_fn(pa, pb, iters)
+            else:
+                parent = arc.select_parents(1, rng=rng)[0]
+                template = vary_fn(parent, directive, iters)
         except Exception as exc:  # noqa: BLE001
-            iters.append({"round": len(iters), "error": f"vary_failed: {exc}"})
+            iters.append({"round": len(iters), "error": f"{'crossover' if use_cross else 'vary'}_failed: {exc}"})
             stale += 1
             if stale >= patience:
                 stopped = "vary_failed"

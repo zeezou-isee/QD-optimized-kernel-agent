@@ -207,3 +207,31 @@ class LLMProposer:
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)
+
+    def crossover(self, a, b, history: list) -> ParameterizedTemplate:
+        """MAP-Elites CROSSOVER: recombine two elites (from different niches) into
+        one child. `a`/`b` are Elites (.kernel_code) or templates (.kernel_files)."""
+        from .prompts import crossover_prompt
+
+        def _code(x):
+            return (getattr(x, "kernel_code", None) or getattr(x, "kernel_files", None)
+                    or self.baseline_kernel)
+
+        def _cell(x):
+            c = getattr(x, "cell", None)
+            return "/".join(map(str, c)) if isinstance(c, (list, tuple)) else ""
+
+        fails = []
+        for it in history:
+            if isinstance(it, dict):
+                fs = it.get("failure_summary") or it.get("error")
+                if fs:
+                    fails.append(f"[{it.get('directive', '?')}] {fs}")
+        prompt = crossover_prompt(
+            self.task_name, _code(a), _code(b), self.hardware,
+            cell_a=_cell(a), cell_b=_cell(b), recent_failures=fails[-3:],
+            context=self._wiki_context(), backend=self.backend,
+            sigma_block=self._sigma_block(),
+        )
+        response = self.llm(prompt, self.model)
+        return parse_template(response, _code(a))

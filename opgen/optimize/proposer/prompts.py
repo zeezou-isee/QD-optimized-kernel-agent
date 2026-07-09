@@ -261,6 +261,53 @@ places the niche; techniques are a secondary hint).
 """
 
 
+def crossover_prompt(
+    task_name: str,
+    parent_a: dict[str, str],
+    parent_b: dict[str, str],
+    hardware: dict[str, Any],
+    cell_a: str = "",
+    cell_b: str = "",
+    recent_failures: list[str] | None = None,
+    context: str = "",
+    backend: str = "base",
+    sigma_block: str = "",
+) -> str:
+    """Prompt for MAP-Elites CROSSOVER: recombine two winning elites from
+    different niches into a child that inherits the best of both."""
+    def _files(k):
+        return "\n\n".join(f"#### {n}\n```cpp\n{c}\n```" for n, c in k.items())
+    fail_block = ("\n".join(f"- {f}" for f in recent_failures)) if recent_failures else "(none)"
+    return f"""{_persona_vary(backend)}
+
+# Operator
+{task_name}
+
+# Target hardware
+{_hw_block(hardware, backend)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
+# Parent A (winner of niche: {cell_a or "?"})
+{_files(parent_a)}
+
+# Parent B (winner of niche: {cell_b or "?"})
+{_files(parent_b)}
+
+# Recent candidate failures (fix root cause, don't repeat)
+{fail_block}
+
+# This round: CROSSOVER
+Synthesize ONE new kernel that RECOMBINES the strongest ideas of Parent A and
+Parent B — e.g. take A's algorithmic structure with B's vectorization/memory
+strategy, or graft B's tiling into A. Do NOT just copy one parent; the child must
+inherit distinct traits from BOTH and be a coherent, compilable, correct kernel.
+
+Emit a PARAMETERIZED template (knobs as <PLACEHOLDER>s) plus the json metadata.
+In "techniques" list the structural tags of the CHILD (which decide its niche);
+set "bd_labels" from the Σ axes above (this is what places the niche).
+{_OUTPUT_CONTRACT}
+"""
+
+
 def proposer_prompt(
     task_name: str,
     baseline_kernel: dict[str, str],

@@ -81,6 +81,7 @@ class OptimizeAgent:
         record_trace: bool = False,             # persist per-round inner trajectory + pruned + bd_axes
         device_bench: int = 100,                # on-device --bench timed forwards
         device_warmup: int = 10,                # on-device --bench-warmup discarded forwards
+        crossover_rate: float = 0.4,            # MAP-Elites P(crossover) per round (mutation=1-rate)
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -120,6 +121,7 @@ class OptimizeAgent:
         self.record_trace = bool(record_trace)
         self.device_bench = int(device_bench)
         self.device_warmup = int(device_warmup)
+        self.crossover_rate = float(crossover_rate)
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -397,6 +399,9 @@ class OptimizeAgent:
         def vary_fn(parent, directive, history):
             return proposer.vary(parent, directive, history)
 
+        def crossover_fn(a, b, history):
+            return proposer.crossover(a, b, history)
+
         # axis-extension (Method M2.5.2): write-back only when wiki is ON —
         # `wiki is None` (KERNELGEN_WIKI=off ablation) keeps Σ read-only, so the
         # ablation arm neither reads nor grows the space.
@@ -408,7 +413,8 @@ class OptimizeAgent:
             coverage_target=self.coverage_target, patience=self.patience,
             backend=self.backend, wiki_root=wiki_root,
             task_name=self.op_class or self.task_name, n_promote=self.n_promote,
-            record_trace=self.record_trace)
+            record_trace=self.record_trace,
+            crossover_fn=crossover_fn, crossover_rate=self.crossover_rate)
 
         # optional best-first control arm (§7.5)
         cmp = None
