@@ -1,0 +1,87 @@
+========================================================================
+BATCH OPTIMIZE  backend=arm policy=map_elites model=claude-opus-4-8 key=efe0c9...7d26
+  dataset  : Mobilekernelbench_optimized
+  device   : --device-verify auto  (simpleperf OFF)
+  budget   : map=20  per-op timeout=5400s
+  ops      : 30 total | 30 to run | 0 skipped (have summary)
+========================================================================
+
+----- [1/30] Winograd_Convolution_2D -----
+  -> success in 393.2s  improved=True self_speedup=1.5696 base=24.0008ms best=15.2913ms
+
+----- [2/30] Dense_Convolution_2D_kernel -----
+  -> success in 587.3s  improved=True self_speedup=1.4364 base=217.5508ms best=151.458ms
+
+----- [3/30] ConvTranspose_dilations -----
+  -> success in 217.4s  improved=False self_speedup=1.0 base=13.9162ms best=13.9162ms
+
+----- [4/30] Dense_Convolution_2D -----
+  -> success in 276.1s  improved=True self_speedup=7.9505 base=9.729ms best=1.2237ms
+
+----- [5/30] Sinh -----
+  -> success in 257.9s  improved=True self_speedup=1.2712 base=5.561ms best=4.3746ms
+
+----- [6/30] Asin -----
+  -> success in 255.9s  improved=True self_speedup=1.4625 base=4.1634ms best=2.8468ms
+
+----- [7/30] Deconvolution_2D_asymmetric_input_square_kernel___dilated____padded____strided__ -----
+  -> success in 234.5s  improved=False self_speedup=1.0 base=3.6292ms best=3.6292ms
+
+----- [8/30] Round -----
+  -> success in 222.2s  improved=True self_speedup=1.1546 base=2.9081ms best=2.5187ms
+
+----- [9/30] Exp -----
+  -> success in 246.5s  improved=True self_speedup=1.4128 base=2.8531ms best=2.0195ms
+
+----- [10/30] Group_Convolution_2D -----
+  -> success in 259.0s  improved=True self_speedup=4.4532 base=2.1714ms best=0.4876ms
+
+----- [11/30] Cos -----
+  -> success in 216.3s  improved=True self_speedup=1.2482 base=1.6946ms best=1.3576ms
+
+----- [12/30] Winograd_Convolution_2D_padding -----
+  -> success in 260.2s  improved=True self_speedup=3.1046 base=1.4657ms best=0.4721ms
+
+----- [13/30] Floor -----
+  -> success in 243.2s  improved=True self_speedup=1.1821 base=1.2573ms best=1.0636ms
+
+----- [14/30] Strassen_Convolution_2D -----
+  -> success in 232.5s  improved=True self_speedup=3.7097 base=1.1589ms best=0.3124ms
+
+----- [15/30] Tan -----
+  -> success in 172.0s  improved=False self_speedup=1.0 base=0.9838ms best=0.9838ms
+
+----- [16/30] Asinh -----
+  -> success in 193.1s  improved=True self_speedup=1.7131 base=0.3911ms best=0.2283ms
+
+----- [17/30] Group_Convolution_2D_kernel -----
+  -> success in 228.9s  improved=True self_speedup=8.1262 base=0.2641ms best=0.0325ms
+
+----- [18/30] Cosh -----
+  -> success in 230.3s  improved=True self_speedup=1.3457 base=0.2402ms best=0.1785ms
+
+----- [19/30] Atanh -----
+  -> success in 180.5s  improved=True self_speedup=1.0382 base=0.2067ms best=0.1991ms
+
+----- [20/30] Conv -----
+  -> success in 280.9s  improved=True self_speedup=6.4286 base=0.1755ms best=0.0273ms
+
+----- [21/30] Conv3D -----
+  -> success in 288.9s  improved=True self_speedup=3.4676 base=38.7727ms best=11.1813ms
+
+----- [22/30] Clip -----
+  -> success in 314.9s  improved=True self_speedup=1.2386 base=6.7475ms best=5.4477ms
+
+----- [23/30] Dense_Convolution_1D -----
+  -> success in 249.4s  improved=True self_speedup=7.7891 base=2.2347ms best=0.2869ms
+
+----- [24/30] DeconvolutionDepthwise_2D_kernel -----
+  -> success in 317.4s  improved=True self_speedup=2.5497 base=1.2305ms best=0.4826ms
+
+----- [25/30] DeconvolutionDepthwise_2D_stride -----
+  -> success in 272.7s  improved=True self_speedup=1.8596 base=1.1254ms best=0.6052ms
+
+----- [26/30] Deconvolution_1D -----
+  -> success in 261.2s  improved=True self_speedup=1.6768 base=0.7071ms best=0.4217ms
+
+----- [27/30] ReduceMean -----
