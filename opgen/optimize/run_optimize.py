@@ -134,6 +134,9 @@ def main() -> None:
                         "the search objective + reported latency use avg.")
     p.add_argument("--bench-warmup", type=int, default=10,
                    help="on-device discarded warmup forwards before timing (default 10)")
+    p.add_argument("--crossover-rate", type=float, default=0.4,
+                   help="MAP-Elites P(crossover) per round (0 = mutation-only; default 0.4). "
+                        "For the crossover ablation.")
     p.add_argument("--record-trace", action="store_true",
                    help="persist the full inner-search trace (per-round climb trajectory, "
                         "analytically-pruned points + reasons, param space) + bd_axes/inner_config "
@@ -199,6 +202,7 @@ def main() -> None:
         device_measure=(args.device_verify in ("auto", "on")),
         ncnn_py=_ncnn_py, record_trace=args.record_trace,
         device_bench=args.bench_loop, device_warmup=args.bench_warmup,
+        crossover_rate=args.crossover_rate,
     )
     res: OptimizeResult = agent.run()
 
