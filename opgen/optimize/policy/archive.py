@@ -22,7 +22,7 @@ class Elite:
     kernel_code: dict[str, str]       # materialized (compilable) source
     params: dict[str, Any] = field(default_factory=dict)
     techniques: list[str] = field(default_factory=list)
-    source: str = "search"            # "seed" | "search"
+    source: str = "search"            # "seed" | "fill" (1-eval illuminate) | "search" (deep)
     latency_min_ms: float | None = None   # recorded alongside avg (min/max/avg trio)
     latency_max_ms: float | None = None
 

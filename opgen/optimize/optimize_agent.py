@@ -82,6 +82,8 @@ class OptimizeAgent:
         device_bench: int = 100,                # on-device --bench timed forwards
         device_warmup: int = 10,                # on-device --bench-warmup discarded forwards
         crossover_rate: float = 0.4,            # MAP-Elites P(crossover) per round (mutation=1-rate)
+        fill_budget: int = 16,                  # two-phase: Phase-1 seed templates (≈ niches touched)
+        optimize_topk: int = 6,                 # two-phase: Phase-2 niches to deepen (bounds burden)
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel_code = dict(baseline_kernel_code)
@@ -122,6 +124,8 @@ class OptimizeAgent:
         self.device_bench = int(device_bench)
         self.device_warmup = int(device_warmup)
         self.crossover_rate = float(crossover_rate)
+        self.fill_budget = int(fill_budget)
+        self.optimize_topk = int(optimize_topk)
 
     # ------------------------------------------------------------------ dispatch
     @property
@@ -342,7 +346,7 @@ class OptimizeAgent:
         from schemas import ParameterizedTemplate
         from policy import (Archive, ExperiencePool, classify, diagnose,
                             estimate_operator_profile, run_map_elites,
-                            run_best_first, compare)
+                            run_best_first, compare, build_prior)
 
         hw_specs = self.hardware or detect()
         wiki = self._build_wiki()
@@ -380,6 +384,20 @@ class OptimizeAgent:
             hw_specs.to_dict(), wiki=wiki, hw_extras=hw_extras, regime=regime,
         )
 
+        # ncnn dispatch prior for this op (design §8.4): a SOFT algo_family prior
+        # distilled from ncnn source, injected into the proposer prompt so it
+        # biases bd_labels toward the family ncnn's experts pick for this shape.
+        # Inactive (no-op) for non-conv / memory-bound ops.
+        try:
+            model_code = (Path(self.model_py).read_text(encoding="utf-8", errors="replace")
+                          if self.model_py else "")
+        except OSError:
+            model_code = ""
+        prior = build_prior(self.task_name, self.params, regime,
+                            model_code=model_code, backend=self.backend)
+        if prior.active and hasattr(proposer, "dispatch_block"):
+            proposer.dispatch_block = prior.render()
+
         res = OptimizeResult(policy="map_elites")
         base_t = ParameterizedTemplate(
             kernel_files=dict(self.baseline_kernel_code), params={},
@@ -410,6 +428,16 @@ class OptimizeAgent:
         def crossover_fn(a, b, history):
             return proposer.crossover(a, b, history)
 
+        # two-phase illumination: a batch proposer thickens the grid cheaply
+        # (Phase 1) before the deep loop (Phase 2). Active only when the proposer
+        # supports it (real LLMProposer) AND fill_budget>0. fill_budget=0 forces the
+        # genuine single-phase loop (the A/B control arm); stubs/legacy also fall
+        # back to single-phase (batch_fn=None).
+        batch_fn = None
+        if hasattr(proposer, "propose_batch") and self.fill_budget > 0:
+            def batch_fn(n, history, covered):
+                return proposer.propose_batch(n, history, covered_cells=covered)
+
         # axis-extension (Method M2.5.2): write-back only when wiki is ON —
         # `wiki is None` (KERNELGEN_WIKI=off ablation) keeps Σ read-only, so the
         # ablation arm neither reads nor grows the space.
@@ -422,7 +450,9 @@ class OptimizeAgent:
             backend=self.backend, wiki_root=wiki_root,
             task_name=self.op_class or self.task_name, n_promote=self.n_promote,
             record_trace=self.record_trace,
-            crossover_fn=crossover_fn, crossover_rate=self.crossover_rate)
+            crossover_fn=crossover_fn, crossover_rate=self.crossover_rate,
+            batch_fn=batch_fn, fill_budget=self.fill_budget,
+            optimize_topk=self.optimize_topk)
 
         # optional best-first control arm (§7.5)
         cmp = None
@@ -458,13 +488,22 @@ class OptimizeAgent:
                    "axis2": {"name": a2n, "values": list(a2v)}}
         inner_config = {"map_budget": self.map_budget, "inner_budget": self.inner_budget,
                         "coverage_target": self.coverage_target, "patience": self.patience,
-                        "coarse_per_axis": 3, "coarse_max_points": 12}
+                        "coarse_per_axis": 3, "coarse_max_points": 12,
+                        "fill_budget": self.fill_budget, "optimize_topk": self.optimize_topk}
         res.extra = {"regime": regime, "roofline": rl.__dict__ if rl else None,
                      "coverage": me.get("coverage"), "rounds": me.get("rounds"),
                      "argmin_cell": me.get("grid_argmin_cell"),
                      "baseline_cell": list(baseline_cell), "baseline_latency_ms": base_lat,
                      "device_serial": self._device_serial() if self.device_measure else None,
                      "bd_axes": bd_axes, "inner_config": inner_config,
+                     # two-phase illumination telemetry (thick grid vs bounded burden)
+                     "two_phase": me.get("two_phase"),
+                     "phase1_evals": me.get("phase1_evals"),
+                     "phase2_evals": me.get("phase2_evals"),
+                     "phase1_filled": me.get("phase1_filled"),
+                     "dispatch_prior": ({"active": prior.active, "key": prior.key,
+                                         "preferred": prior.preferred_order()}
+                                        if prior.active else None),
                      "archive": me.get("archive"), "iterations": me.get("iterations"),
                      "baseline_comparison": cmp,
                      # axis-extension telemetry (Method M2.5.2 / Figure E)

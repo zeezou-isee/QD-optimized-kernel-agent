@@ -217,7 +217,7 @@ def run_one(category: str, op: str, cfg: ModuleType,
             mode: str = "operator", backend: str = "base",
             model: str | None = None, vulkan_mode: str | None = None,
             device_verify: str = "off", device_simpleperf: bool = False,
-            device_speedup: bool = True) -> dict:
+            device_speedup: bool = True, fuse_strategy: str = "fuse") -> dict:
     """Spawn one agent (operator | kernel) for `op` and capture its summary.
 
     mode="operator" — full OperatorAgent pipeline (kernel + graph + e2e)
@@ -260,6 +260,13 @@ def run_one(category: str, op: str, cfg: ModuleType,
             # end-to-end + production checks, rather than failing an op whose base
             # e2e is green. The degradation is recorded in the op summary note.
             "--allow-backend-fallback",
+            # decomposed-op handling (universal fusion). Default "fuse" so
+            # pnnx-decomposed ops (LogSoftmax, GlobalPool, etc.) get their subgraph
+            # collapsed into a single Cand_<Op> and truly enter runtime; pass
+            # "--fuse-strategy skip" to fall back to the legacy behavior (leave
+            # native decomposition; QD winner does not enter runtime). See
+            # AAAI/多层分解算子与QD性能测量分析.md §9.
+            "--fuse-strategy", fuse_strategy,
         ]
         if device_verify and device_verify != "off":
             cmd += ["--device-verify", device_verify]
@@ -331,6 +338,12 @@ def main() -> None:
                    help="device gate also collects PMU via simpleperf (default off).")
     p.add_argument("--no-device-speedup", action="store_true",
                    help="disable inline device speedup measurement (default on).")
+    p.add_argument("--fuse-strategy", choices=["fuse", "skip"], default="fuse",
+                   help="operator mode: how to handle pnnx-decomposed multi-layer ops "
+                        "(LogSoftmax, GlobalPool, etc.). fuse (default) = universal graph "
+                        "collapse so Cand_<Op> enters runtime and gets optimized end-to-end; "
+                        "skip = legacy behavior (leave native decomposition, QD winner does "
+                        "not enter runtime). See AAAI/多层分解算子与QD性能测量分析.md §9.")
     args = p.parse_args()
 
     cfg = load_set(args.set_name)
@@ -375,7 +388,8 @@ def main() -> None:
         row = run_one(cat, op, cfg, mode=mode, backend=args.backend, model=args.model,
                       vulkan_mode=args.vulkan_mode,
                       device_verify=args.device_verify, device_simpleperf=args.device_simpleperf,
-                      device_speedup=not args.no_device_speedup)
+                      device_speedup=not args.no_device_speedup,
+                      fuse_strategy=args.fuse_strategy)
         results[op] = row
         save_results(results_path, results)
         if args.kernel_only:

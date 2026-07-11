@@ -72,6 +72,22 @@ def _split_files(code: dict[str, str]) -> tuple[str | None, str | None]:
     return cpp, hdr
 
 
+_VARIANT_RE = re.compile(r"^\s*(?:=+\s*|#+\s*)VARIANT\b[^\n]*$", re.IGNORECASE | re.MULTILINE)
+
+
+def parse_templates(response: str, baseline_kernel: dict[str, str]) -> list[ParameterizedTemplate]:
+    """Parse a BATCH reply (N variants separated by `=== VARIANT k ===` markers)
+    into a list of templates. Falls back to a single-template parse when no marker
+    is present (graceful degrade — fewer fills that round, never a crash). Segments
+    without a code fence are skipped (marker preamble / trailing prose)."""
+    segments = [s for s in _VARIANT_RE.split(response) if s and "```" in s]
+    if not segments:
+        # no markers: try to salvage one template from the whole reply
+        t = parse_template(response, baseline_kernel)
+        return [t] if t.kernel_files and t.kernel_files != baseline_kernel else []
+    return [parse_template(seg, baseline_kernel) for seg in segments]
+
+
 def parse_template(response: str, baseline_kernel: dict[str, str]) -> ParameterizedTemplate:
     """Parse an LLM response into a ParameterizedTemplate.
 
@@ -84,6 +100,13 @@ def parse_template(response: str, baseline_kernel: dict[str, str]) -> Parameteri
     params: dict[str, ParamSpec] = {}
     for name, spec in (meta.get("params") or {}).items():
         vals = spec.get("values") if isinstance(spec, dict) else spec
+        if vals is None:
+            continue
+        # LLM sometimes returns a scalar (e.g. "values": 4) instead of a list —
+        # coerce to a singleton so list(vals) never explodes (robustness across
+        # propose/vary/crossover/batch). Skip empty lists.
+        if not isinstance(vals, (list, tuple)):
+            vals = [vals]
         if not vals:
             continue
         params[name] = ParamSpec(
@@ -130,6 +153,7 @@ class LLMProposer:
         backend: str = "base",
         wiki: Any | None = None,        # WikiLoader; None => no wiki context
         regime: str = "unknown",        # roofline regime; drives BD-axis injection
+        dispatch_block: str = "",       # ncnn dispatch prior for this op (design §8.4)
     ) -> None:
         self.task_name = task_name
         self.baseline_kernel = dict(baseline_kernel)
@@ -139,6 +163,7 @@ class LLMProposer:
         self.backend = backend
         self.wiki = wiki
         self.regime = regime
+        self.dispatch_block = dispatch_block or ""
 
     def _wiki_context(self) -> str:
         """Retrieve generic primitives + bd_axes[regime] + backend knowledge;
@@ -179,10 +204,32 @@ class LLMProposer:
             self.task_name, self.baseline_kernel, self.hardware,
             sorted(set(tried)),
             context=self._wiki_context(), backend=self.backend,
-            sigma_block=self._sigma_block(),
+            sigma_block=self._sigma_block(), dispatch_block=self.dispatch_block,
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, self.baseline_kernel)
+
+    def propose_batch(self, n: int, history: list,
+                      covered_cells: list | None = None) -> list[ParameterizedTemplate]:
+        """ILLUMINATION (design §7.3①): one LLM call → up to `n` structurally
+        distinct templates targeting different niches. Used by the two-phase
+        MAP-Elites fill phase to thicken the grid cheaply (1 eval each). Returns
+        [] on parse failure so the caller falls back to serial vary()."""
+        from .prompts import batch_proposer_prompt
+        tried: list[str] = []
+        for it in history:
+            if isinstance(it, dict):
+                tried.extend(it.get("techniques", []) or [])
+        coverage_hint = self._coverage_hint("diversify", covered_cells)
+        prompt = batch_proposer_prompt(
+            self.task_name, self.baseline_kernel, self.hardware, n,
+            sorted(set(t for t in tried if t)),
+            context=self._wiki_context(), backend=self.backend,
+            sigma_block=self._sigma_block(), coverage_hint=coverage_hint,
+            dispatch_block=self.dispatch_block,
+        )
+        response = self.llm(prompt, self.model)
+        return parse_templates(response, self.baseline_kernel)
 
     def vary(self, parent, directive: str, history: list,
              covered_cells: list | None = None) -> ParameterizedTemplate:
@@ -208,6 +255,7 @@ class LLMProposer:
             recent_failures=fails[-3:],
             context=self._wiki_context(), backend=self.backend,
             sigma_block=self._sigma_block(), coverage_hint=coverage_hint,
+            dispatch_block=self.dispatch_block,
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, parent_code)
@@ -257,7 +305,7 @@ class LLMProposer:
             self.task_name, _code(a), _code(b), self.hardware,
             cell_a=_cell(a), cell_b=_cell(b), recent_failures=fails[-3:],
             context=self._wiki_context(), backend=self.backend,
-            sigma_block=self._sigma_block(),
+            sigma_block=self._sigma_block(), dispatch_block=self.dispatch_block,
         )
         response = self.llm(prompt, self.model)
         return parse_template(response, _code(a))

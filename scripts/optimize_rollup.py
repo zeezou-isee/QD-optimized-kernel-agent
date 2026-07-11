@@ -46,6 +46,7 @@ def row_for(op: str, category: str, backend: str) -> dict:
     row = {"op": op, "category": category, "backend": backend, "status": "crash",
            "regime": None, "rounds": None, "coverage": None,
            "kept_rounds": None, "improved": None,
+           "two_phase": None, "filled": None, "p1_evals": None, "p2_evals": None,
            "baseline_ms": None, "best_ms": None, "self_speedup": None,
            "baseline_cell": None, "winner_cell": None, "bins_covered": None,
            "device": None, "stopped_reason": None, "flag": "crash"}
@@ -75,6 +76,8 @@ def row_for(op: str, category: str, backend: str) -> dict:
                    for c in arc), key=lambda b: (b["latency_ms"] if b["latency_ms"] else 9e9))
     row.update(status="success", regime=ex.get("regime"), rounds=ex.get("rounds"),
                coverage=ex.get("coverage"), kept_rounds=kept, improved=improved,
+               two_phase=ex.get("two_phase"), filled=ex.get("phase1_filled"),
+               p1_evals=ex.get("phase1_evals"), p2_evals=ex.get("phase2_evals"),
                baseline_ms=base, best_ms=bestv,
                self_speedup=round(spd, 4) if spd else None,
                baseline_cell=_fmt_cell(ex.get("baseline_cell")),
@@ -161,19 +164,24 @@ def main() -> None:
               "LLM-varied + param-tuned kernel that measured faster on the phone.\n")
     md.append("\n`bin` = BD niche (axis1/axis2). `base_bin`→`win_bin` shows which niche the "
               "baseline sat in and which niche produced the fastest kernel.\n")
-    md.append("\n| op | cat | regime | rounds | kept | cov | base_bin | win_bin | baseline_ms | best_ms | self_speedup | flag |")
-    md.append("|----|-----|--------|-------:|-----:|----:|----------|---------|------------:|--------:|-------------:|------|")
+    md.append("\n`cov` = niches filled (grid thickness). `fill` = niches after Phase-1 "
+              "illumination; `p1`/`p2` = evals spent in Phase-1 (cheap fill, 1/niche) vs "
+              "Phase-2 (deep search). Thick grid + bounded burden ⇒ high cov at modest p1+p2.\n")
+    md.append("\n| op | cat | regime | rounds | kept | cov | fill | p1 | p2 | base_bin | win_bin | baseline_ms | best_ms | self_speedup | flag |")
+    md.append("|----|-----|--------|-------:|-----:|----:|-----:|---:|---:|----------|---------|------------:|--------:|-------------:|------|")
     order = {"real": 0, "tainted": 1, "suspect": 2, "crash": 3}
     ordered = sorted(rows, key=lambda r: (order[r["flag"]],
                      -(r["self_speedup"] if isinstance(r["self_speedup"], (int, float)) else 0)))
+
+    def _n(v):
+        return v if v is not None else "—"
     for r in ordered:
         bm = f"{r['baseline_ms']:.3f}" if isinstance(r["baseline_ms"], (int, float)) else "—"
         be = f"{r['best_ms']:.3f}" if isinstance(r["best_ms"], (int, float)) else "—"
         sp = f"{r['self_speedup']:.3f}" if isinstance(r["self_speedup"], (int, float)) else "—"
         md.append(f"| `{r['op']}` | {r['category']} | {r['regime'] or '—'} | "
-                  f"{r['rounds'] if r['rounds'] is not None else '—'} | "
-                  f"{r['kept_rounds'] if r['kept_rounds'] is not None else '—'} | "
-                  f"{r['coverage'] if r['coverage'] is not None else '—'} | "
+                  f"{_n(r['rounds'])} | {_n(r['kept_rounds'])} | {_n(r['coverage'])} | "
+                  f"{_n(r['filled'])} | {_n(r['p1_evals'])} | {_n(r['p2_evals'])} | "
                   f"{r['baseline_cell'] or '—'} | {r['winner_cell'] or '—'} | {bm} | {be} | {sp} | {r['flag']} |")
 
     # per-op bins breakdown — the covered MAP-Elites niches + each niche's best latency

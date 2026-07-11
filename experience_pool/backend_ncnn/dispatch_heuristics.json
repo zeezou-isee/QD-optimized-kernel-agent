@@ -1,0 +1,158 @@
+{
+  "backend": "arm",
+  "version": 1,
+  "algo_family_axis": [
+    "direct",
+    "gemm",
+    "winograd",
+    "fft",
+    "dw"
+  ],
+  "note": "family-selection gates only; direct micro-variants omitted. fft is never selected by ncnn (kept as an explore-only niche).",
+  "families": {
+    "conv": {
+      "layer": "Convolution",
+      "cite_file": "ncnn/src/layer/arm/convolution_arm.cpp",
+      "rules": [
+        {
+          "algo_family": "winograd",
+          "priority": 1,
+          "dtype": "fp32",
+          "when": "kernel==3x3 && stride==1 && dilation==1 && (num_input>=8 || num_output>=8)",
+          "verbatim": "if (opt.use_winograd_convolution && prefer_winograd && kernel_w == 3 && kernel_h == 3 && dilation_w == 1 && dilation_h == 1 && stride_w == 1 && stride_h == 1)",
+          "predicate": {
+            "kernel": 3,
+            "stride": 1,
+            "dilation": 1,
+            "channel_any_ge": 8
+          },
+          "tiles": {
+            "winograd63_channel_max": 128,
+            "winograd43_channel_min": 8
+          },
+          "ncnn_fn": "conv3x3s1_winograd{23,43,63}",
+          "cite": "ncnn/src/layer/arm/convolution_arm.cpp:206"
+        },
+        {
+          "algo_family": "gemm",
+          "priority": 2,
+          "dtype": "fp32",
+          "when": "kernel==1x1 (pointwise degenerates to GEMM)",
+          "verbatim": "use_sgemm_convolution && prefer_sgemm) || (kernel_w == 1 && kernel_h == 1)",
+          "predicate": {
+            "kernel": 1
+          },
+          "ncnn_fn": "convolution_im2col_gemm",
+          "cite": "ncnn/src/layer/arm/convolution_arm.cpp:259"
+        },
+        {
+          "algo_family": "gemm",
+          "priority": 3,
+          "dtype": "fp32",
+          "when": "prefer_sgemm: work > L2_cache OR (num_input>16 || num_output>16)",
+          "verbatim": "bool prefer_sgemm = num_input * num_output * kernel_w * kernel_h * dilation_w * dilation_h * stride_w * stride_h * 2 > l2_cache_size_fp32",
+          "predicate": {
+            "channel_any_gt": 16
+          },
+          "ncnn_fn": "convolution_im2col_gemm",
+          "cite": "ncnn/src/layer/arm/convolution_arm.cpp:223"
+        },
+        {
+          "algo_family": "direct",
+          "priority": 9,
+          "dtype": "fp32",
+          "when": "fallback: small channels, stride>2, or kernels without a gemm/winograd path",
+          "verbatim": "(else branch of the dispatch cascade)",
+          "predicate": {
+            "default": true
+          },
+          "ncnn_fn": "conv{1x1,3x3,5x5,7x7}s{1,2}*_neon (direct cascade)",
+          "cite": "ncnn/src/layer/arm/convolution_arm.cpp (direct-kernel cascade)"
+        },
+        {
+          "algo_family": "winograd",
+          "priority": 1,
+          "dtype": "fp16",
+          "when": "kernel==3x3 && stride==1 && dilation==1 && (num_input>=16 || num_output>=16)",
+          "verbatim": "if (opt.use_fp16_arithmetic && opt.use_winograd_convolution && prefer_winograd && kernel_w == 3 && kernel_h == 3 && dilation_w == 1 && dilation_h == 1 && stride_w == 1 && stride_h == 1)",
+          "predicate": {
+            "kernel": 3,
+            "stride": 1,
+            "dilation": 1,
+            "channel_any_ge": 16
+          },
+          "tiles": {
+            "winograd63_channel_max": 128,
+            "winograd43_channel_min": 16
+          },
+          "ncnn_fn": "conv3x3s1_winograd{23,43,63}",
+          "cite": "ncnn/src/layer/arm/convolution_arm_asimdhp.cpp:89"
+        },
+        {
+          "algo_family": "gemm",
+          "priority": 3,
+          "dtype": "fp16",
+          "when": "prefer_sgemm: work > L2_cache OR (num_input>16 || num_output>16)",
+          "verbatim": "bool prefer_sgemm = num_input * num_output * kernel_w * kernel_h * dilation_w * dilation_h * stride_w * stride_h * 2 > l2_cache_size_fp16",
+          "predicate": {
+            "channel_any_gt": 16
+          },
+          "ncnn_fn": "convolution_im2col_gemm",
+          "cite": "ncnn/src/layer/arm/convolution_arm_asimdhp.cpp:111"
+        }
+      ],
+      "warnings": []
+    },
+    "conv_dw": {
+      "layer": "ConvolutionDepthWise",
+      "cite_file": "ncnn/src/layer/arm/convolutiondepthwise_arm.cpp",
+      "rules": [
+        {
+          "algo_family": "dw",
+          "priority": 1,
+          "dtype": "any",
+          "when": "depthwise conv → specialized depthwise kernels (3x3/5x5 × s1/s2 × pack)",
+          "verbatim": "kernel_w == 3 && kernel_h == 3 && dilation_w == 1 && dilation_h == 1 && stride_w == 1 && stride_h == 1",
+          "predicate": {
+            "default": true
+          },
+          "ncnn_fn": "convdw{3x3,5x5}s{1,2}[_pack4/_pack8]_neon",
+          "cite": "ncnn/src/layer/arm/convolutiondepthwise_arm.cpp:130"
+        }
+      ],
+      "warnings": []
+    },
+    "deconv": {
+      "layer": "Deconvolution",
+      "cite_file": "ncnn/src/layer/arm/deconvolution_arm.cpp",
+      "rules": [
+        {
+          "algo_family": "gemm",
+          "priority": 1,
+          "dtype": "any",
+          "when": "use_sgemm_convolution → gemm (via child Gemm layer)",
+          "verbatim": "if (opt.use_sgemm_convolution)",
+          "predicate": {
+            "channel_any_gt": 0
+          },
+          "ncnn_fn": "gemm",
+          "cite": "ncnn/src/layer/arm/deconvolution_arm.cpp:73"
+        },
+        {
+          "algo_family": "direct",
+          "priority": 9,
+          "dtype": "any",
+          "when": "fallback: direct deconv (3x3/4x4 × s1/s2, pack1)",
+          "verbatim": "(else branch)",
+          "predicate": {
+            "default": true
+          },
+          "ncnn_fn": "deconv{3x3,4x4}s{1,2}_neon",
+          "cite": "ncnn/src/layer/arm/deconvolution_arm.cpp"
+        }
+      ],
+      "warnings": []
+    }
+  },
+  "warnings": []
+}

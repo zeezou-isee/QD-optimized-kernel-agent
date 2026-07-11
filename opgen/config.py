@@ -34,8 +34,10 @@ def _find_kernelgen(start: Path) -> Path:
 
 
 KERNELGEN_ROOT = _find_kernelgen(AGENT_ROOT)           # .../kernelgen
-# Single, tidy runtime root for ALL agents: runs/<task>/{kernel,graph,operator}
-RUNS_ROOT = AGENT_ROOT / "runs"
+# Single, tidy runtime root for ALL agents: runs/<task>/{kernel,graph,operator}.
+# Overridable via KERNELGEN_RUNS_ROOT so an ablation/verification run can write to
+# a scratch dir WITHOUT overwriting the recorded runs/ (default unchanged).
+RUNS_ROOT = Path(os.environ.get("KERNELGEN_RUNS_ROOT", str(AGENT_ROOT / "runs")))
 
 
 def _first_existing(*candidates: Path) -> Path | None:

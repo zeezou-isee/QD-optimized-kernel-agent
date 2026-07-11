@@ -84,4 +84,19 @@ BATCH OPTIMIZE  backend=arm policy=map_elites model=claude-opus-4-8 key=efe0c9..
 ----- [26/30] Deconvolution_1D -----
   -> success in 261.2s  improved=True self_speedup=1.6768 base=0.7071ms best=0.4217ms
 
------ [27/30] ReduceMean -----
+----- [1/4] ReduceMean -----
+  -> success in 528.9s  improved=False self_speedup=1.0 base=0.8721ms best=0.8721ms
+
+----- [2/4] ReduceMax_with_negative_values -----
+  -> success in 325.8s  improved=True self_speedup=1.5517 base=0.8005ms best=0.5159ms
+
+----- [3/4] ReduceMin_with_negative_values -----
+  -> success in 167.4s  improved=False self_speedup=1.0 base=1.2207ms best=1.2207ms
+
+----- [4/4] MatMul -----
+  -> success in 249.5s  improved=True self_speedup=1.6389 base=0.4325ms best=0.2639ms
+
+
+========================================================================
+DONE  4/4 success | 2 improved over baseline
+results -> /Users/xingze/Documents/project/kernelgen/QD-optimized-kernel-agent/batch/results/optimize_batch.json

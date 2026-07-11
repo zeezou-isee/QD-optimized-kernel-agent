@@ -84,6 +84,67 @@ def _baseline_elite(baseline_template: ParameterizedTemplate, latency: float,
                  params={}, techniques=list(baseline_template.techniques), source="seed")
 
 
+def _illuminate(
+    *, arc: Archive, evaluator, engine, batch_fn, regime: str, backend: str,
+    wiki_root, fill_budget: int, sigma: float, iters: list, seen_sigs: set,
+    batch_chunk: int = 6,
+) -> int:
+    """Phase 1 — ILLUMINATE (design §7.3①): batch-propose diverse structural
+    variants and fill each niche at **1 eval** (center point, no param search),
+    placing them as source="fill" elites. Thickens the grid cheaply so Phase 2
+    (the existing optimize loop) has many distinct niches to deepen/recombine.
+
+    Returns the number of real evaluations spent (≤ fill_budget). Any failure
+    (batch_fn raises / returns nothing) just ends the phase early — Phase 2 still
+    runs on whatever got filled (graceful degrade)."""
+    evals = 0
+    attempted = 0
+    calls = 0
+    max_calls = max(2, fill_budget // max(1, batch_chunk) + 1)
+    while attempted < fill_budget and calls < max_calls:
+        calls += 1
+        want = min(batch_chunk, fill_budget - attempted)
+        covered = [list(c) for c in arc.cells]
+        try:
+            templates = batch_fn(want, iters, covered) or []
+        except Exception as exc:  # noqa: BLE001
+            iters.append({"phase": 1, "round": len(iters),
+                          "error": f"batch_failed: {exc}"})
+            break
+        if not templates:
+            break
+        for t in templates:
+            if attempted >= fill_budget:
+                break
+            attempted += 1
+            sig = _signature(t)
+            if sig in seen_sigs:
+                continue
+            seen_sigs.add(sig)
+            cell, novel = classify_with_novelty(
+                t.techniques, regime, backend=backend,
+                bd_labels=getattr(t, "bd_labels", None), wiki_root=wiki_root)
+            basin: BasinValue = inner_search(t, evaluator, engine, budget=1)  # 1-eval fill
+            evals += basin.n_evaluated
+            kept = False
+            if basin.correct and basin.best_latency_ms is not None:
+                _bs = basin.best_sample
+                elite = Elite(cell=cell, latency_ms=basin.best_latency_ms,
+                              kernel_code=materialize(t, basin.best_params or {}),
+                              params=basin.best_params or {},
+                              techniques=list(t.techniques), source="fill",
+                              latency_min_ms=getattr(_bs, "latency_min_ms", None),
+                              latency_max_ms=getattr(_bs, "latency_max_ms", None))
+                kept = arc.place(elite, sigma=sigma)
+            iters.append({"phase": 1, "round": len(iters), "directive": "illuminate",
+                          "cell": list(cell), "kept": kept,
+                          "cand_latency": basin.best_latency_ms,
+                          "coverage": arc.coverage(), "evaluated": basin.n_evaluated,
+                          "pruned": basin.n_pruned,
+                          "failure_summary": _summarize_failures(basin)})
+    return evals
+
+
 def run_map_elites(
     *,
     baseline_template: ParameterizedTemplate,
@@ -109,6 +170,10 @@ def run_map_elites(
     record_trace: bool = False,              # persist per-round inner trajectory + pruned + param_space
     crossover_fn=None,                       # (elite_a, elite_b, history) -> template; None = mutation-only
     crossover_rate: float = 0.4,             # P(crossover) per round once >=2 niches exist
+    # --- two-phase illumination (thick grid, bounded burden) ---
+    batch_fn=None,                           # (n, history, covered) -> [template]; None = single-phase (legacy)
+    fill_budget: int = 16,                   # Phase-1 seed templates (≈ niches touched), 1 eval each
+    optimize_topk: int = 6,                  # Phase-2 niches to deepen (bounds deep-search burden)
 ) -> dict:
     rng = random.Random(rng_seed)
     arc = archive or Archive()
@@ -132,15 +197,35 @@ def run_map_elites(
         arc.place(s, sigma=sigma)
     arc.place(_baseline_elite(baseline_template, baseline_latency, regime), sigma=sigma)
 
-    best = arc.argmin()
-    best_lat = best.latency_ms if best else baseline_latency
-    rounds = 0
-    stale = 0
     iters: list[dict] = []
     seen_sigs: set[str] = set()
+
+    # --- Phase 1: ILLUMINATE (thicken the grid cheaply, 1 eval/niche) — only
+    # when a batch proposer is supplied (real LLMProposer). Legacy/stub callers
+    # (batch_fn=None) skip straight to the single-phase loop below, byte-for-byte
+    # unchanged, so existing tests keep their exact behavior. ---
+    phase1_evals = 0
+    if batch_fn is not None:
+        phase1_evals = _illuminate(
+            arc=arc, evaluator=evaluator, engine=engine, batch_fn=batch_fn,
+            regime=regime, backend=backend, wiki_root=wiki_root,
+            fill_budget=fill_budget, sigma=sigma, iters=iters, seen_sigs=seen_sigs)
+    phase1_filled = arc.coverage()
+
+    best = arc.argmin()
+    best_lat = best.latency_ms if best else baseline_latency
+    # Phase-2 (the loop below) gets a BOUNDED slice: deepen ~optimize_topk niches,
+    # never exceeding the map_budget eval ceiling. Single-phase uses the full budget.
+    if batch_fn is not None:
+        effective_budget = phase1_evals + min(optimize_topk * inner_budget,
+                                              max(0, budget - phase1_evals))
+    else:
+        effective_budget = budget
+    rounds = phase1_evals
+    stale = 0
     stopped = ""
 
-    while rounds < budget:
+    while rounds < effective_budget:
         # roofline early stop (§8.2)
         if roofline and roofline.early_stop_ok(best_lat):
             stopped = "roofline_reached"
@@ -267,7 +352,7 @@ def run_map_elites(
             break
 
     if not stopped:
-        stopped = f"budget ({budget}) reached"
+        stopped = f"budget ({effective_budget}) reached"
 
     # Persist Σ whenever a novel win mutated it — the `pending` cross-task
     # counter must survive between runs so a label can accumulate to n_promote
@@ -287,6 +372,12 @@ def run_map_elites(
         "coverage": arc.coverage(),
         "grid_argmin_cell": list(best.cell) if best else None,
         "rounds": rounds,
+        # two-phase telemetry (thick-grid-vs-burden): phase1 fills cheaply,
+        # phase2 deepens top niches. Single-phase runs report phase1_*=0.
+        "two_phase": batch_fn is not None,
+        "phase1_evals": phase1_evals,
+        "phase2_evals": rounds - phase1_evals,
+        "phase1_filled": phase1_filled,
         "stopped_reason": stopped,
         "iterations": iters,
         "archive": arc.to_dict(),

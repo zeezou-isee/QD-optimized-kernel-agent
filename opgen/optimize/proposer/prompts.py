@@ -214,6 +214,17 @@ def _sigma_section(sigma_block: str) -> str:
     return f"\n# Search-space axes (Σ) — declare bd_labels from these\n{sigma_block}\n"
 
 
+def _dispatch_section(dispatch_block: str) -> str:
+    """ncnn's distilled algo_family dispatch prior for THIS op's shape (design §8.4).
+    A SOFT prior: bias bd_labels toward the PREFERRED cells, still allowed to
+    explore others for coverage. Empty for non-conv / memory-bound ops."""
+    dispatch_block = (dispatch_block or "").strip()
+    if not dispatch_block:
+        return ""
+    return ("\n# ncnn dispatch prior (which algorithm family ncnn picks here — "
+            f"bias toward these)\n{dispatch_block}\n")
+
+
 def vary_prompt(
     task_name: str,
     parent_kernel: dict[str, str],
@@ -225,6 +236,7 @@ def vary_prompt(
     backend: str = "base",
     sigma_block: str = "",
     coverage_hint: str = "",
+    dispatch_block: str = "",
 ) -> str:
     """Prompt for MAP-Elites variation: mutate a PARENT elite per a directive."""
     files = "\n\n".join(
@@ -240,7 +252,7 @@ def vary_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}{_dispatch_section(dispatch_block)}
 # Parent kernel (the elite you are mutating)
 {files}
 
@@ -274,6 +286,7 @@ def crossover_prompt(
     context: str = "",
     backend: str = "base",
     sigma_block: str = "",
+    dispatch_block: str = "",
 ) -> str:
     """Prompt for MAP-Elites CROSSOVER: recombine two winning elites from
     different niches into a child that inherits the best of both."""
@@ -287,7 +300,7 @@ def crossover_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}{_dispatch_section(dispatch_block)}
 # Parent A (winner of niche: {cell_a or "?"})
 {_files(parent_a)}
 
@@ -318,6 +331,7 @@ def proposer_prompt(
     context: str = "",
     backend: str = "base",
     sigma_block: str = "",
+    dispatch_block: str = "",
 ) -> str:
     """Build the proposer prompt from the baseline kernel + hardware + history."""
     files = "\n\n".join(
@@ -331,7 +345,7 @@ def proposer_prompt(
 
 # Target hardware
 {_hw_block(hardware, backend)}
-{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}{_dispatch_section(dispatch_block)}
 # Baseline kernel (already correct; this is your starting point)
 {files}
 
@@ -346,4 +360,74 @@ and derive the physical constraint equations that keep every combination legal
 on the target hardware. Declare "bd_labels" from the Σ axes above. Do NOT pick
 final numbers — the search does that.
 {_OUTPUT_CONTRACT}
+"""
+
+
+_BATCH_OUTPUT_CONTRACT = r"""
+## Output format (STRICT — MULTIPLE variants in ONE reply)
+
+Return EXACTLY the requested number of variants. Separate each with a marker line:
+
+=== VARIANT 1 ===
+    (variant 1 body: code fences + one json block, format below)
+=== VARIANT 2 ===
+    (variant 2 body)
+... and so on.
+
+Each variant's body has the SAME two parts as a single proposal:
+1) parameterized kernel source as fenced code blocks — the FIRST line inside each
+   fence MUST be the filename (keep the baseline's class/header/.cpp names). Use
+   <PLACEHOLDER> knobs. 2) a single ```json block with
+   params/constraints/techniques/bd_labels/rationale.
+
+CRITICAL: each variant MUST land in a DIFFERENT niche — pick a DIFFERENT
+`bd_labels` combination (different algo_family / layout / compute_mapping) for
+each. They must be STRUCTURALLY distinct strategies, NOT parameter tweaks of one
+kernel. Every materialized variant must compile and stay numerically equivalent
+to the baseline. Rules for each variant's params/constraints/bd_labels are the
+same as the single-proposal contract.
+"""
+
+
+def batch_proposer_prompt(
+    task_name: str,
+    baseline_kernel: dict[str, str],
+    hardware: dict[str, Any],
+    n: int,
+    tried: list[str],
+    context: str = "",
+    backend: str = "base",
+    sigma_block: str = "",
+    coverage_hint: str = "",
+    dispatch_block: str = "",
+) -> str:
+    """Batch ILLUMINATION prompt (design §7.3①): one call → N structurally distinct
+    variants, each targeting a different (ideally uncovered) niche. The inner
+    search fills each at 1 eval; the diverse set thickens the grid cheaply."""
+    files = "\n\n".join(
+        f"### {name}\n```cpp\n{code}\n```" for name, code in baseline_kernel.items()
+    )
+    tried_block = ("\n".join(f"- {t}" for t in tried)) if tried else "(none yet)"
+    return f"""{_persona(backend)}
+
+# Operator
+{task_name}
+
+# Target hardware
+{_hw_block(hardware, backend)}
+{_precision_tier_block(backend, hardware)}{_context_section(context)}{_sigma_section(sigma_block)}{_dispatch_section(dispatch_block)}
+# Baseline kernel (already correct; this is your starting point)
+{files}
+
+# Techniques already tried
+{tried_block}
+
+# Your task — ILLUMINATE the search space
+Produce **{n} structurally DISTINCT** parameterized templates, each targeting a
+DIFFERENT behavior niche (a different `bd_labels` combination from the Σ axes).
+Goal is COVERAGE, not raw speed this round: spread across algorithm families /
+layouts / compute mappings so the archive fills many cells. Prefer the ncnn
+dispatch prior's PREFERRED families first, then cover others for diversity.
+{("- COVERAGE: " + coverage_hint) if coverage_hint else ""}
+{_BATCH_OUTPUT_CONTRACT}
 """

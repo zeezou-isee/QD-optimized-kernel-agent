@@ -119,6 +119,10 @@ def run_one(op: str, args, env: dict) -> dict:
         argv += ["--bench-warmup", str(args.bench_warmup)]
     if args.crossover_rate is not None:
         argv += ["--crossover-rate", str(args.crossover_rate)]
+    if args.fill_budget is not None:
+        argv += ["--fill-budget", str(args.fill_budget)]
+    if args.optimize_topk is not None:
+        argv += ["--optimize-topk", str(args.optimize_topk)]
 
     t0 = time.time()
     proc = subprocess.Popen(argv, cwd=str(ROOT), env=env, start_new_session=True,
@@ -164,6 +168,8 @@ def main() -> None:
     ap.add_argument("--bench-loop", type=int, default=None, help="on-device timed forwards (default 100)")
     ap.add_argument("--bench-warmup", type=int, default=None, help="on-device warmup forwards (default 10)")
     ap.add_argument("--crossover-rate", type=float, default=None, help="MAP-Elites P(crossover) (0=mutation-only)")
+    ap.add_argument("--fill-budget", type=int, default=None, help="two-phase Phase-1 seed templates (thick grid)")
+    ap.add_argument("--optimize-topk", type=int, default=None, help="two-phase Phase-2 niches to deepen (bounds burden)")
     ap.add_argument("--timeout", type=int, default=5400, help="per-op wall-clock seconds (default 90 min)")
     ap.add_argument("--force", action="store_true", help="re-run even if an optimize summary exists")
     ap.add_argument("--out", default=str(RESULTS_DIR / "optimize_batch.json"))

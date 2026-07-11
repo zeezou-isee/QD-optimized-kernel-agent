@@ -48,18 +48,18 @@
     "IDEALAB:efe0c9...7d26": {
       "provider": "idealab",
       "first_seen": "2026-07-08T10:17:17",
-      "last_seen": "2026-07-08T12:30:46",
-      "total_calls": 58,
+      "last_seen": "2026-07-10T17:46:57",
+      "total_calls": 821,
       "models": {
         "claude-opus-4-8": {
-          "calls": 58,
-          "input_tokens": 1782193,
-          "output_tokens": 177170,
+          "calls": 821,
+          "input_tokens": 25095074,
+          "output_tokens": 2653844,
           "cache_read_tokens": 0,
           "cache_creation_tokens": 0
         }
       }
     }
   },
-  "updated_at": "2026-07-08T12:30:46"
+  "updated_at": "2026-07-10T17:46:57"
 }

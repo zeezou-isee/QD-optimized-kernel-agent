@@ -137,6 +137,12 @@ def main() -> None:
     p.add_argument("--crossover-rate", type=float, default=0.4,
                    help="MAP-Elites P(crossover) per round (0 = mutation-only; default 0.4). "
                         "For the crossover ablation.")
+    p.add_argument("--fill-budget", type=int, default=16,
+                   help="two-phase illumination: Phase-1 batch-proposed seed templates, filled "
+                        "at 1 eval each (thickens the grid cheaply). Default 16.")
+    p.add_argument("--optimize-topk", type=int, default=6,
+                   help="two-phase illumination: Phase-2 niches to deepen with full inner_search "
+                        "(bounds the deep-search burden ≈ topk × inner_budget). Default 6.")
     p.add_argument("--record-trace", action="store_true",
                    help="persist the full inner-search trace (per-round climb trajectory, "
                         "analytically-pruned points + reasons, param space) + bd_axes/inner_config "
@@ -203,6 +209,7 @@ def main() -> None:
         ncnn_py=_ncnn_py, record_trace=args.record_trace,
         device_bench=args.bench_loop, device_warmup=args.bench_warmup,
         crossover_rate=args.crossover_rate,
+        fill_budget=args.fill_budget, optimize_topk=args.optimize_topk,
     )
     res: OptimizeResult = agent.run()
 
