@@ -500,4 +500,3 @@ Typical flows:
 Built on **ncnn** (https://github.com/Tencent/ncnn) and the MobileKernelBench
 operator dataset. Thanks to the ncnn authors.
 
-那等我的现在这批验证完之后做两件事，第一，检查这些错误的算子，看看是什么原因，先通过这些修正设计上的缺陷。如果是NDK交叉编译的原因，那就先不动，等待第二步。第二步，把arm/vulkan后端设置为device-in-loop的模式，把真实的反馈给LLM，如果没有检测到设备则回退到现在mac后端的代理的模式。 
